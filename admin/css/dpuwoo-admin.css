@@ -1,4 +1,90 @@
-/**
- * All of the CSS for your admin-specific functionality should be
- * included in this file.
- */
+.dpu-status-updated {
+    background: #d4edda;
+    color: #155724;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+.dpu-status-simulated {
+    background: #d1ecf1;
+    color: #0c5460;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+.dpu-status-error {
+    background: #f8d7da;
+    color: #721c24;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+.dpu-status-skipped {
+    background: #e2e3e5;
+    color: #383d41;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+.dpu-status-reverted {
+    background: #fff3cd;
+    color: #856404;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+/* Estilos para tipos de producto */
+.dpu-type-simple {
+    background: #e8f5e8;
+    color: #2d5016;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+}
+
+.dpu-type-variable {
+    background: #e8f0f5;
+    color: #1a3c5c;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+}
+
+.dpu-type-variation {
+    background: #f5e8f0;
+    color: #5c1a3c;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+}
+
+.dpu-summary {
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.dpuwoo-tabs-nav button {
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    margin-right: 8px;
+    font-weight: 500;
+    color: #334155;
+}
+.dpuwoo-tabs-nav button.active {
+    border-color: #2271b1;
+    color: #1e293b;
+}
+.dpuwoo-tab-content.hidden {
+    display: none;
+}
+
+/* Estilo para rangos de precio */
+.price-range {
+    font-weight: 500;
+}

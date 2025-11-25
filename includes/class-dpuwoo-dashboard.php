@@ -1,6 +1,4 @@
 <?php
-// includes/class-dashboard.php (admin AJAX handlers)
-
 if (!defined('ABSPATH')) exit;
 
 class Dashboard
@@ -22,7 +20,7 @@ class Dashboard
         $res = $updater->update_all(false); // live
 
         if (isset($res['error'])) {
-            wp_send_json_error($res['error']);
+            wp_send_json_error($res);
         }
 
         wp_send_json_success($res);
@@ -37,7 +35,7 @@ class Dashboard
         $res = $updater->update_all(true); // simulate
 
         if (isset($res['error'])) {
-            wp_send_json_error($res['error']);
+            wp_send_json_error($res);
         }
 
         wp_send_json_success($res);
@@ -71,4 +69,3 @@ class Dashboard
         wp_send_json_success(['message' => 'run_reverted', 'run_id' => $run_id]);
     }
 }
-
