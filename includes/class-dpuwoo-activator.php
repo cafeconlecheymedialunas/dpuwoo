@@ -9,68 +9,76 @@ class Activator
         if (get_option('dpuwoo_initial_setup_done')) {
             return;
         }
+        self::create_tables();
 
         $settings = get_option('dpuwoo_settings', []);
-        $api_key = $settings['api_key'] ?? '';
-        $dollar_type = $settings['dollar_type'] ?? 'oficial';
 
-        // 1. Intentar obtener dólar inicial desde la API si hay API key
-        $auto_detected_rate = false;
-        if (!empty($api_key)) {
-            $auto_detected_rate = self::fetch_initial_dollar_value($api_key, $dollar_type);
-            
-            if ($auto_detected_rate) {
-                $settings['auto_detected_dollar_value'] = $auto_detected_rate;
-                $settings['auto_detection_date'] = current_time('mysql');
-                $settings['auto_detection_status'] = 'success';
-            } else {
-                $settings['auto_detection_status'] = 'failed';
-            }
+        // 1. OBTENER DÓLAR ACTUAL PARA USAR COMO BASELINE
+        $dollar_value = self::fetch_initial_dollar_value();
+        
+        if ($dollar_value && $dollar_value > 0) {
+            $settings['baseline_dollar_value'] = $dollar_value;
+            $settings['auto_detection_date'] = current_time('mysql');
         } else {
-            $settings['auto_detection_status'] = 'no_api_key';
+            // Valor por defecto si no se puede obtener
+            $settings['baseline_dollar_value'] = 1;
         }
 
-        // 2. Configuración por defecto
+        // 2. CONFIGURACIÓN MÍNIMA ESENCIAL
         $settings['interval'] = $settings['interval'] ?? 3600;
         $settings['threshold'] = $settings['threshold'] ?? 1.0;
-        $settings['rounding'] = $settings['rounding'] ?? 'multiple';
-        $settings['round_multiple'] = $settings['round_multiple'] ?? 10;
+        $settings['dollar_type'] = $settings['dollar_type'] ?? 'oficial';
 
         update_option('dpuwoo_settings', $settings);
 
-        // 3. Crear tablas de logs
-        self::create_tables();
+        // 3. GUARDAR ESTE DÓLAR COMO "ÚLTIMO DÓLAR" PARA PRÓXIMOS CÁLCULOS
+        update_option('dpuwoo_last_dollar_value', $settings['baseline_dollar_value']);
 
-        // 4. Guardar precios base (INCLUYENDO VARIACIONES)
-        self::store_base_prices();
+        // 4. PROGRAMAR ACTUALIZACIONES AUTOMÁTICAS
+        if (!wp_next_scheduled('dpuwoo_do_update')) {
+            wp_schedule_event(time() + 300, 'hourly', 'dpuwoo_do_update');
+        }
 
-        // 5. Programar cron
-        wp_schedule_event(time(), 'hourly', 'dpuwoo_do_update');
-
-        // 6. Marcar setup inicial
+        // 5. MARCAR COMO ACTIVADO
         update_option('dpuwoo_initial_setup_done', true);
         
-        // 7. Crear admin notice
-        self::add_activation_notice($auto_detected_rate);
+        // 6. NOTIFICACIÓN AL ADMIN
+        self::add_activation_notice($dollar_value);
     }
 
-    private static function fetch_initial_dollar_value($api_key, $type)
+    private static function fetch_initial_dollar_value()
     {
-        $url = "https://dolarapi.com/v1/dolares/{$type}";
-        $args = [
-            'headers' => [
-                'Authorization' => 'Bearer ' . $api_key
-            ],
-            'timeout' => 15
-        ];
+        $url = "https://dolarapi.com/v1/dolares/oficial";
+        $args = ['timeout' => 15, 'sslverify' => false];
 
         $res = wp_remote_get($url, $args);
-        if (is_wp_error($res)) return false;
+        if (is_wp_error($res)) {
+            error_log('DPU WooCommerce - Error fetching dollar: ' . $res->get_error_message());
+            return false;
+        }
 
         $body = json_decode(wp_remote_retrieve_body($res), true);
-        if (!isset($body['venta'])) return false;
+        
+        if (!isset($body['venta'])) {
+            error_log('DPU WooCommerce - Invalid API response');
+            return false;
+        }
 
-        return floatval($body['venta']);
+        $rate = floatval($body['venta']);
+        return ($rate > 0) ? $rate : false;
+    }
+
+    private static function add_activation_notice($detected_rate)
+    {
+        $message = $detected_rate ? 
+            sprintf('DPU WooCommerce activado. Dólar base detectado: <strong>$%s</strong>', esc_html($detected_rate)) :
+            'DPU WooCommerce activado. Configura el dólar base en los ajustes.';
+
+        update_option('dpuwoo_admin_notice', [
+            'message' => $message,
+            'type' => 'info',
+            'dismissible' => true
+        ]);
     }
 
     private static function create_tables()
@@ -117,89 +125,5 @@ class Activator
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         dbDelta($sql_runs);
         dbDelta($sql_items);
-    }
-
-    /**
-     * Guardar base_price en post meta SOLO si no existe.
-     * AHORA INCLUYE VARIACIONES
-     */
-    private static function store_base_prices()
-    {
-        // Productos simples y variables
-        $args = [
-            'post_type'      => 'product',
-            'posts_per_page' => -1,
-            'fields'         => 'ids',
-            'post_status'    => 'publish',
-            'tax_query'      => [
-                [
-                    'taxonomy' => 'product_type',
-                    'field'    => 'slug',
-                    'terms'    => ['simple', 'variable'],
-                ]
-            ]
-        ];
-
-        $products = get_posts($args);
-
-        foreach ($products as $product_id) {
-            $product = wc_get_product($product_id);
-            if (!$product) continue;
-
-            // Si es producto variable, procesar sus variaciones
-            if ($product->is_type('variable')) {
-                $variation_ids = $product->get_children();
-                foreach ($variation_ids as $variation_id) {
-                    self::store_single_product_base_price($variation_id);
-                }
-            } else {
-                // Producto simple
-                self::store_single_product_base_price($product_id);
-            }
-        }
-    }
-
-    /**
-     * Guardar precio base para un producto individual (simple o variación)
-     */
-    private static function store_single_product_base_price($product_id)
-    {
-        $stored = get_post_meta($product_id, '_dpuwoo_base_price', true);
-
-        // Si ya existe, no lo pisa
-        if ($stored !== '') {
-            return;
-        }
-
-        $product = wc_get_product($product_id);
-        if (!$product) return;
-
-        $regular_price = $product->get_regular_price();
-        if ($regular_price === '' || !is_numeric($regular_price) || floatval($regular_price) <= 0) {
-            return;
-        }
-
-        update_post_meta($product_id, '_dpuwoo_base_price', floatval($regular_price));
-    }
-
-    private static function add_activation_notice($auto_detected_rate)
-    {
-        $notice_message = '';
-
-        if ($auto_detected_rate) {
-            $notice_message = sprintf(
-                'DPU WooCommerce detectó automáticamente el dólar en <strong>$%s</strong>. Por favor, revisa y confirma este valor en la configuración del plugin.',
-                esc_html($auto_detected_rate)
-            );
-        } else {
-            $notice_message = 'DPU WooCommerce ha sido activado. Por favor, configura el valor del dólar base histórico en la configuración del plugin para comenzar a usar las actualizaciones automáticas de precios.';
-        }
-
-        update_option('dpuwoo_admin_notice', [
-            'id' => 'dpuwoo_initial_setup_required',
-            'message' => $notice_message,
-            'type' => 'info',
-            'dismissible' => true
-        ]);
     }
 }

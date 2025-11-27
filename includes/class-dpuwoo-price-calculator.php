@@ -16,37 +16,39 @@ class Price_Calculator
         return self::init();
     }
 
-    public function calculate_for_product($product_id, $current_dollar_value)
+    public function calculate_for_product($product_id, $current_dollar_value, $previous_dollar_value = null)
     {
         $product = wc_get_product($product_id);
         if (!$product) return ['error' => 'invalid_product'];
 
         $opts = get_option('dpuwoo_settings', []);
-        $baseline = floatval($opts['baseline_dollar_value'] ?? 0);
-
-        if ($baseline <= 0) {
-            return ['error' => 'baseline_dollar_missing'];
-        }
-
-        // Obtener precio base - funciona para productos simples Y variaciones
-        $base_price = get_post_meta($product_id, '_dpuwoo_base_price', true);
         
-        // Si no existe base price, usar el precio regular actual y guardarlo
-        if ($base_price === '' || $base_price === null || floatval($base_price) <= 0) {
-            $base_price = floatval($product->get_regular_price());
-            if ($base_price > 0) {
-                update_post_meta($product_id, '_dpuwoo_base_price', $base_price);
-            } else {
-                return ['error' => 'invalid_base_price'];
-            }
+        // Si no se proporciona previous_dollar_value, usar el baseline como referencia
+        if ($previous_dollar_value === null) {
+            $previous_dollar_value = floatval($opts['baseline_dollar_value'] ?? 0);
         }
 
-        $base_price = floatval($base_price);
+        if ($previous_dollar_value <= 0) {
+            return ['error' => 'previous_dollar_missing'];
+        }
+
+        if ($current_dollar_value <= 0) {
+            return ['error' => 'invalid_current_dollar'];
+        }
+
+        // Obtener el precio ACTUAL del producto (no el base)
         $current_price = floatval($product->get_regular_price());
         
-        // Calcular ratio
-        $ratio = floatval($current_dollar_value) / $baseline;
-        $new_price = $base_price * $ratio;
+        if ($current_price <= 0) {
+            return ['error' => 'invalid_current_price'];
+        }
+
+        // CALCULO CORREGIDO: Ratio entre dólar anterior y actual
+        // Esto nos dice cuánto ha cambiado el dólar desde la última actualización
+        $ratio = $current_dollar_value / $previous_dollar_value;
+        
+        // El nuevo precio es el precio actual multiplicado por el ratio de cambio del dólar
+        $new_price = $current_price * $ratio;
 
         if ($new_price <= 0) {
             return ['error' => 'invalid_calculated_price'];
@@ -65,12 +67,16 @@ class Price_Calculator
         $category_product_id = $product->is_type('variation') ? $product->get_parent_id() : $product_id;
         
         $cats = get_the_terms($category_product_id, 'product_cat');
+        $applied_categories = [];
+        
         if ($cats && is_array($cats)) {
             foreach ($cats as $cat) {
                 if (!empty($category_rules[$cat->term_id])) {
                     $r = $category_rules[$cat->term_id];
                     if (!empty($r['extra_percent'])) {
-                        $new_price *= (1 + floatval($r['extra_percent']) / 100);
+                        $extra_cat_pct = floatval($r['extra_percent']);
+                        $new_price *= (1 + $extra_cat_pct / 100);
+                        $applied_categories[] = $cat->name . " (+{$extra_cat_pct}%)";
                     }
                     if (!empty($r['round'])) {
                         $new_price = $this->apply_rounding($new_price, $r['round'], $r['round_multiple'] ?? 10);
@@ -84,18 +90,23 @@ class Price_Calculator
         $multiple = $opts['round_multiple'] ?? 10;
         $new_price = $this->apply_rounding($new_price, $rounding, $multiple);
 
-        // Calcular porcentaje de cambio respecto al precio ACTUAL, no al base
-        $percentage_change = ($current_price > 0) ? (($new_price - $current_price) / $current_price * 100) : 100;
+        // Calcular porcentaje de cambio
+        $percentage_change = (($new_price - $current_price) / $current_price * 100);
+
+        $applied_rules = ['ratio_' . round($ratio, 4)];
+        if ($extra_pct != 0) $applied_rules[] = 'global_extra_' . $extra_pct . '%';
+        if (!empty($applied_categories)) $applied_rules = array_merge($applied_rules, $applied_categories);
 
         return [
             'new_price' => round($new_price, 2),
             'new_sale_price' => null,
             'old_regular' => $current_price,
             'old_sale' => null,
-            'base_price' => $base_price,
+            'current_dollar' => $current_dollar_value,
+            'previous_dollar' => $previous_dollar_value,
             'ratio' => $ratio,
-            'percentage_change' => $percentage_change,
-            'applied_rules' => ['ratio_' . round($ratio, 6)]
+            'percentage_change' => round($percentage_change, 2),
+            'applied_rules' => $applied_rules
         ];
     }
 

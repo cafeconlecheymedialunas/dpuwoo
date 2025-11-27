@@ -1,41 +1,25 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
-class Price_Updater
-{
+class Price_Updater {
     protected static $instance;
+    
+    const BATCH_SIZE = 50;
 
-    public static function init()
-    {
+    public static function init() {
         if (null === self::$instance) self::$instance = new self();
         return self::$instance;
     }
 
-    public static function get_instance()
-    {
+    public static function get_instance() {
         return self::init();
     }
 
-    public function update_all($simulate = false)
-    {
-        $opts = get_option('dpuwoo_settings', []);
-        $baseline = floatval($opts['baseline_dollar_value'] ?? 0);
-        
-        if ($baseline <= 0) {
-            return ['error' => 'baseline_dollar_missing', 'message' => 'Falta configurar el dólar base histórico'];
-        }
-
-        $type = $opts['dollar_type'] ?? 'oficial';
-        $api_res = API_Client::get_instance()->get_rate($type);
-        
-        if ($api_res === false) {
-            return ['error' => 'no_rate_available', 'message' => 'No se pudo obtener el valor del dólar actual'];
-        }
-
-        $current_rate = floatval($api_res['value']);
-        
-        // Obtener productos simples Y variables
-        $products = get_posts([
+    /**
+     * Obtener todos los IDs de productos
+     */
+    public function get_all_product_ids() {
+        return get_posts([
             'post_type' => 'product',
             'posts_per_page' => -1,
             'fields' => 'ids',
@@ -43,25 +27,29 @@ class Price_Updater
             'tax_query' => [
                 [
                     'taxonomy' => 'product_type',
-                    'field'    => 'slug',
-                    'terms'    => ['simple', 'variable'],
+                    'field' => 'slug',
+                    'terms' => ['simple', 'variable'],
                 ]
             ]
         ]);
+    }
 
+    /**
+     * Procesar un lote de productos
+     */
+    public function process_batch($product_ids, $current_rate, $simulate = false) {
         $changes = [];
         $updated_count = 0;
         $error_count = 0;
         $skipped_count = 0;
 
-        foreach ($products as $pid) {
+        foreach ($product_ids as $pid) {
             $product = wc_get_product($pid);
             if (!$product) {
                 $error_count++;
                 continue;
             }
 
-            // MANEJAR PRODUCTOS VARIABLES
             if ($product->is_type('variable')) {
                 $variable_changes = $this->update_variable_product($product, $current_rate, $simulate);
                 $changes = array_merge($changes, $variable_changes['changes']);
@@ -71,9 +59,8 @@ class Price_Updater
                 continue;
             }
 
-            // PRODUCTOS SIMPLES
+            // Producto simple
             $calc_result = Price_Calculator::get_instance()->calculate_for_product($pid, $current_rate);
-            
             if (isset($calc_result['error'])) {
                 $changes[] = [
                     'product_id' => $pid,
@@ -107,7 +94,6 @@ class Price_Updater
                 'status' => 'pending'
             ];
 
-            // Si el precio no cambió, marcar como skipped
             if ($old_price == $new_price) {
                 $change_data['status'] = 'skipped';
                 $change_data['reason'] = 'No change';
@@ -134,13 +120,49 @@ class Price_Updater
             }
         }
 
-        // Si no es simulación, actualizar el último rate
-        if (!$simulate) {
+        return [
+            'changes' => $changes,
+            'updated' => $updated_count,
+            'errors' => $error_count,
+            'skipped' => $skipped_count
+        ];
+    }
+
+    /**
+     * Batch con simulación primero
+     */
+    public function update_all_batch($simulate = false, $batch = 0) {
+        $opts = get_option('dpuwoo_settings', []);
+        $baseline = floatval($opts['baseline_dollar_value'] ?? 0);
+        
+        if ($baseline <= 0 && !empty($opts['last_rate'])) {
+            return ['error' => 'baseline_dollar_missing', 'message' => 'Falta configurar el dólar base histórico'];
+        }
+
+        $type = $opts['dollar_type'] ?? 'oficial';
+        $api_res = API_Client::get_instance()->get_rate($type);
+        
+        if ($api_res === false) {
+            return ['error' => 'no_rate_available', 'message' => 'No se pudo obtener el valor del dólar actual'];
+        }
+
+        $current_rate = floatval($api_res['value']);
+        $all_product_ids = $this->get_all_product_ids();
+        $total_products = count($all_product_ids);
+
+        $offset = $batch * self::BATCH_SIZE;
+        $batch_product_ids = array_slice($all_product_ids, $offset, self::BATCH_SIZE);
+        $total_batches = ceil($total_products / self::BATCH_SIZE);
+
+        // Procesar lote
+        $batch_result = $this->process_batch($batch_product_ids, $current_rate, $simulate);
+
+        // Solo loggear al final y si NO es simulación
+        if (!$simulate && ($batch >= $total_batches - 1 || $total_products == 0)) {
             $opts['last_rate'] = $current_rate;
             update_option('dpuwoo_settings', $opts);
 
-            // Loggear la ejecución
-            $run_id = $this->log_run($current_rate, $type, $changes, $simulate);
+            $run_id = $this->log_run($current_rate, $type, $batch_result['changes']);
         }
 
         return [
@@ -148,31 +170,41 @@ class Price_Updater
             'dollar_type' => $type,
             'baseline_rate' => $baseline,
             'ratio' => $current_rate / $baseline,
-            'changes' => $changes,
+            'changes' => $batch_result['changes'],
             'run_id' => $run_id ?? null,
+            'batch_info' => [
+                'current_batch' => $batch,
+                'total_batches' => $total_batches,
+                'batch_size' => self::BATCH_SIZE,
+                'total_products' => $total_products,
+                'processed_in_batch' => count($batch_product_ids)
+            ],
             'summary' => [
-                'total_products' => count($products),
-                'updated' => $updated_count,
-                'errors' => $error_count,
-                'skipped' => $skipped_count,
+                'updated' => $batch_result['updated'],
+                'errors' => $batch_result['errors'],
+                'skipped' => $batch_result['skipped'],
                 'simulated' => $simulate
             ]
         ];
     }
 
     /**
-     * Actualizar producto variable y todas sus variaciones
+     * Compatibilidad
      */
-    private function update_variable_product($variable_product, $current_rate, $simulate = false)
-    {
+    public function update_all($simulate = false) {
+        return $this->update_all_batch($simulate, 0);
+    }
+
+    /**
+     * Variaciones
+     */
+    private function update_variable_product($variable_product, $current_rate, $simulate = false) {
         $changes = [];
         $updated_count = 0;
         $error_count = 0;
         $skipped_count = 0;
 
-        // Obtener todas las variaciones
         $variation_ids = $variable_product->get_children();
-        
         if (empty($variation_ids)) {
             return [
                 'changes' => $changes,
@@ -189,8 +221,12 @@ class Price_Updater
                 continue;
             }
 
-            $calc_result = Price_Calculator::get_instance()->calculate_for_product($variation_id, $current_rate);
-            
+            $opts = get_option('dpuwoo_settings', []);     
+            $baseline = floatval($opts['baseline_dollar_value']);
+            $previous_dollar = $opts['last_rate'] ?? $baseline;
+
+            $calc_result = Price_Calculator::get_instance()->calculate_for_product($variation_id, $current_rate, $previous_dollar);
+
             if (isset($calc_result['error'])) {
                 $changes[] = [
                     'product_id' => $variation_id,
@@ -226,7 +262,6 @@ class Price_Updater
                 'status' => 'pending'
             ];
 
-            // Si el precio no cambió, marcar como skipped
             if ($old_price == $new_price) {
                 $change_data['status'] = 'skipped';
                 $change_data['reason'] = 'No change';
@@ -261,44 +296,35 @@ class Price_Updater
         ];
     }
 
-    /**
-     * Obtener atributos de la variación para el nombre
-     */
-    private function get_variation_attributes($variation)
-    {
+    private function get_variation_attributes($variation) {
         $attributes = $variation->get_attributes();
         $attribute_names = [];
-        
         foreach ($attributes as $key => $value) {
             $taxonomy = str_replace('attribute_', '', $key);
             $term = get_term_by('slug', $value, $taxonomy);
-            if ($term) {
-                $attribute_names[] = $term->name;
-            } else {
-                $attribute_names[] = $value;
-            }
+            $attribute_names[] = $term ? $term->name : $value;
         }
-        
         return implode(', ', $attribute_names);
     }
 
-    protected function log_run($rate, $type, $changes, $simulate = false)
-    {
+    /**
+     * Log real (sin simulaciones)
+     */
+    protected function log_run($rate, $type, $changes) {
         $logger = Logger::get_instance();
-        
+
         $run_data = [
             'dollar_type' => $type,
             'dollar_value' => $rate,
             'rules' => get_option('dpuwoo_settings', []),
             'total_products' => count($changes),
             'user_id' => get_current_user_id(),
-            'note' => $simulate ? 'Simulación' : 'Actualización automática'
+            'note' => 'Actualización automática'
         ];
 
         $run_id = $logger->create_run($run_data);
 
         foreach ($changes as $change) {
-            // Solo loggear cambios que no sean skipped
             if ($change['status'] !== 'skipped') {
                 $logger->insert_run_item($run_id, $change);
             }
@@ -307,15 +333,12 @@ class Price_Updater
         return $run_id;
     }
 
-    public function rollback_item($log_id)
-    {
-        $logger = Logger::get_instance();
-        return $logger->rollback_item($log_id);
+    public function rollback_item($log_id) {
+        return Logger::get_instance()->rollback_item($log_id);
     }
 
-    public function rollback_run($run_id)
-    {
-        $logger = Logger::get_instance();
-        return $logger->rollback_run($run_id);
+    public function rollback_run($run_id) {
+        return Logger::get_instance()->rollback_run($run_id);
     }
 }
+

@@ -118,7 +118,7 @@ class Dpuwoo {
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-cron.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-simulation.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-admin-settings.php';
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-dashboard.php';
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-ajax-manager.php';
 		$this->loader = new Loader();
 
 	}
@@ -156,9 +156,15 @@ class Dpuwoo {
 		$this->loader->add_action('admin_menu', $plugin_admin, 'register_menu');
 		$plugin_setting = new Admin_Settings();
 		$this->loader->add_action('admin_init', $plugin_setting, 'register_settings');
-		$dashboard = new Dashboard();
-		$this->loader->add_action('wp_ajax_dpuwoo_update_now',$dashboard, 'ajax_update_now');
-        $this->loader->add_action('wp_ajax_dpuwoo_simulate', $dashboard, 'ajax_simulate');
+		$ajax_manager = new Ajax_Manager();
+		$this->loader->add_action('wp_ajax_dpuwoo_update_now', $ajax_manager, 'ajax_update_now');
+		$this->loader->add_action('wp_ajax_dpuwoo_simulate', $ajax_manager, 'ajax_simulate');
+		$this->loader->add_action('wp_ajax_dpuwoo_simulate_batch', $ajax_manager, 'ajax_simulate_batch');
+		$this->loader->add_action('wp_ajax_dpuwoo_update_batch', $ajax_manager, 'ajax_update_batch');
+		$this->loader->add_action('wp_ajax_dpuwoo_revert_item', $ajax_manager, 'ajax_revert_item');
+		$this->loader->add_action('wp_ajax_dpuwoo_revert_run', $ajax_manager, 'ajax_revert_run');
+		$this->loader->add_action('wp_ajax_dpuwoo_get_runs', $ajax_manager, 'ajax_get_runs');
+		$this->loader->add_action('wp_ajax_dpuwoo_get_run_items', $ajax_manager, 'ajax_get_run_items');
 
 		$api      = new API_Client();
 		$fallback = new Fallback();
