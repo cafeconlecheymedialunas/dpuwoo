@@ -65,7 +65,7 @@ class Admin
 		 * class.
 		 */
 
-		wp_enqueue_style($this->plugin_name, plugin_dir_url(__FILE__) . 'css/dpuwoo-admin.css', array(), $this->version, 'all');
+		wp_enqueue_style($this->plugin_name, plugin_dir_url(__FILE__) . 'css/dpuwoo-main.css', array(), $this->version, 'all');
 	}
 
 	/**
@@ -73,28 +73,81 @@ class Admin
 	 *
 	 * @since    1.0.0
 	 */
+	
 	public function enqueue_scripts($hook)
 	{
-
-		/**
-		 * This function is provided for demonstration purposes only.
-		 *
-		 * An instance of this class should be passed to the run() function
-		 * defined in Dpuwoo_Loader as all of the hooks are defined
-		 * in that particular class.
-		 *
-		 * The Dpuwoo_Loader will then create the relationship
-		 * between the defined hooks and the functions defined in this
-		 * class.
-		 */
 		if (strpos($hook, 'dpuwoo_') === false) return;
-		wp_enqueue_script($this->plugin_name, plugin_dir_url(__FILE__) . 'js/dpuwoo-admin.js', array('jquery'), $this->version, false);
 
-		wp_localize_script($this->plugin_name, 'dpuwoo_ajax', array('ajax_url' => admin_url('admin-ajax.php'), 'nonce' => wp_create_nonce('dpuwoo_nonce')));
+		// Tailwind CSS desde CDN
+		wp_enqueue_script(
+			'tailwind', 
+			'https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4', 
+			null, 
+			true
+		);
 
-		wp_enqueue_style($this->plugin_name, plugin_dir_url(__FILE__) . 'css/dpuwoo-admin.css');
-		
-		wp_enqueue_script('tailwind', 'https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4', null, true);
+		// Registrar SweetAlert2
+		wp_register_script(
+			'sweetalert2',
+			'https://cdn.jsdelivr.net/npm/sweetalert2@11',
+			array(), 
+			null,
+			true
+		);
+
+		// Script de tabs PRIMERO (sin dependencias complejas)
+		wp_enqueue_script(
+			$this->plugin_name . '-tabs',
+			plugin_dir_url(__FILE__) . 'js/dpuwoo-tabs.js',
+			array('jquery'), // Solo jQuery
+			$this->version,
+			false
+		);
+
+		// Script principal SEGUNDO (depende de tabs)
+		wp_enqueue_script(
+			$this->plugin_name . '-main',
+			plugin_dir_url(__FILE__) . 'js/dpuwoo-main.js',
+			array('jquery', 'sweetalert2', $this->plugin_name . '-tabs'),
+			$this->version,
+			false
+		);
+
+		// Localizar las variables AJAX en el script principal
+		$ajax_data = array(
+			'ajax_url' => admin_url('admin-ajax.php'), 
+			'nonce' => wp_create_nonce('dpuwoo_nonce')
+		);
+
+		wp_localize_script($this->plugin_name . '-main', 'dpuwoo_ajax', $ajax_data);
+
+		// Los otros scripts que dependen del principal
+		wp_enqueue_script(
+			$this->plugin_name . '-logs',
+			plugin_dir_url(__FILE__) . 'js/dpuwoo-logs.js',
+			array('jquery', 'sweetalert2', $this->plugin_name . '-main'),
+			$this->version,
+			false
+		);
+
+		wp_enqueue_script(
+			$this->plugin_name . '-simulation',
+			plugin_dir_url(__FILE__) . 'js/dpuwoo-simulation.js',
+			array('jquery', 'sweetalert2', $this->plugin_name . '-main'),
+			$this->version,
+			false
+		);
+
+		wp_enqueue_script(
+			$this->plugin_name . '-update',
+			plugin_dir_url(__FILE__) . 'js/dpuwoo-update.js',
+			array('jquery', 'sweetalert2', $this->plugin_name . '-main'),
+			$this->version,
+			false
+		);
+
+		// CSS
+		wp_enqueue_style($this->plugin_name, plugin_dir_url(__FILE__) . 'css/dpuwoo-main.css');
 	}
 
 

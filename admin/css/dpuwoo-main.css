@@ -68,18 +68,6 @@
     line-height: 1.5;
 }
 
-.dpuwoo-tabs-nav button {
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    background: transparent;
-    margin-right: 8px;
-    font-weight: 500;
-    color: #334155;
-}
-.dpuwoo-tabs-nav button.active {
-    border-color: #2271b1;
-    color: #1e293b;
-}
 .dpuwoo-tab-content.hidden {
     display: none;
 }

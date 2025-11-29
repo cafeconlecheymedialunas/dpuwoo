@@ -1,7 +1,6 @@
 <?php if (!defined('ABSPATH')) exit; ?>
 
 <!-- TAILWIND -->
-<script src="https://cdn.tailwindcss.com"></script>
 
 <div class="wrap dpuwoo-admin max-w-6xl mx-auto py-6">
 
@@ -12,13 +11,16 @@
     <!-- NAV TABS -->
     <div class="border-b border-gray-300 mb-8">
         <nav class="flex space-x-6 text-sm font-medium">
-            <button data-tab="dashboard" class="dpuwoo-tab active py-3 border-b-2 border-blue-600 text-blue-600">
+            <button data-tab="dashboard" 
+                    class="dpuwoo-tab py-3 border-b-2 border-blue-600 text-blue-600 font-semibold transition-colors duration-200">
                 Dashboard
             </button>
-            <button data-tab="logs" class="dpuwoo-tab py-3 text-gray-500 hover:text-gray-700">
+            <button data-tab="logs" 
+                    class="dpuwoo-tab py-3 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium transition-colors duration-200">
                 Historial
             </button>
-            <button data-tab="settings" class="dpuwoo-tab py-3 text-gray-500 hover:text-gray-700">
+            <button data-tab="settings" 
+                    class="dpuwoo-tab py-3 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium transition-colors duration-200">
                 Configuración
             </button>
         </nav>
@@ -259,22 +261,7 @@
 
             <div id="dpuwoo-log-table" class="overflow-x-auto">
 
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-gray-100 text-gray-700 text-sm border-b">
-                            <th class="p-3">Fecha</th>
-                            <th class="p-3">Producto</th>
-                            <th class="p-3">Precio anterior</th>
-                            <th class="p-3">Precio nuevo</th>
-                            <th class="p-3">Cambio</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td class="p-3 text-gray-400 text-sm" colspan="5">No hay registros aún.</td>
-                        </tr>
-                    </tbody>
-                </table>
+    
             </div>
         </div>
 
@@ -303,8 +290,8 @@
 </div>
 
 <!-- Modal de Confirmación de Actualización Directa -->
-<div id="dpuwoo-direct-update-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+<div id="dpuwoo-direct-update-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
         <div class="flex items-center mb-4">
             <div class="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center text-white font-bold mr-3">!</div>
             <h3 class="text-lg font-semibold text-gray-800">Actualización Directa</h3>
@@ -317,10 +304,10 @@
             ⚠️ <strong>Recomendación:</strong> Para mayor seguridad, considera primero ejecutar una simulación.
         </p>
         <div class="flex gap-3 justify-end">
-            <button id="dpuwoo-direct-cancel" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition">
+            <button id="dpuwoo-direct-cancel" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition font-medium">
                 Cancelar
             </button>
-            <button id="dpuwoo-direct-proceed" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+            <button id="dpuwoo-direct-proceed" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
                 Entiendo, Proceder
             </button>
         </div>
@@ -328,8 +315,8 @@
 </div>
 
 <!-- Modal de Confirmación Post-Simulación -->
-<div id="dpuwoo-confirm-update-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+<div id="dpuwoo-confirm-update-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
         <div class="flex items-center mb-4">
             <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold mr-3">✓</div>
             <h3 class="text-lg font-semibold text-gray-800">Confirmar Actualización</h3>
@@ -341,42 +328,41 @@
             <!-- Resumen de cambios -->
         </div>
         <div class="flex gap-3 justify-end">
-            <button id="dpuwoo-confirm-cancel" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition">
+            <button id="dpuwoo-confirm-cancel" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition font-medium">
                 Cancelar
             </button>
-            <button id="dpuwoo-confirm-proceed" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+            <button id="dpuwoo-confirm-proceed" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
                 Sí, Actualizar Precios
             </button>
         </div>
     </div>
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    const buttons = document.querySelectorAll('.dpuwoo-tab');
-    const contents = document.querySelectorAll('.dpuwoo-tab-content');
-
-    buttons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const tab = btn.dataset.tab;
-
-            buttons.forEach(b => {
-                b.classList.remove('active', 'border-blue-600', 'text-blue-600');
-                b.classList.add('text-gray-500');
-            });
-
-            btn.classList.add('active', 'border-blue-600', 'text-blue-600');
-            btn.classList.remove('text-gray-500');
-
-            contents.forEach(c => c.classList.add('hidden'));
-            document.querySelector('#dpuwoo-tab-' + tab).classList.remove('hidden');
-        });
-    });
-
-    // Ocultar todas las secciones de proceso al cargar
-    document.getElementById('dpuwoo-simulation-process').classList.add('hidden');
-    document.getElementById('dpuwoo-simulation-results').classList.add('hidden');
-    document.getElementById('dpuwoo-update-process').classList.add('hidden');
-    document.getElementById('dpuwoo-final-results').classList.add('hidden');
-});
-</script>
+<!-- Modal de Detalles de Ejecución -->
+<div id="dpuwoo-run-details-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] flex flex-col">
+        <!-- Header -->
+        <div class="flex items-center justify-between p-6 border-b border-gray-200">
+            <h3 class="text-xl font-semibold text-gray-800">Detalles de la Ejecución</h3>
+            <button id="dpuwoo-close-details-modal" class="text-gray-400 hover:text-gray-600 transition">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        
+        <!-- Content -->
+        <div class="flex-1 overflow-auto p-6">
+            <div id="dpuwoo-run-details-content">
+                <!-- El contenido se carga aquí dinámicamente -->
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="flex justify-end p-6 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+            <button id="dpuwoo-close-details-modal-2" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition font-medium">
+                Cerrar
+            </button>
+        </div>
+    </div>
+</div>
