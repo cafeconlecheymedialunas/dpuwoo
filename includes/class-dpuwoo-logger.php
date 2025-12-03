@@ -1,11 +1,13 @@
 <?php
-// includes/class-logger.php
-
 if (!defined('ABSPATH')) exit;
 
+/**
+ * Logger (thin wrapper) - ahora delega todo en DPUWoo_Repository
+ */
 class Logger
 {
     protected static $instance;
+    protected $repo;
 
     public static function init()
     {
@@ -18,255 +20,111 @@ class Logger
         return self::init();
     }
 
+    private function __construct()
+    {
+        $this->repo = Log_Repository::get_instance();
+    }
+
     /**
-     * Iniciar transacción para un run
+     * Begin run (solo inserta la run, sin transacción)
      */
     public function begin_run_transaction($run_data)
     {
-        global $wpdb;
+        // Se elimina la llamada a $this->repo->begin_transaction()
         
-        $wpdb->query('START TRANSACTION');
-        
-        $table = $wpdb->prefix . 'dpuwoo_runs';
-        $now = current_time('mysql');
-        
-        $wpdb->insert($table, [
-            'date' => $now,
-            'dollar_type' => $run_data['dollar_type'] ?? '',
-            'dollar_value' => $run_data['dollar_value'] ?? 0,
-            'rules' => maybe_serialize($run_data['rules'] ?? []),
-            'total_products' => intval($run_data['total_products'] ?? 0),
-            'user_id' => intval($run_data['user_id'] ?? 0),
-            'note' => $run_data['note'] ?? '',
-            'percentage_change' => $run_data['percentage_change'] ?? null,
-        ]);
-        
-        $run_id = $wpdb->insert_id;
-        
+        $run_id = $this->repo->insert_run($run_data);
+
         if (!$run_id) {
-            $wpdb->query('ROLLBACK');
+            // Se elimina el rollback. Si falla el insert, falla y punto (autocommit).
+            error_log("DPUWOO: Failed to insert run (Autocommit Mode)");
             return false;
         }
-        
+
         return $run_id;
     }
 
     /**
-     * Agregar items al run en transacción - SOLO updated y error
+     * Add items (no requiere cambios)
      */
     public function add_items_to_transaction($run_id, $items)
     {
-        global $wpdb;
-        $table = $wpdb->prefix . 'dpuwoo_run_items';
-        
-        foreach ($items as $item) {
-            // SOLO guardar si es updated o error
-            if (in_array($item['status'], ['updated', 'error'])) {
-                $wpdb->insert($table, [
-                    'run_id' => $run_id,
-                    'product_id' => $item['product_id'],
-                    'old_regular_price' => $item['old_regular_price'] ?? null,
-                    'new_regular_price' => $item['new_regular_price'] ?? null,
-                    'old_sale_price' => $item['old_sale_price'] ?? null,
-                    'new_sale_price' => $item['new_sale_price'] ?? null,
-                    'status' => $item['status'],
-                    'reason' => $item['reason'] ?? null,
-                ]);
-                
-                if ($wpdb->last_error) {
-                    return false;
-                }
-            }
+        // 1. Filtrar solo los estados que queremos guardar (updated o error)
+        $items_to_save = array_filter($items, function($item) {
+            return in_array($item['status'], ['updated', 'error']);
+        });
+
+        // 2. Si la lista filtrada está vacía, retornar TRUE.
+        if (empty($items_to_save)) {
+            return true; 
         }
+
+        // 3. Insertar solo el subconjunto de ítems filtrados
+        $success = $this->repo->insert_items_bulk($run_id, $items_to_save);
         
+        if (!$success) {
+            error_log("DPUWOO: Failed to insert run items for run_id {$run_id}");
+            return false;
+        }
         return true;
     }
 
     /**
-     * Confirmar transacción
+     * Commit (solo retorna el ID, sin hacer commit)
      */
     public function commit_run_transaction($run_id)
     {
-        global $wpdb;
-        
-        if ($wpdb->query('COMMIT')) {
-            return $run_id;
-        }
-        
-        return false;
+        // Se elimina la llamada a $this->repo->commit()
+        return $run_id;
     }
 
     /**
-     * Revertir transacción
+     * Rollback (solo retorna true, sin hacer rollback)
      */
     public function rollback_run_transaction()
     {
-        global $wpdb;
-        return $wpdb->query('ROLLBACK');
+        // Se elimina la llamada a $this->repo->rollback()
+        return true;
     }
 
-    /**
-     * Método original de crear run (sin transacción)
-     */
+    /* Compatibility methods (original names) */
     public function create_run($data)
     {
-        global $wpdb;
-        $table = $wpdb->prefix . 'dpuwoo_runs';
-        $now = current_time('mysql');
-        
-        $wpdb->insert($table, [
-            'date' => $now,
-            'dollar_type' => $data['dollar_type'] ?? '',
-            'dollar_value' => $data['dollar_value'] ?? 0,
-            'rules' => maybe_serialize($data['rules'] ?? []),
-            'total_products' => intval($data['total_products'] ?? 0),
-            'user_id' => intval($data['user_id'] ?? 0),
-            'note' => $data['note'] ?? '',
-            'percentage_change' => $data['percentage_change'] ?? null,
-        ]);
-        
-        return $wpdb->insert_id;
+        return $this->repo->insert_run($data);
     }
 
-    /**
-     * Método original de insertar item (sin transacción)
-     */
     public function insert_run_item($run_id, $item)
     {
-        global $wpdb;
-        $table = $wpdb->prefix . 'dpuwoo_run_items';
-
-        // SOLO guardar si es updated o error
-        if (!in_array($item['status'], ['updated', 'error'])) {
-            return false;
-        }
-
-        $wpdb->insert($table, [
-            'run_id' => $run_id,
-            'product_id' => $item['product_id'],
-            'old_regular_price' => $item['old_regular_price'] ?? null,
-            'new_regular_price' => $item['new_regular_price'] ?? null,
-            'old_sale_price' => $item['old_sale_price'] ?? null,
-            'new_sale_price' => $item['new_sale_price'] ?? null,
-            'status' => $item['status'] ?? 'updated',
-            'reason' => $item['reason'] ?? null,
-        ]);
-
-        return $wpdb->insert_id;
+        return $this->repo->insert_run_item($run_id, $item);
     }
 
-    /**
-     * Rollback por item id
-     */
     public function rollback_item($item_id)
     {
-        global $wpdb;
-        $table = $wpdb->prefix . 'dpuwoo_run_items';
-        $row = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$table} WHERE id = %d", $item_id));
-        if (!$row) return new WP_Error('not_found', 'Item not found');
-
-        $product = wc_get_product($row->product_id);
-        if (!$product) return new WP_Error('no_product', 'Product not found');
-
-        // Restore regular price
-        if (!is_null($row->old_regular_price)) {
-            $product->set_regular_price($row->old_regular_price);
-        }
-        // Restore sale price
-        if (!is_null($row->old_sale_price)) {
-            $product->set_sale_price($row->old_sale_price);
-        }
-        $product->save();
-
-        // Update status in item
-        $wpdb->update($table, ['status' => 'reverted'], ['id' => $item_id]);
-
-        return true;
+        return $this->repo->rollback_item($item_id);
     }
 
-    /**
-     * Rollback por run_id (todos los items)
-     */
     public function rollback_run($run_id)
     {
-        global $wpdb;
-        $table = $wpdb->prefix . 'dpuwoo_run_items';
-        $rows = $wpdb->get_results($wpdb->prepare("SELECT * FROM {$table} WHERE run_id = %d", $run_id));
-        if (!$rows) return new WP_Error('no_items', 'No items found for run');
-
-        foreach ($rows as $r) {
-            $this->rollback_item($r->id);
-        }
-
-        return true;
+        return $this->repo->rollback_run($run_id);
     }
 
-    /**
-     * Obtener items por run para UI
-     */
     public function get_run_items($run_id, $limit = 500)
     {
-        global $wpdb;
-        $table = $wpdb->prefix . 'dpuwoo_run_items';
-        
-        $items = $wpdb->get_results($wpdb->prepare("SELECT * FROM {$table} WHERE run_id = %d ORDER BY id ASC LIMIT %d", $run_id, intval($limit)));
-        
-        // Enriquecer con datos actuales del producto
-        $enriched_items = [];
-        foreach ($items as $item) {
-            $enriched_items[] = $this->enrich_item_with_product_data($item);
-        }
-        
-        return $enriched_items;
+        return $this->repo->get_run_items($run_id, $limit);
     }
 
-    /**
-     * Enriquecer item con datos actuales del producto
-     */
-    private function enrich_item_with_product_data($item)
-    {
-        $product = wc_get_product($item->product_id);
-        
-        if (!$product) {
-            $item->product_name = 'Producto eliminado';
-            $item->product_sku = 'N/A';
-            $item->product_type = 'unknown';
-        } else {
-            $item->product_name = $product->get_name();
-            $item->product_sku = $product->get_sku();
-            $item->product_type = $product->get_type();
-        }
-        
-        return $item;
-    }
-
-    /**
-     * Obtener todos los runs para el historial
-     */
     public function get_runs($limit = 100)
     {
-        global $wpdb;
-        $table = $wpdb->prefix . 'dpuwoo_runs';
-        return $wpdb->get_results($wpdb->prepare("SELECT * FROM {$table} ORDER BY date DESC LIMIT %d", intval($limit)));
+        return $this->repo->get_runs($limit);
     }
 
-    /**
-     * Obtener un run específico por ID
-     */
     public function get_run($run_id)
     {
-        global $wpdb;
-        $table = $wpdb->prefix . 'dpuwoo_runs';
-        return $wpdb->get_row($wpdb->prepare("SELECT * FROM {$table} WHERE id = %d", $run_id));
+        return $this->repo->get_run($run_id);
     }
 
-    /**
-     * Contar items de un run
-     */
     public function count_run_items($run_id)
     {
-        global $wpdb;
-        $table = $wpdb->prefix . 'dpuwoo_run_items';
-        return $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$table} WHERE run_id = %d", $run_id));
+        $items = $this->repo->get_items_for_run($run_id);
+        return is_array($items) ? count($items) : 0;
     }
 }

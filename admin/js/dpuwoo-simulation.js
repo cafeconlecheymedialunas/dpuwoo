@@ -133,7 +133,7 @@
             `;
             
             $('#dpuwoo-sim-summary').html(summaryHtml);
-            
+            console.log(DPUWOO_Globals.cumulativeResults)
             if (DPUWOO_Globals.cumulativeResults.changes.length > 0) {
                 const tableHtml = this.createResultsTable(DPUWOO_Globals.cumulativeResults.changes, true);
                 $('#dpuwoo-sim-results-table').html(tableHtml);

@@ -109,7 +109,8 @@ class Dpuwoo {
 		 */
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'public/class-dpuwoo-public.php';
 
-
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-log-repository.php';
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-product-repository.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-api.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-price-calculator.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-price-updater.php';
@@ -158,35 +159,13 @@ class Dpuwoo {
 		$this->loader->add_action('admin_init', $plugin_setting, 'register_settings');
 		$ajax_manager = new Ajax_Manager();
 		$this->loader->add_action('wp_ajax_dpuwoo_update_now', $ajax_manager, 'ajax_update_now');
-		$this->loader->add_action('wp_ajax_dpuwoo_simulate', $ajax_manager, 'ajax_simulate');
 		$this->loader->add_action('wp_ajax_dpuwoo_simulate_batch', $ajax_manager, 'ajax_simulate_batch');
 		$this->loader->add_action('wp_ajax_dpuwoo_update_batch', $ajax_manager, 'ajax_update_batch');
 		$this->loader->add_action('wp_ajax_dpuwoo_revert_item', $ajax_manager, 'ajax_revert_item');
 		$this->loader->add_action('wp_ajax_dpuwoo_revert_run', $ajax_manager, 'ajax_revert_run');
 		$this->loader->add_action('wp_ajax_dpuwoo_get_runs', $ajax_manager, 'ajax_get_runs');
 		$this->loader->add_action('wp_ajax_dpuwoo_get_run_items', $ajax_manager, 'ajax_get_run_items');
-
-		$api      = new API_Client();
-		$fallback = new Fallback();
-		$calc     = new Price_Calculator();
-		$log      = new Logger();
-		$sim      = new Simulation();
-
-		// Updater: encargado de todo el proceso de actualización.
-		$updater = new Price_Updater($api, $calc, $fallback, $log);
-
-		$GLOBALS['wcds'] = [
-			'api'   => $api,
-			'calc'  => $calc,
-			'fb'    => $fallback,
-			'log'   => $log,
-			'sim'   => $sim,
-			'up'    => $updater
-		];
-
-		 // Guardamos instancia global para futuros usos (panel admin).
-		
-
+	
 	}
 
 	/**

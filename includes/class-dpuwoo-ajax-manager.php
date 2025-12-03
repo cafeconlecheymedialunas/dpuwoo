@@ -5,8 +5,6 @@ class Ajax_Manager
 {
     public static function init()
     {
-        add_action('wp_ajax_dpuwoo_update_now', [__CLASS__, 'ajax_update_now']);
-        add_action('wp_ajax_dpuwoo_simulate', [__CLASS__, 'ajax_simulate']);
         add_action('wp_ajax_dpuwoo_simulate_batch', [__CLASS__, 'ajax_simulate_batch']);
         add_action('wp_ajax_dpuwoo_update_batch', [__CLASS__, 'ajax_update_batch']);
         add_action('wp_ajax_dpuwoo_revert_item', [__CLASS__, 'ajax_revert_item']);
@@ -69,39 +67,6 @@ class Ajax_Manager
         if (isset($res['error'])) {
             wp_send_json_error($res);
         }
-        wp_send_json_success($res);
-    }
-
-    /**
-     * Métodos legacy para compatibilidad
-     */
-    public static function ajax_update_now()
-    {
-        if (!current_user_can('manage_options')) wp_send_json_error('No permissions');
-        check_ajax_referer('dpuwoo_nonce', 'nonce');
-
-        $updater = Price_Updater::get_instance();
-        $res = $updater->update_all(false); // live
-
-        if (isset($res['error'])) {
-            wp_send_json_error($res);
-        }
-
-        wp_send_json_success($res);
-    }
-
-    public static function ajax_simulate()
-    {
-        if (!current_user_can('manage_options')) wp_send_json_error('No permissions');
-        check_ajax_referer('dpuwoo_nonce', 'nonce');
-
-        $updater = Price_Updater::get_instance();
-        $res = $updater->update_all(true); // simulate
-
-        if (isset($res['error'])) {
-            wp_send_json_error($res);
-        }
-
         wp_send_json_success($res);
     }
 

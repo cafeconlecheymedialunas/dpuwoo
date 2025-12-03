@@ -62,7 +62,7 @@ class Cron
 
         // Actualizar precios
         $updater = Price_Updater::get_instance();
-        $result = $updater->update_all(false);
+        $result = $updater->update_all_batch(false);
         
         if (isset($result['error'])) {
             error_log('DPU WooCommerce Error: ' . $result['message']);
