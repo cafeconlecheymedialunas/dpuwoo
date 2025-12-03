@@ -485,12 +485,4 @@ class Price_Updater {
         }
         return $count;
     }
-
-    public function rollback_item($log_id) {
-        return Logger::get_instance()->rollback_item($log_id);
-    }
-
-    public function rollback_run($run_id) {
-        return Logger::get_instance()->rollback_run($run_id);
-    }
 }

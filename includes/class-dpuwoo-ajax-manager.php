@@ -92,8 +92,7 @@ class Ajax_Manager
 
         $log_id = intval($_POST['log_id'] ?? 0);
         if (!$log_id) wp_send_json_error('invalid_log');
-
-        $ok = Price_Updater::get_instance()->rollback_item($log_id);
+        $ok = Logger::get_instance()->rollback_item($log_id);
         if (is_wp_error($ok)) wp_send_json_error($ok->get_error_message());
 
         wp_send_json_success(['message' => 'reverted', 'log_id' => $log_id]);
@@ -107,7 +106,7 @@ class Ajax_Manager
         $run_id = intval($_POST['run_id'] ?? 0);
         if (!$run_id) wp_send_json_error('invalid_run');
 
-        $ok = Price_Updater::get_instance()->rollback_run($run_id);
+        $ok = Logger::get_instance()->rollback_run($run_id);
         if (is_wp_error($ok)) wp_send_json_error($ok->get_error_message());
 
         wp_send_json_success(['message' => 'run_reverted', 'run_id' => $run_id]);
