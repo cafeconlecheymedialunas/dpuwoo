@@ -20,11 +20,19 @@ class Ajax_Manager
         
         $batch = intval($_POST['batch'] ?? 0);
         $updater = Price_Updater::get_instance();
+        
+        // SIMULACIÓN: forzar a que use baseline como previous_dollar_value
         $res = $updater->update_all_batch(true, $batch);
         
         if (isset($res['error'])) {
             wp_send_json_error($res);
         }
+        
+        // Añadir información sobre qué referencia se usó
+        $opts = get_option('dpuwoo_settings', []);
+        $res['reference_used'] = 'baseline'; // Para simulación
+        $res['baseline_rate'] = floatval($opts['baseline_dollar_value'] ?? 0);
+        
         wp_send_json_success($res);
     }
 
@@ -67,6 +75,13 @@ class Ajax_Manager
         if (isset($res['error'])) {
             wp_send_json_error($res);
         }
+        
+        // Añadir información sobre qué referencia se usó
+        $opts = get_option('dpuwoo_settings', []);
+        $res['reference_used'] = 'last_rate'; // Para actualización real
+        $res['last_rate'] = floatval($opts['last_rate'] ?? 0);
+        $res['baseline_rate'] = floatval($opts['baseline_dollar_value'] ?? 0);
+        
         wp_send_json_success($res);
     }
 

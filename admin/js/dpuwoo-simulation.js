@@ -24,7 +24,12 @@
             DPUWOO_Utils.resetAllSections();
             DPUWOO_Utils.showSection('dpuwoo-simulation-process');
             
-            DPUWOO_Globals.cumulativeResults = { updated: 0, skipped: 0, errors: 0, changes: [] };
+            DPUWOO_Globals.cumulativeResults = { 
+                updated: 0, 
+                skipped: 0, 
+                errors: 0, 
+                changes: [] 
+            };
 
             $.ajax({
                 url: dpuwoo_ajax.ajax_url,
@@ -48,6 +53,8 @@
                     
                     if (data.batch_info) {
                         $('#dpuwoo-sim-total-products').text(data.batch_info.total_products);
+                        $('#dpuwoo-sim-total-batches').text(totalBatches);
+                        $('#dpuwoo-sim-current-batch').text(1);
                     }
                     
                     DPUWOO_Utils.updateCumulativeResults(data, 'simulation');
@@ -90,6 +97,9 @@
                     if (data.batch_info) {
                         const totalProductsId = type === 'simulation' ? 'dpuwoo-sim-total-products' : 'dpuwoo-update-total-products';
                         $('#' + totalProductsId).text(data.batch_info.total_products);
+                        if (type === 'simulation') {
+                            $('#dpuwoo-sim-current-batch').text(batch + 1);
+                        }
                     }
 
                     DPUWOO_Utils.updateCumulativeResults(data, type);
@@ -110,6 +120,9 @@
             DPUWOO_Utils.hideSection('dpuwoo-simulation-process');
             DPUWOO_Utils.showSection('dpuwoo-simulation-results');
             
+            const referenceText = data.reference_type === 'baseline' ? 'Dólar Base Histórico' : 'Última Tasa Usada';
+            const referenceRate = data.reference_type === 'baseline' ? data.baseline_rate : data.previous_rate;
+            
             const summaryHtml = `
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                     <div class="text-center p-3 bg-green-100 rounded-lg">
@@ -125,24 +138,68 @@
                         <div class="text-red-600">Con errores</div>
                     </div>
                     <div class="text-center p-3 bg-blue-100 rounded-lg">
-                        <div class="text-2xl font-bold text-blue-700">${data.rate ? '$' + data.rate : 'n/a'}</div>
+                        <div class="text-2xl font-bold text-blue-700">${data.rate ? '$' + data.rate.toFixed(2) : 'n/a'}</div>
                         <div class="text-blue-600">Dólar actual</div>
                     </div>
                 </div>
-                ${data.ratio ? `<p class="mt-3 text-sm text-gray-600"><strong>Ratio de ajuste:</strong> ${data.ratio.toFixed(4)}x</p>` : ''}
+                <div class="mt-3 p-3 bg-yellow-50 rounded-lg">
+                    <p class="text-sm"><strong>${referenceText}:</strong> $${referenceRate ? referenceRate.toFixed(2) : 'n/a'}</p>
+                    <p class="text-sm"><strong>Dólar Actual:</strong> $${data.rate ? data.rate.toFixed(2) : 'n/a'}</p>
+                    <p class="text-sm"><strong>Ratio de ajuste:</strong> ${data.ratio ? data.ratio.toFixed(4) + 'x' : 'n/a'}</p>
+                    ${data.percentage_change ? `<p class="text-sm"><strong>Cambio:</strong> ${data.percentage_change.toFixed(2)}%</p>` : ''}
+                    <p class="text-xs text-gray-500 mt-1">
+                        ${data.reference_type === 'baseline' ? 
+                            'Simulación: comparando contra dólar base histórico' : 
+                            'Actualización: comparando contra última tasa usada'
+                        }
+                    </p>
+                </div>
             `;
             
             $('#dpuwoo-sim-summary').html(summaryHtml);
-            console.log(DPUWOO_Globals.cumulativeResults)
+            console.log('DPUWOO_Globals.cumulativeResults.changes:', DPUWOO_Globals.cumulativeResults.changes);
+            
             if (DPUWOO_Globals.cumulativeResults.changes.length > 0) {
-                const tableHtml = this.createResultsTable(DPUWOO_Globals.cumulativeResults.changes, true);
-                $('#dpuwoo-sim-results-table').html(tableHtml);
+                // Primero enriquecer los datos con información del producto
+                this.enrichChangesWithProductInfo(DPUWOO_Globals.cumulativeResults.changes).then((enrichedChanges) => {
+                    const tableHtml = this.createResultsTable(enrichedChanges, true);
+                    $('#dpuwoo-sim-results-table').html(tableHtml);
+                }).catch((error) => {
+                    console.error('Error al enriquecer datos:', error);
+                    const tableHtml = this.createResultsTable(DPUWOO_Globals.cumulativeResults.changes, true);
+                    $('#dpuwoo-sim-results-table').html(tableHtml);
+                });
             } else {
                 $('#dpuwoo-sim-results-table').html('<p class="text-gray-500 text-center py-4">No se encontraron cambios para mostrar.</p>');
             }
             
             DPUWOO_Utils.enableButtons();
             this.showSimulationAlert(DPUWOO_Globals.cumulativeResults.updated, DPUWOO_Globals.cumulativeResults.errors);
+        },
+
+        // Nuevo método para enriquecer datos con información del producto
+        enrichChangesWithProductInfo: function(changes) {
+            return new Promise((resolve, reject) => {
+                // Si ya tenemos toda la información necesaria, resolver inmediatamente
+                const enrichedChanges = changes.map(change => {
+                    // Asegurarse de que todos los campos necesarios existan
+                    return {
+                        ...change,
+                        product_name: change.product_name || `Producto ${change.product_id}`,
+                        product_sku: change.product_sku || 'N/A',
+                        product_type: change.product_type || 'simple',
+                        base_price: change.base_price || change.old_regular_price || 0,
+                        old_price_range: change.old_price_range || (change.old_regular_price ? '$' + change.old_regular_price.toFixed(2) : '$0.00'),
+                        new_price_range: change.new_price_range || (change.new_regular_price ? '$' + change.new_regular_price.toFixed(2) : '$0.00'),
+                        base_price_range: change.base_price_range || (change.base_price ? '$' + change.base_price.toFixed(2) : '$0.00'),
+                        percentage_change: change.percentage_change || 
+                            (change.old_regular_price && change.new_regular_price && change.old_regular_price > 0 ? 
+                                ((change.new_regular_price - change.old_regular_price) / change.old_regular_price * 100).toFixed(2) : 
+                                '0.00')
+                    };
+                });
+                resolve(enrichedChanges);
+            });
         },
 
         showSimulationAlert: function(updatedCount, errorCount) {
@@ -217,6 +274,8 @@
         },
 
         createResultsTable: function(changes, isSimulation) {
+            console.log('Creating table with changes:', changes);
+            
             let tableHtml = '<div class="overflow-x-auto"><table class="w-full text-left border-collapse border border-gray-200"><thead><tr class="bg-gray-100">';
             tableHtml += '<th class="p-3 border border-gray-200">Producto</th><th class="p-3 border border-gray-200">Tipo</th>';
             tableHtml += '<th class="p-3 border border-gray-200">Precio Base</th><th class="p-3 border border-gray-200">Precio Anterior</th>';
@@ -231,8 +290,13 @@
                 tableHtml += '<tr><td colspan="' + (isSimulation ? '7' : '8') + '" class="p-4 text-center text-gray-500">No hay cambios para mostrar</td></tr>';
             } else {
                 const groupedItems = this.groupVariationsByParent(changes);
+                console.log('Grouped items:', groupedItems);
+                
                 groupedItems.forEach(function (item) {
-                    const pct = item.percentage_change !== null ? parseFloat(item.percentage_change).toFixed(2) + '%' : '-';
+                    const pct = item.percentage_change !== null && item.percentage_change !== undefined ? 
+                        parseFloat(item.percentage_change).toFixed(2) + '%' : 
+                        '-';
+                    
                     const statusClass = 'px-2 py-1 rounded-full text-xs ' + DPUWOO_Utils.getStatusClass(item.status);
                     const statusText = DPUWOO_Utils.getStatusText(item.status);
                     const statusBadge = '<span class="' + statusClass + '">' + statusText + '</span>';
@@ -318,11 +382,12 @@
 
                     const groupedItem = {
                         product_id: parentId,
-                        product_name: firstVariation.product_name.replace(/ - .*$/, ''),
-                        product_sku: firstVariation.product_sku,
+                        product_name: firstVariation.product_name ? firstVariation.product_name.replace(/ - .*$/, '') : `Producto ${parentId}`,
+                        product_sku: firstVariation.product_sku || 'N/A',
                         product_type: 'variable',
                         old_regular_price: null,
                         new_regular_price: null,
+                        base_price: null,
                         old_price_range: oldMin === oldMax ? '$' + oldMin.toFixed(2) : '$' + oldMin.toFixed(2) + ' - $' + oldMax.toFixed(2),
                         new_price_range: newMin === newMax ? '$' + newMin.toFixed(2) : '$' + newMin.toFixed(2) + ' - $' + newMax.toFixed(2),
                         base_price_range: baseMin === baseMax ? '$' + baseMin.toFixed(2) : '$' + baseMin.toFixed(2) + ' - $' + baseMax.toFixed(2),

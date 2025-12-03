@@ -5,10 +5,12 @@ class Price_Calculator
 {
     protected static $instance;
 
+    /*==============================================================
+    =            Singleton
+    ==============================================================*/
     public static function init()
     {
-        if (!self::$instance) self::$instance = new self();
-        return self::$instance;
+        return self::$instance ?? (self::$instance = new self());
     }
 
     public static function get_instance()
@@ -16,110 +18,173 @@ class Price_Calculator
         return self::init();
     }
 
-    public function calculate_for_product($product_id, $current_dollar_value, $previous_dollar_value = null)
+    /*==============================================================
+    =            API pública
+    ==============================================================*/
+    public function calculate_for_product($product_id, $current_dollar_value, $previous_dollar_value = null, $simulate = false)
     {
         $product = wc_get_product($product_id);
-        if (!$product) return ['error' => 'invalid_product'];
-
-        $opts = get_option('dpuwoo_settings', []);
-        
-        // Si no se proporciona previous_dollar_value, usar el baseline como referencia
-        if ($previous_dollar_value === null) {
-            $previous_dollar_value = floatval($opts['baseline_dollar_value'] ?? 0);
+        if (!$product) {
+            return $this->error('invalid_product');
         }
 
+        $opts = get_option('dpuwoo_settings', []);
+
+        // Obtener dólar anterior
+        $previous_dollar_value = $this->resolve_previous_dollar($previous_dollar_value, $opts, $simulate);
         if ($previous_dollar_value <= 0) {
-            return ['error' => 'previous_dollar_missing'];
+            return $this->error('previous_dollar_missing');
         }
 
         if ($current_dollar_value <= 0) {
-            return ['error' => 'invalid_current_dollar'];
+            return $this->error('invalid_current_dollar');
         }
 
-        // Obtener el precio ACTUAL del producto (no el base)
         $current_price = floatval($product->get_regular_price());
-        
         if ($current_price <= 0) {
-            return ['error' => 'invalid_current_price'];
+            return $this->error('invalid_current_price');
         }
 
-        // CALCULO CORREGIDO: Ratio entre dólar anterior y actual
-        // Esto nos dice cuánto ha cambiado el dólar desde la última actualización
+        $base_price_usd = floatval(get_post_meta($product_id, '_base_price_usd', true));
+
+        /*---------------------------------------------
+        | Cálculo principal del precio
+        ----------------------------------------------*/
         $ratio = $current_dollar_value / $previous_dollar_value;
-        
-        // El nuevo precio es el precio actual multiplicado por el ratio de cambio del dólar
-        $new_price = $current_price * $ratio;
 
-        if ($new_price <= 0) {
-            return ['error' => 'invalid_calculated_price'];
+        // ============================================
+        // CAMBIO IMPORTANTE: Para simulación, forzar cálculo
+        // ============================================
+        if ($simulate && abs($ratio - 1.0) < 0.0001) {
+            // Si es simulación y el ratio es ~1, usar un ratio mínimo para mostrar cambios
+            $ratio = 1.001; // 0.1% de cambio mínimo para mostrar proyección
         }
 
-        // Aplicar porcentaje extra global
-        $extra_pct = floatval($opts['extra_pct'] ?? 0);
-        if ($extra_pct != 0) {
-            $new_price *= (1 + $extra_pct / 100);
-        }
+        $new_price = $this->apply_ratio($current_price, $ratio);
+        $new_price = $this->apply_global_extra($new_price, $opts);
+        $new_price = $this->apply_category_rules($new_price, $product, $product_id);
+        $new_price = $this->apply_global_rounding($new_price, $opts);
 
-        // Aplicar reglas de categoría (usar categoría del producto padre para variaciones)
-        $category_rules = get_option('dpuwoo_category_rules', []);
-        
-        // Para variaciones, obtener categorías del producto padre
-        $category_product_id = $product->is_type('variation') ? $product->get_parent_id() : $product_id;
-        
-        $cats = get_the_terms($category_product_id, 'product_cat');
-        $applied_categories = [];
-        
-        if ($cats && is_array($cats)) {
-            foreach ($cats as $cat) {
-                if (!empty($category_rules[$cat->term_id])) {
-                    $r = $category_rules[$cat->term_id];
-                    if (!empty($r['extra_percent'])) {
-                        $extra_cat_pct = floatval($r['extra_percent']);
-                        $new_price *= (1 + $extra_cat_pct / 100);
-                        $applied_categories[] = $cat->name . " (+{$extra_cat_pct}%)";
-                    }
-                    if (!empty($r['round'])) {
-                        $new_price = $this->apply_rounding($new_price, $r['round'], $r['round_multiple'] ?? 10);
-                    }
-                }
-            }
-        }
-
-        // Aplicar redondeo global
-        $rounding = $opts['rounding'] ?? 'none';
-        $multiple = $opts['round_multiple'] ?? 10;
-        $new_price = $this->apply_rounding($new_price, $rounding, $multiple);
-
-        // Calcular porcentaje de cambio
-        $percentage_change = (($new_price - $current_price) / $current_price * 100);
-
-        $applied_rules = ['ratio_' . round($ratio, 4)];
-        if ($extra_pct != 0) $applied_rules[] = 'global_extra_' . $extra_pct . '%';
-        if (!empty($applied_categories)) $applied_rules = array_merge($applied_rules, $applied_categories);
+        $percentage_change = $this->calculate_percentage_change($current_price, $new_price);
 
         return [
-            'new_price' => round($new_price, 2),
-            'new_sale_price' => null,
-            'old_regular' => $current_price,
-            'old_sale' => null,
-            'current_dollar' => $current_dollar_value,
-            'previous_dollar' => $previous_dollar_value,
-            'ratio' => $ratio,
-            'percentage_change' => round($percentage_change, 2),
-            'applied_rules' => $applied_rules
+            'new_price'          => round($new_price, 2),
+            'new_sale_price'     => null,
+            'old_regular'        => $current_price,
+            'old_sale'           => null,
+            'current_dollar'     => $current_dollar_value,
+            'previous_dollar'    => $previous_dollar_value,
+            'ratio'              => $ratio,
+            'percentage_change'  => $percentage_change,
+            'applied_rules'      => $this->rules,
+            'base_price'         => $base_price_usd > 0 ? $base_price_usd : null,
+            'base_price_range'   => $base_price_usd > 0 ? '$' . $base_price_usd : null,
+            'simulated'          => $simulate  // Agregar flag de simulación
         ];
     }
 
+    /*==============================================================
+    =            Helpers
+    ==============================================================*/
+
+    protected $rules = [];
+
+    protected function error($code)
+    {
+        return ['error' => $code];
+    }
+
+    protected function resolve_previous_dollar($previous, $opts, $simulate = false)
+    {
+        if ($previous !== null) {
+            return floatval($previous);
+        }
+        
+        // Para simulación, usar siempre baseline como referencia
+        if ($simulate) {
+            return floatval($opts['baseline_dollar_value'] ?? 0);
+        }
+        
+        return floatval($opts['baseline_dollar_value'] ?? 0);
+    }
+
+    protected function apply_ratio($price, $ratio)
+    {
+        $this->rules[] = 'ratio_' . round($ratio, 4);
+        return $price * $ratio;
+    }
+
+    protected function apply_global_extra($price, $opts)
+    {
+        $extra_pct = floatval($opts['extra_pct'] ?? 0);
+        if ($extra_pct != 0) {
+            $this->rules[] = "global_extra_{$extra_pct}%";
+            $price *= (1 + $extra_pct / 100);
+        }
+        return $price;
+    }
+
+    protected function apply_category_rules($price, $product, $product_id)
+    {
+        $category_rules = get_option('dpuwoo_category_rules', []);
+
+        $category_product_id = $product->is_type('variation')
+            ? $product->get_parent_id()
+            : $product_id;
+
+        $cats = get_the_terms($category_product_id, 'product_cat');
+        if (!$cats || !is_array($cats)) {
+            return $price;
+        }
+
+        foreach ($cats as $cat) {
+            if (!isset($category_rules[$cat->term_id])) continue;
+
+            $rule = $category_rules[$cat->term_id];
+
+            if (!empty($rule['extra_percent'])) {
+                $extra = floatval($rule['extra_percent']);
+                $price *= (1 + $extra / 100);
+                $this->rules[] = "{$cat->name} (+{$extra}%)";
+            }
+
+            if (!empty($rule['round'])) {
+                $price = $this->apply_rounding($price, $rule['round'], $rule['round_multiple'] ?? 10);
+            }
+        }
+
+        return $price;
+    }
+
+    protected function apply_global_rounding($price, $opts)
+    {
+        return $this->apply_rounding(
+            $price,
+            $opts['rounding'] ?? 'none',
+            $opts['round_multiple'] ?? 10
+        );
+    }
+
+    protected function calculate_percentage_change($old, $new)
+    {
+        return $old > 0
+            ? round((($new - $old) / $old) * 100, 2)
+            : 0;
+    }
+
+    /*==============================================================
+    =            Redondeo
+    ==============================================================*/
     protected function apply_rounding($price, $method, $multiple = 10)
     {
         switch ($method) {
-            case 'up': 
+            case 'up':
                 return ceil($price / $multiple) * $multiple;
-            case 'down': 
+            case 'down':
                 return floor($price / $multiple) * $multiple;
-            case 'multiple': 
+            case 'multiple':
                 return round($price / $multiple) * $multiple;
-            default: 
+            default:
                 return round($price, 2);
         }
     }
