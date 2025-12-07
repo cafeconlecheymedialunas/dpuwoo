@@ -117,7 +117,6 @@ class Dpuwoo {
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-fallback.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-logger.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-cron.php';
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-simulation.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-admin-settings.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-ajax-manager.php';
 		$this->loader = new Loader();

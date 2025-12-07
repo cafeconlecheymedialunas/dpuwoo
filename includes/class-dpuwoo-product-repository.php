@@ -33,10 +33,15 @@ class Product_Repository
      * PRODUCT IDS – PAGINACIÓN (SÓLO SELECT, PERFORMANTE)
      * ========================================================================= */
 
+    /**
+     * Devuelve el total de productos padre (simples y variables) en estado 'publish'.
+     * Los posts con post_type='product' son los que el Price_Updater itera.
+     */
     public function count_all_products()
     {
+        // **MODIFICACIÓN CLAVE:** Usar COUNT(ID) para mayor claridad y asegurar que la consulta es correcta.
         return (int) $this->wpdb->get_var("
-            SELECT COUNT(*) FROM {$this->wpdb->posts}
+            SELECT COUNT(ID) FROM {$this->wpdb->posts}
             WHERE post_type = 'product'
             AND post_status = 'publish'
         ");
@@ -44,6 +49,7 @@ class Product_Repository
 
     public function get_product_ids_batch($limit = 500, $offset = 0)
     {
+        // Se mantiene igual, ya que solo debe traer los IDs de productos padre.
         return $this->wpdb->get_col($this->wpdb->prepare("
             SELECT ID FROM {$this->wpdb->posts}
             WHERE post_type = 'product'
@@ -97,18 +103,30 @@ class Product_Repository
         }
     }
 
+    /**
+     * Guarda el precio de oferta (`_sale_price`) en el producto o variación.
+     * @param WC_Product $product
+     * @param float $new_price Si es 0.0, se limpia el precio de oferta.
+     * @return bool
+     */
     public function save_sale_price($product, $new_price)
     {
         if (!$product) return false;
 
         try {
-            $product->set_sale_price($new_price);
+            if ($new_price <= 0.0) {
+                $product->set_sale_price(''); 
+                $product->set_date_on_sale_to('');
+                $product->set_date_on_sale_from('');
+            } else {
+                $product->set_sale_price($new_price);
+            }
+            
             $product->save();
-
-            $stored = $product->get_sale_price();
-            return ((string)$stored === (string)$new_price);
+            return true;
+            
         } catch (\Exception $e) {
-            error_log("ProductRepo: save_sale_price exception: " . $e->getMessage());
+            error_log("DPUWOO ProductRepo: save_sale_price exception: " . $e->getMessage());
             return false;
         }
     }
