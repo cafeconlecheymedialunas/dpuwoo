@@ -120,70 +120,12 @@
             });
         },
 
-        showFinalResults: function(data, isSimulation) {
-            DPUWOO_Utils.hideSection('dpuwoo-update-process');
-            DPUWOO_Utils.showSection('dpuwoo-final-results');
-            
-            const title = isSimulation ? 'Simulación Completada' : 'Actualización Completada';
-            const bgColor = isSimulation ? 'bg-green-50 border-green-200' : 'bg-blue-50 border-blue-200';
-            const icon = isSimulation ? '✅' : '🎉';
-            
-            const resultsHtml = `
-                <div class="bg-white shadow rounded-xl p-6 border ${bgColor}">
-                    <div class="flex items-center mb-6">
-                        <div class="text-2xl mr-3">${icon}</div>
-                        <div>
-                            <h3 class="text-xl font-semibold text-gray-800">${title}</h3>
-                            <p class="text-gray-600 text-sm">${isSimulation ? 'Resultados de la simulación' : 'Precios actualizados correctamente'}</p>
-                        </div>
-                    </div>
-                    
-                    <!-- Resumen estadístico -->
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                        <div class="text-center p-3 bg-green-100 rounded-lg">
-                            <div class="text-2xl font-bold text-green-700">${DPUWOO_Globals.cumulativeResults.updated}</div>
-                            <div class="text-green-600">Actualizados</div>
-                        </div>
-                        <div class="text-center p-3 bg-gray-100 rounded-lg">
-                            <div class="text-2xl font-bold text-gray-700">${DPUWOO_Globals.cumulativeResults.skipped}</div>
-                            <div class="text-gray-600">Sin cambios</div>
-                        </div>
-                        <div class="text-center p-3 bg-red-100 rounded-lg">
-                            <div class="text-2xl font-bold text-red-700">${DPUWOO_Globals.cumulativeResults.errors}</div>
-                            <div class="text-red-600">Errores</div>
-                        </div>
-                        <div class="text-center p-3 bg-blue-100 rounded-lg">
-                            <div class="text-2xl font-bold text-blue-700">${data.rate ? '$' + data.rate : 'n/a'}</div>
-                            <div class="text-blue-600">Dólar aplicado</div>
-                        </div>
-                    </div>
-                    
-                    ${data.ratio ? `<p class="text-sm text-gray-600 mb-4"><strong>Ratio de ajuste:</strong> ${data.ratio.toFixed(4)}x</p>` : ''}
-                    
-                    ${!isSimulation && data.run_id ? 
-                        `<p class="text-sm text-gray-600 mb-4"><strong>ID de ejecución:</strong> ${data.run_id}</p>` : 
-                        ''
-                    }
-                    
-                    <!-- Tabla de resultados -->
-                    <div class="mt-6">
-                        <h4 class="text-lg font-semibold text-gray-800 mb-4">${isSimulation ? 'Cambios propuestos' : 'Precios actualizados'}</h4>
-                        ${DPUWOO_Simulation.createResultsTable(DPUWOO_Globals.cumulativeResults.changes, isSimulation)}
-                    </div>
-                    
-                    <div class="mt-6 pt-4 border-t border-gray-200">
-                        <button onclick="location.reload()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-                            Volver al Dashboard
-                        </button>
-                    </div>
-                </div>
-            `;
-            
-            $('#dpuwoo-final-results').html(resultsHtml);
+       showFinalResults: function(data, isSimulation) {
+            DPUWOO_Utils.showFinalResults(data, isSimulation);
             DPUWOO_Utils.enableButtons();
             
             if (!isSimulation) {
-                this.showSuccessAlert(DPUWOO_Globals.cumulativeResults.updated, DPUWOO_Globals.cumulativeResults.errors);
+                DPUWOO_Logs.refresh();
             }
         },
 

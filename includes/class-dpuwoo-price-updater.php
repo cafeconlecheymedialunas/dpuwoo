@@ -165,93 +165,140 @@ class Price_Updater {
      * Inicia y gestiona la ejecución completa de la actualización por lotes.
      */
     public function update_all_batch($simulate = false, $batch = 0) {
-         $opts = get_option('dpuwoo_settings', []);
-         $baseline = floatval($opts['baseline_dollar_value'] ?? 0);
+        $opts = get_option('dpuwoo_settings', []);
+        $baseline = floatval($opts['baseline_dollar_value'] ?? 0);
         
-         if ($baseline <= 0) {
-             return ['error' => 'baseline_dollar_missing', 'message' => 'Falta configurar el dólar base histórico'];
-         }
+        if ($baseline <= 0) {
+            return ['error' => 'baseline_dollar_missing', 'message' => 'Falta configurar el dólar base histórico'];
+        }
         
-         $type = $opts['dollar_type'] ?? 'oficial';
+        $type = $opts['dollar_type'] ?? 'oficial';
         
-         if (!class_exists('API_Client')) {
-             return ['error' => 'missing_dependencies', 'message' => 'Faltan clases dependientes (API_Client)'];
-         }
+        if (!class_exists('API_Client')) {
+            return ['error' => 'missing_dependencies', 'message' => 'Faltan clases dependientes (API_Client)'];
+        }
         
-         // Asumiendo la existencia de API_Client::get_instance()->get_rate($type);
-         $api_res = API_Client::get_instance()->get_rate($type);
+        // Obtener el valor actual del dólar
+        $api_res = API_Client::get_instance()->get_rate($type);
         
-         if ($api_res === false) {
-             return ['error' => 'no_rate_available', 'message' => 'No se pudo obtener el valor del dólar actual'];
-         }
+        if ($api_res === false) {
+            return ['error' => 'no_rate_available', 'message' => 'No se pudo obtener el valor del dólar actual'];
+        }
         
-         $current_rate = floatval($api_res['value']);
+        $current_rate = floatval($api_res['value']);
         
-         if ($simulate) {
-             $previous_dollar_value = $baseline;
-             $reference_type = 'baseline';
-         } else {
-             $previous_dollar_value = floatval($opts['last_rate'] ?? $baseline);
-             $reference_type = 'last_rate';
-         }
+        // CORRECCIÓN IMPORTANTE: 
+        // Obtener el último dólar aplicado de la tabla wp_dpuwoo_runs
+        // Si no hay ejecuciones previas, usar baseline
+        $last_applied_dollar = $this->get_last_applied_dollar();
+        $previous_dollar_value = $last_applied_dollar > 0 ? $last_applied_dollar : $baseline;
+        $reference_type = $last_applied_dollar > 0 ? 'last_applied' : 'baseline';
         
-         $ratio = ($previous_dollar_value > 0) ? ($current_rate / $previous_dollar_value) : 1;
-         $percentage_change = ($previous_dollar_value > 0) ? (($current_rate - $previous_dollar_value) / $previous_dollar_value * 100) : 0;
+        $ratio = ($previous_dollar_value > 0) ? ($current_rate / $previous_dollar_value) : 1;
+        $percentage_change = ($previous_dollar_value > 0) ? (($current_rate - $previous_dollar_value) / $previous_dollar_value * 100) : 0;
         
-         $margin = 0.0001;
-         if (abs($ratio - 1.0) < $margin && !$simulate && $batch === 0) {
-              return [
-                  'error' => 'insignificant_change',
-                  'message' => sprintf('El cambio es insignificante: Referencia: $%s, Actual: $%s', number_format($previous_dollar_value, 2), number_format($current_rate, 2)),
-                  'summary' => ['updated' => 0, 'errors' => 0, 'skipped' => 0, 'simulated' => $simulate]
-              ];
-         }
+        $margin = 0.0001;
         
-         $total_products = $this->product_repo->count_all_products();
-         $total_batches = ($total_products === 0) ? 0 : (int) ceil($total_products / self::BATCH_SIZE);
-         $offset = $batch * self::BATCH_SIZE;
+        // Solo verificar cambio insignificante para actualización real, no para simulación
+        if (!$simulate && abs($ratio - 1.0) < $margin && $batch === 0) {
+            return [
+                'error' => 'insignificant_change',
+                'message' => sprintf('El cambio es insignificante: Referencia: $%s, Actual: $%s', 
+                    number_format($previous_dollar_value, 4), 
+                    number_format($current_rate, 4)),
+                'summary' => ['updated' => 0, 'errors' => 0, 'skipped' => 0, 'simulated' => $simulate]
+            ];
+        }
+        
+        $total_products = $this->product_repo->count_all_products();
+        $total_batches = ($total_products === 0) ? 0 : (int) ceil($total_products / self::BATCH_SIZE);
+        $offset = $batch * self::BATCH_SIZE;
 
-         if ($total_products === 0 || $batch >= $total_batches) {
-             return [
-                 'rate' => $current_rate,
-                 'total_batches' => $total_batches,
-                 'changes' => [],
-                 'summary' => ['updated' => 0, 'errors' => 0, 'skipped' => 0, 'simulated' => $simulate]
-             ];
-         }
+        if ($total_products === 0 || $batch >= $total_batches) {
+            return [
+                'rate' => $current_rate,
+                'baseline_rate' => $baseline, // Siempre devolver el baseline para referencia
+                'previous_rate' => $previous_dollar_value, // Valor usado para el cálculo (último aplicado o baseline)
+                'ratio' => $ratio,
+                'percentage_change' => $percentage_change,
+                'total_batches' => $total_batches,
+                'changes' => [],
+                'summary' => ['updated' => 0, 'errors' => 0, 'skipped' => 0, 'simulated' => $simulate]
+            ];
+        }
         
-         $batch_product_ids = $this->product_repo->get_product_ids_batch(self::BATCH_SIZE, $offset);
-         $processed_in_batch = count($batch_product_ids);
+        $batch_product_ids = $this->product_repo->get_product_ids_batch(self::BATCH_SIZE, $offset);
+        $processed_in_batch = count($batch_product_ids);
         
-         $batch_result = $this->process_batch($batch_product_ids, $current_rate, $previous_dollar_value, $simulate);
+        $batch_result = $this->process_batch($batch_product_ids, $current_rate, $previous_dollar_value, $simulate);
         
-         $run_id = null;
+        $run_id = null;
         
-         // Persistencia solo en el último batch si no es simulación
-         if (!$simulate && $batch === ($total_batches - 1)) {
-             $run_id = $this->handle_run_persistence($type, $current_rate, $percentage_change, $batch_result['changes'], $opts, $total_products);
-         }
+        // Persistencia solo en el último batch si no es simulación
+        if (!$simulate && $batch === ($total_batches - 1)) {
+            $run_id = $this->handle_run_persistence($type, $current_rate, $percentage_change, $batch_result['changes'], $opts, $total_products);
+        }
         
-         return [
-             'rate' => $current_rate,
-             'dollar_type' => $type,
-             'previous_rate' => $previous_dollar_value,
-             'percentage_change' => $percentage_change,
-             'changes' => $batch_result['changes'],
-             'run_id' => $run_id,
-             'batch_info' => [
-                 'current_batch' => $batch,
-                 'total_batches' => $total_batches,
-                 'processed_in_batch' => $processed_in_batch
-             ],
-             'summary' => [
-                 'updated' => $batch_result['updated'],
-                 'errors' => $batch_result['errors'],
-                 'skipped' => $batch_result['skipped'],
-                 'simulated' => $simulate
-             ],
-             'errors_map' => $batch_result['errors_map'] ?? []
-         ];
+        return [
+            'rate' => $current_rate,
+            'baseline_rate' => $baseline, // Siempre devolver el baseline
+            'previous_rate' => $previous_dollar_value, // Valor usado para el cálculo
+            'dollar_type' => $type,
+            'ratio' => $ratio,
+            'percentage_change' => $percentage_change,
+            'changes' => $batch_result['changes'],
+            'run_id' => $run_id,
+            'batch_info' => [
+                'current_batch' => $batch,
+                'total_batches' => $total_batches,
+                'processed_in_batch' => $processed_in_batch,
+                'total_products' => $total_products
+            ],
+            'summary' => [
+                'updated' => $batch_result['updated'],
+                'errors' => $batch_result['errors'],
+                'skipped' => $batch_result['skipped'],
+                'simulated' => $simulate
+            ],
+            'errors_map' => $batch_result['errors_map'] ?? []
+        ];
+    }
+
+    /**
+     * Obtiene el último dólar aplicado de la tabla wp_dpuwoo_runs
+     * @return float El valor del último dólar aplicado, o 0 si no hay ejecuciones
+     */
+    private function get_last_applied_dollar() {
+        global $wpdb;
+        
+        $table_name = $wpdb->prefix . 'dpuwoo_runs';
+        
+        // DEBUG: Verificar conexión
+        error_log("DPUWOO DEBUG - get_last_applied_dollar() llamada");
+        error_log("DPUWOO DEBUG - table_name: " . $table_name);
+        
+        // Verificar si la tabla existe
+        $table_exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table_name));
+        
+        if (!$table_exists) {
+            error_log("DPUWOO DEBUG - Tabla no existe: " . $table_name);
+            return 0;
+        }
+        
+        error_log("DPUWOO DEBUG - Tabla existe");
+        
+        // Obtener el dollar_value de la última ejecución
+        $query = $wpdb->prepare(
+            "SELECT dollar_value FROM {$table_name} ORDER BY id DESC LIMIT 1"
+        );
+        
+        error_log("DPUWOO DEBUG - Query: " . $query);
+        
+        $last_dollar = $wpdb->get_var($query);
+        
+        error_log("DPUWOO DEBUG - Resultado de la query: " . print_r($last_dollar, true));
+        
+        return $last_dollar ? floatval($last_dollar) : 0;
     }
     
     /*==============================================================

@@ -23,11 +23,10 @@ class Price_Calculator
      * Calcula los nuevos precios (regular y oferta) de un producto.
      * @param int $product_id ID del producto o variación.
      * @param float $current_dollar_value Tasa de dólar actual.
-     * @param float $previous_dollar_value Tasa de dólar de referencia.
      * @param bool $simulate Si es una simulación.
      * @return array|false Resultado del cálculo o false en caso de error.
      */
-    public function calculate_for_product($product_id, $current_dollar_value, $previous_dollar_value = null, $simulate = false)
+    public function calculate_for_product($product_id, $current_dollar_value, $simulate = false)
     {
         // Resetear reglas para este cálculo
         $this->rules = []; 
@@ -39,7 +38,8 @@ class Price_Calculator
 
         $opts = get_option('dpuwoo_settings', []);
 
-        $previous_dollar_value = $this->resolve_previous_dollar($previous_dollar_value, $opts, $simulate);
+        // Obtener el dólar anterior usando la nueva lógica centralizada
+        $previous_dollar_value = $this->get_previous_dollar_value($simulate);
         if ($previous_dollar_value <= 0) {
             return $this->error('previous_dollar_missing');
         }
@@ -62,10 +62,6 @@ class Price_Calculator
         | 1. Cálculo del precio REGULAR
         ----------------------------------------------*/
         $ratio = $current_dollar_value / $previous_dollar_value;
-
-        if ($simulate && abs($ratio - 1.0) < 0.0001) {
-            $ratio = 1.001; // 0.1% de cambio mínimo para simulación
-        }
 
         $new_regular_price = $this->apply_ratio($current_regular_price, $ratio);
         $new_regular_price = $this->apply_global_extra($new_regular_price, $opts);
@@ -131,6 +127,56 @@ class Price_Calculator
         ];
     }
 
+    /**
+     * Obtiene el dólar de referencia (previous) para el cálculo
+     * Lógica: Siempre usar el último dólar aplicado de wp_dpuwoo_runs
+     *         Si no hay ejecuciones previas, usar baseline_dollar_value
+     * @param bool $simulate Si es una simulación
+     * @return float Valor del dólar de referencia
+     */
+    private function get_previous_dollar_value($simulate = false)
+    {
+        global $wpdb;
+        
+        $opts = get_option('dpuwoo_settings', []);
+        $baseline = floatval($opts['baseline_dollar_value'] ?? 0);
+        
+        // Obtener el último dólar aplicado de la tabla wp_dpuwoo_runs
+        $last_applied_dollar = $this->get_last_applied_dollar();
+        
+        // Siempre usar el último dólar aplicado si existe
+        // Si no existe, usar baseline
+        if ($last_applied_dollar > 0) {
+            return $last_applied_dollar;
+        }
+        
+        return $baseline;
+    }
+
+    /**
+     * Obtiene el último dólar aplicado de la tabla wp_dpuwoo_runs
+     * @return float El valor del último dólar aplicado, o 0 si no hay ejecuciones
+     */
+    private function get_last_applied_dollar()
+    {
+        global $wpdb;
+        
+        $table_name = $wpdb->prefix . 'dpuwoo_runs';
+        
+        // Verificar si la tabla existe
+        $table_exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table_name));
+        
+        if (!$table_exists) {
+            return 0;
+        }
+        
+        // Obtener el dollar_value de la última ejecución
+        $query = $wpdb->prepare("SELECT dollar_value FROM {$table_name} ORDER BY id DESC LIMIT 1");
+        $last_dollar = $wpdb->get_var($query);
+        
+        return $last_dollar ? floatval($last_dollar) : 0;
+    }
+
     /*==============================================================
     =           Helpers (incluyendo rules acumulativas)
     ==============================================================*/
@@ -138,19 +184,6 @@ class Price_Calculator
     protected function error($code)
     {
         return ['error' => $code];
-    }
-
-    protected function resolve_previous_dollar($previous, $opts, $simulate = false)
-    {
-        if ($previous !== null) {
-            return floatval($previous);
-        }
-        
-        if ($simulate) {
-            return floatval($opts['baseline_dollar_value'] ?? 0);
-        }
-        
-        return floatval(get_option('dpuwoo_last_dollar_value', $opts['baseline_dollar_value'] ?? 0));
     }
 
     protected function apply_ratio($price, $ratio, $rule_key = 'ratio')
