@@ -155,9 +155,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     const totalBatchesRes = batchInfo.total_batches || 0;
                     const processedInBatch = batchInfo.processed_in_batch || 0;
 
-                    console.log(`Batch info: ${batch}/${totalBatchesRes}, Procesados: ${processedInBatch}`);
-                    console.log('Cambios en este batch:', res.changes?.length || 0);
-
                     // Inicializar el total de productos a procesar en el primer batch
                     if (batch === 0) {
                         totalProductsToProcess = totalProducts;
@@ -192,8 +189,6 @@ document.addEventListener('DOMContentLoaded', function () {
                                 all_batches_changes: []
                             };
                         }
-                        
-                        console.log(`Inicializado. Total productos: ${totalProducts}, Total batches: ${totalBatches}`);
                     }
 
                     // Determinar si el proceso ha finalizado:
@@ -202,7 +197,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (currentProcessType === 'simulation') {
                         // ====== ACUMULAR CAMBIOS DE TODOS LOS BATCHES ======
                         if (res.changes && res.changes.length > 0) {
-                            console.log(`Acumulando ${res.changes.length} cambios del batch ${batch}`);
                             
                             // Guardar una copia de este batch para debug
                             finalSimulationResults.all_batches_changes.push({
@@ -217,8 +211,6 @@ document.addEventListener('DOMContentLoaded', function () {
                             finalSimulationResults.summary.updated += (summary.updated_count || 0);
                             finalSimulationResults.summary.errors += (summary.errors || 0);
                             finalSimulationResults.summary.skipped += (summary.skipped_count || 0);
-                            
-                            console.log(`Total acumulado hasta ahora: ${finalSimulationResults.changes.length} cambios`);
                         }
                         
                         totalSimulatedProducts += processedInBatch;
@@ -229,27 +221,21 @@ document.addEventListener('DOMContentLoaded', function () {
                         simText.text(`Simulando precios - Procesando lote ${batch + 1} de ${totalBatches}...`);
                         updateProgressUI(totalSimulatedProducts, totalProductsToProcess, 'simulation');
 
-                        // Debug final del batch
-                        console.log(`Batch ${batch} completado. Acumulados: ${finalSimulationResults.changes.length}`);
                         
                         if (isFinished) {
                             console.groupEnd();
                             console.group("=== SIMULACIÓN COMPLETADA ===");
-                            console.log("Total batches procesados:", totalBatches);
-                            console.log("Total cambios acumulados:", finalSimulationResults.changes.length);
                             
                             // Contar tipos de productos FINALES
                             const tipos = {};
                             finalSimulationResults.changes.forEach(item => {
                                 tipos[item.product_type] = (tipos[item.product_type] || 0) + 1;
                             });
-                            console.log("Distribución FINAL por tipo:", tipos);
                             
                             // Verificar padres variables
                             const padres = finalSimulationResults.changes.filter(item => 
                                 item.product_type === 'variable' || item.status === 'parent'
                             );
-                            console.log("Productos variables/padres encontrados:", padres.length);
                             
                             if (padres.length === 0) {
                                 console.warn("⚠️ NO HAY PRODUCTOS VARIABLES PADRE - Crearemos automáticamente");
@@ -291,8 +277,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
                         if (isFinished) {
                             console.groupEnd();
-                            console.log("=== ACTUALIZACIÓN FINALIZADA ===");
-                            console.log("Total cambios finales:", finalUpdateResults.changes.length);
                             
                             handleUpdateEnd(finalUpdateResults);
                         } else if (isUpdateRunning) {
@@ -324,8 +308,6 @@ document.addEventListener('DOMContentLoaded', function () {
         isSimulationRunning = false;
 
         console.group("=== HANDLE SIMULATION END ===");
-        console.log("Resultados recibidos:", results);
-        console.log("Total cambios en results.changes:", results.changes.length);
         
         // Verificar estructura de los datos
         if (!results.changes || results.changes.length === 0) {
@@ -340,13 +322,11 @@ document.addEventListener('DOMContentLoaded', function () {
             const tipo = item.product_type || 'desconocido';
             tipos[tipo] = (tipos[tipo] || 0) + 1;
         });
-        console.log("Distribución por tipo de producto:", tipos);
         
         // Buscar productos variables específicamente
         const productosVariables = results.changes.filter(item => 
             item.product_type === 'variable' || item.status === 'parent'
         );
-        console.log("Productos variables/padres encontrados:", productosVariables.length);
         
         if (productosVariables.length === 0) {
             console.warn("⚠️ ADVERTENCIA: No hay productos variables en los resultados");
@@ -355,12 +335,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 item.product_type === 'variation' && item.parent_id
             );
             const parentIds = [...new Set(variaciones.map(v => v.parent_id))];
-            console.log(`Parent IDs inferidos de ${variaciones.length} variaciones:`, parentIds.length);
-        } else {
-            console.log("Ejemplo de productos variables:");
-            productosVariables.slice(0, 3).forEach((padre, i) => {
-                console.log(`${i+1}. ID: ${padre.product_id}, Nombre: ${padre.product_name}, Variaciones: ${padre.variations_count || 'N/A'}`);
-            });
         }
         
         console.groupEnd();
@@ -412,8 +386,6 @@ document.addEventListener('DOMContentLoaded', function () {
         isUpdateRunning = false;
 
         console.group("=== HANDLE UPDATE END ===");
-        console.log("Resultados de actualización:", results);
-        console.log("Total cambios:", results.changes?.length || 0);
         console.groupEnd();
 
         // 1. Ocultar proceso y mostrar resultados finales

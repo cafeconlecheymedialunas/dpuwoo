@@ -35,8 +35,6 @@ class Logger
         $run_id = $this->repo->insert_run($run_data);
 
         if (!$run_id) {
-            // Se elimina el rollback. Si falla el insert, falla y punto (autocommit).
-            error_log("DPUWOO: Failed to insert run (Autocommit Mode)");
             return false;
         }
 
@@ -62,7 +60,6 @@ class Logger
         $success = $this->repo->insert_items_bulk($run_id, $items_to_save);
         
         if (!$success) {
-            error_log("DPUWOO: Failed to insert run items for run_id {$run_id}");
             return false;
         }
         return true;

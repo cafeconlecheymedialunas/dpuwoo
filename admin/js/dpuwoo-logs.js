@@ -14,7 +14,6 @@
         },
 
         loadLogs: function() {
-            console.log('DPUWOO: Loading logs...');
             this.showLogsLoading();
             
             $.ajax({
@@ -26,7 +25,6 @@
                 },
                 dataType: 'json',
                 success: function (res) {
-                    console.log('DPUWOO: Logs loaded successfully', res);
                     if (res.success) {
                         this.displayLogs(res.data);
                     } else {

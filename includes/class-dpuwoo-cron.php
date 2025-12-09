@@ -25,7 +25,6 @@ class Cron
         // Verificar que tenemos baseline configurado
         $baseline = floatval($opts['baseline_dollar_value'] ?? 0);
         if ($baseline <= 0) {
-            error_log('DPU WooCommerce: Dólar base no configurado');
             return;
         }
 
@@ -38,7 +37,6 @@ class Cron
         }
         
         if ($rate === false) {
-            error_log('DPU WooCommerce: No se pudo obtener tasa de dólar');
             return;
         }
 
@@ -51,12 +49,8 @@ class Cron
         
         // Calcular variación respecto a la referencia
         $changed = ($reference_rate > 0) ? abs(($current_rate - $reference_rate) / $reference_rate) * 100 : 100;
-        
-        // Log para debugging
-        error_log("DPU WooCommerce: Reference: $reference_rate, Current: $current_rate, Change: " . round($changed, 2) . "%, Threshold: $threshold%");
 
         if ($threshold > 0 && $changed < $threshold) {
-            error_log("DPU WooCommerce: Umbral no alcanzado (" . round($changed, 2) . "% < $threshold%)");
             return;
         }
 
@@ -65,14 +59,11 @@ class Cron
         $result = $updater->update_all_batch(false);
         
         if (isset($result['error'])) {
-            error_log('DPU WooCommerce Error: ' . $result['message']);
             return;
         }
 
         // Guardar el rate actual para la próxima comparación
         $opts['last_rate'] = $current_rate;
         update_option('dpuwoo_settings', $opts);
-
-        error_log("DPU WooCommerce: Actualización completada. Rate: $current_rate, Productos actualizados: " . $result['summary']['updated']);
     }
 }

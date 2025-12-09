@@ -54,7 +54,6 @@ class Log_Repository
         $this->wpdb->insert($this->table_runs, $insert_data);
 
         if ($this->wpdb->last_error) {
-            error_log("DPUWOO Repo: insert_run error: " . $this->wpdb->last_error);
             return false;
         }
 
@@ -99,7 +98,6 @@ class Log_Repository
 
         $this->wpdb->insert($this->table_items, $insert);
         if ($this->wpdb->last_error) {
-            error_log("DPUWOO Repo: insert_run_item error: " . $this->wpdb->last_error);
             return false;
         }
         return $this->wpdb->insert_id;

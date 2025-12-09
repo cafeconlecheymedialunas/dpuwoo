@@ -98,7 +98,6 @@ class Product_Repository
             $stored = $product->get_regular_price();
             return ((string)$stored === (string)$new_price);
         } catch (\Exception $e) {
-            error_log("ProductRepo: save_regular_price exception: " . $e->getMessage());
             return false;
         }
     }
@@ -126,7 +125,6 @@ class Product_Repository
             return true;
             
         } catch (\Exception $e) {
-            error_log("DPUWOO ProductRepo: save_sale_price exception: " . $e->getMessage());
             return false;
         }
     }

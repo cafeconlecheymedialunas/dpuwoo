@@ -272,32 +272,17 @@ class Price_Updater {
         global $wpdb;
         
         $table_name = $wpdb->prefix . 'dpuwoo_runs';
-        
-        // DEBUG: Verificar conexión
-        error_log("DPUWOO DEBUG - get_last_applied_dollar() llamada");
-        error_log("DPUWOO DEBUG - table_name: " . $table_name);
-        
-        // Verificar si la tabla existe
+    
         $table_exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table_name));
         
         if (!$table_exists) {
-            error_log("DPUWOO DEBUG - Tabla no existe: " . $table_name);
             return 0;
         }
-        
-        error_log("DPUWOO DEBUG - Tabla existe");
-        
-        // Obtener el dollar_value de la última ejecución
         $query = $wpdb->prepare(
             "SELECT dollar_value FROM {$table_name} ORDER BY id DESC LIMIT 1"
         );
-        
-        error_log("DPUWOO DEBUG - Query: " . $query);
-        
         $last_dollar = $wpdb->get_var($query);
-        
-        error_log("DPUWOO DEBUG - Resultado de la query: " . print_r($last_dollar, true));
-        
+    
         return $last_dollar ? floatval($last_dollar) : 0;
     }
     
@@ -455,27 +440,22 @@ class Price_Updater {
              'percentage_change' => $percentage_change
          ];
         
-         // 1. INICIAR RUN
          $run_id = $this->logger->begin_run_transaction($run_data);
         
          if ($run_id) {
-             // 2. INSERTAR ITEMS
              $items_saved = $this->logger->add_items_to_transaction($run_id, $changes);
             
              if ($items_saved) {
-                 // ÉXITO: Actualizar run total_products
                  $saved_count = $this->count_saved_items_from_changes($changes);
                  $this->log_repo->update_run($run_id, ['total_products' => intval($saved_count)]);
                 
                  $this->logger->commit_run_transaction($run_id);
                  return $run_id;
              } else {
-                 error_log("DPUWOO: FAILURE: Adding items failed for run_id {$run_id}");
                  $this->logger->rollback_run_transaction();
                  return false;
              }
          } else {
-             error_log("DPUWOO: CRITICAL FAILURE: Begin run failed.");
              return false;
          }
     }

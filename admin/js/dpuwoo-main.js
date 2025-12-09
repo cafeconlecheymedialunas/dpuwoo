@@ -13,7 +13,6 @@
 
     $(document).ready(function () {
 
-        console.log('DPUWOO: Admin JS loaded');
 
         // Ocultar todas las secciones de proceso al cargar
         $('#dpuwoo-simulation-process').addClass('hidden');
@@ -131,9 +130,8 @@
 
             // NUEVA FUNCIÓN: Generar tabla de resultados
             generateResultsTable: function (changes, isSimulation = false) {
-                console.group("=== GENERATE RESULTS TABLE ===");
-                console.log("Total cambios recibidos:", changes.length);
-                console.log("Es simulación:", isSimulation);
+        
+    
                 
                 if (!changes || changes.length === 0) {
                     console.groupEnd();
@@ -150,8 +148,6 @@
                         .map(item => parseInt(item.parent_id))
                 )];
                 
-                console.log("Parent IDs encontrados en variaciones:", parentIdsFromVariations.length);
-                
                 // Para cada parent_id, verificar si ya existe como producto variable
                 parentIdsFromVariations.forEach(parentId => {
                     const parentExists = changes.some(item => 
@@ -160,7 +156,6 @@
                     );
                     
                     if (!parentExists) {
-                        console.log(`🚨 Creando padre faltante para ID: ${parentId}`);
                         
                         // Buscar todas las variaciones de este padre
                         const variacionesDelPadre = changes.filter(item => 
@@ -224,7 +219,6 @@
                     }
                 });
                 
-                console.log(`Total cambios después de crear padres: ${enhancedChanges.length} (antes: ${changes.length})`);
                 
                 // === PASO 2: AGRUPAR LOS DATOS POR PRODUCTO PADRE ===
                 const groupedChanges = enhancedChanges.reduce((acc, item) => {
@@ -247,8 +241,6 @@
 
                     return acc;
                 }, {});
-                
-                console.log("Grupos creados:", Object.keys(groupedChanges).length);
 
                 // === PASO 3: GENERAR HTML DE LA TABLA ===
                 let html = `
