@@ -12,8 +12,6 @@
     };
 
     $(document).ready(function () {
-
-
         // Ocultar todas las secciones de proceso al cargar
         $('#dpuwoo-simulation-process').addClass('hidden');
         $('#dpuwoo-simulation-results').addClass('hidden');
@@ -35,11 +33,9 @@
                 this.hideSection('dpuwoo-simulation-results');
                 this.hideSection('dpuwoo-update-process');
                 this.hideSection('dpuwoo-final-results');
-
                 $('#dpuwoo-sim-summary').empty();
                 $('#dpuwoo-sim-results-table').empty();
                 $('#dpuwoo-final-results').empty();
-
                 cumulativeResults = { updated: 0, skipped: 0, errors: 0, changes: [] };
             },
 
@@ -58,19 +54,13 @@
                 const progressBarId = type === 'simulation' ? 'dpuwoo-sim-progress' : 'dpuwoo-update-progress';
                 const percentId = type === 'simulation' ? 'dpuwoo-sim-percent' : 'dpuwoo-update-percent';
                 const textId = type === 'simulation' ? 'dpuwoo-sim-text' : 'dpuwoo-update-text';
-                const batchCurrentId = type === 'simulation' ? 'dpuwoo-sim-current-batch' : 'dpuwoo-update-current-batch';
-                const batchTotalId = type === 'simulation' ? 'dpuwoo-sim-total-batches' : 'dpuwoo-update-total-batches';
-                const processedId = type === 'simulation' ? 'dpuwoo-sim-processed-products' : 'dpuwoo-update-processed-products';
-                const totalProductsId = type === 'simulation' ? 'dpuwoo-sim-total-products' : 'dpuwoo-update-total-products';
-
+                
                 $('#' + progressBarId).css('width', percent + '%');
                 $('#' + percentId).text(percent + '%');
                 $('#' + textId).text(text);
 
-                $('#' + batchCurrentId).text(current);
-                $('#' + batchTotalId).text(total);
-
                 const processed = cumulativeResults.updated + cumulativeResults.skipped + cumulativeResults.errors;
+                const processedId = type === 'simulation' ? 'dpuwoo-sim-processed-products' : 'dpuwoo-update-processed-products';
                 $('#' + processedId).text(processed);
             },
 
@@ -88,19 +78,14 @@
                 }
             },
 
-            handleProcessError: function (message, type) {
-                alert('Error en el proceso: ' + message);
-                this.resetAllSections();
-                this.enableButtons();
-            },
-
-            getStatusText: function (status) {
+            getStatusText: function (status, isSimulation = false) {
                 const statusTexts = {
-                    'updated': 'Actualizado',
+                    'updated': isSimulation ? 'Simulado' : 'Actualizado',
                     'simulated': 'Simulado',
                     'error': 'Error',
                     'skipped': 'Sin cambios',
-                    'pending': 'Pendiente'
+                    'pending': 'Pendiente',
+                    'parent': 'Producto variable'
                 };
                 return statusTexts[status] || status;
             },
@@ -111,471 +96,264 @@
                     'simulated': 'bg-blue-100 text-blue-800',
                     'error': 'bg-red-100 text-red-800',
                     'skipped': 'bg-gray-100 text-gray-800',
-                    'pending': 'bg-yellow-100 text-yellow-800'
+                    'pending': 'bg-yellow-100 text-yellow-800',
+                    'parent': 'bg-purple-100 text-purple-800 border border-purple-200'
                 };
                 return statusClasses[status] || 'bg-gray-100 text-gray-800';
             },
 
-            formatPrice: function (price) {
-                if (!price || price === '0.00') return '-';
-                return '$' + parseFloat(price).toFixed(2);
-            },
+            /**
+             * GENERAR RESUMEN (STATS)
+             */
 
-            formatPriceRange: function (singlePrice, priceRange) {
-                if (priceRange) {
-                    return priceRange;
-                }
-                return singlePrice ? '$' + parseFloat(singlePrice).toFixed(2) : '$0';
-            },
-
-            // NUEVA FUNCIÓN: Generar tabla de resultados
-            generateResultsTable: function (changes, isSimulation = false) {
-        
-    
+            generateCompleteResults: function (data, isSimulation = false) {
+                const summary = data.summary || { updated: 0, skipped: 0, errors: 0, total: 0 };
+                const changes = data.changes || [];
                 
-                if (!changes || changes.length === 0) {
-                    console.groupEnd();
-                    return '<div class="text-center p-8 text-gray-500"><p>No se encontraron productos para el cálculo.</p></div>';
-                }
+                // Un proceso es "Exitoso sin cambios" si no hay actualizaciones pero tampoco errores críticos
+                const hasRealChanges = summary.updated > 0;
+                const totalProcessed = (summary.updated || 0) + (summary.skipped || 0) + (summary.errors || 0);
 
-                // === PASO 1: CREAR PADRES FALTANTES AUTOMÁTICAMENTE ===
-                const enhancedChanges = [...changes]; // Copia para no modificar el original
+                const oldRate = typeof dpuwoo_params !== 'undefined' ? dpuwoo_params.baseline_rate : '0.00';
+                const newRate = data.rate || '0.00';
                 
-                // Identificar todos los parent_id únicos de las variaciones
-                const parentIdsFromVariations = [...new Set(
-                    changes
-                        .filter(item => item.product_type === 'variation' && item.parent_id)
-                        .map(item => parseInt(item.parent_id))
-                )];
-                
-                // Para cada parent_id, verificar si ya existe como producto variable
-                parentIdsFromVariations.forEach(parentId => {
-                    const parentExists = changes.some(item => 
-                        parseInt(item.product_id) === parentId && 
-                        (item.product_type === 'variable' || item.status === 'parent')
-                    );
-                    
-                    if (!parentExists) {
-                        
-                        // Buscar todas las variaciones de este padre
-                        const variacionesDelPadre = changes.filter(item => 
-                            parseInt(item.parent_id) === parentId
-                        );
-                        
-                        if (variacionesDelPadre.length > 0) {
-                            // Usar la primera variación para obtener información del padre
-                            const primeraVariacion = variacionesDelPadre[0];
-                            
-                            // Extraer nombre base del producto (remover tamaño/color)
-                            let nombreBase = primeraVariacion.product_name || '';
-                            const guionIndex = nombreBase.lastIndexOf(' - ');
-                            if (guionIndex > -1) {
-                                nombreBase = nombreBase.substring(0, guionIndex);
-                            }
-                            
-                            // Contar cuántas variaciones tienen cada estado
-                            const estados = {
-                                simulated: 0,
-                                updated: 0,
-                                skipped: 0,
-                                error: 0
-                            };
-                            
-                            variacionesDelPadre.forEach(variacion => {
-                                if (estados.hasOwnProperty(variacion.status)) {
-                                    estados[variacion.status]++;
-                                }
-                            });
-                            
-                            // Determinar status del padre basado en sus variaciones
-                            let statusPadre = 'parent';
-                            if (estados.simulated > 0) statusPadre = 'simulated';
-                            if (estados.updated > 0) statusPadre = 'updated';
-                            
-                            // Crear el padre
-                            const padre = {
-                                product_id: parentId,
-                                product_name: nombreBase || `Producto #${parentId}`,
-                                product_sku: 'N/A',
-                                product_type: 'variable',
-                                old_regular_price: 0,
-                                new_regular_price: 0,
-                                old_sale_price: 0,
-                                new_sale_price: 0,
-                                base_price: 0,
-                                percentage_change: 0,
-                                status: statusPadre,
-                                reason: 'Producto variable',
-                                parent_id: parentId,
-                                edit_link: `post.php?post=${parentId}&action=edit`,
-                                is_variable_parent: true,
-                                variations_count: variacionesDelPadre.length,
-                                variations_status: estados
-                            };
-                            
-                            // Insertar el padre al inicio del array
-                            enhancedChanges.unshift(padre);
-                        }
-                    }
-                });
-                
-                
-                // === PASO 2: AGRUPAR LOS DATOS POR PRODUCTO PADRE ===
-                const groupedChanges = enhancedChanges.reduce((acc, item) => {
-                    const parentId = item.parent_id || item.product_id; 
-                    
-                    if (!acc[parentId]) {
-                        acc[parentId] = { 
-                            parentItem: null, 
-                            variations: [],
-                            isVariable: item.product_type === 'variable' || item.status === 'parent' || item.is_variable_parent
-                        };
-                    }
+                // Determinar si el dólar cambió o es el mismo
+                const rateChanged = parseFloat(oldRate) !== parseFloat(newRate);
 
-                    if (item.product_type === 'variation') {
-                        acc[parentId].variations.push(item);
-                    } else { 
-                        // Si es el padre o un producto simple
-                        acc[parentId].parentItem = item;
-                    }
-
-                    return acc;
-                }, {});
-
-                // === PASO 3: GENERAR HTML DE LA TABLA ===
                 let html = `
-        <div class="overflow-x-auto rounded-lg border border-gray-200">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Producto / Variación
-                        </th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Precio Regular
-                        </th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Precio Oferta
-                        </th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Estado
-                        </th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Cambio %
-                        </th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-        `;
-
-                // === PASO 4: RENDERIZAR CADA GRUPO ===
-                Object.keys(groupedChanges).forEach((key) => {
-                    const group = groupedChanges[key];
-                    const parent = group.parentItem;
-
-                    if (parent) {
-                        const isVariable = group.isVariable;
-                        const hasVariations = group.variations.length > 0;
-                        
-                        // Estilo para la fila padre
-                        let parentRowClass = '';
-                        let statusClass = '';
-                        let statusText = '';
-                        
-                        if (parent.status === 'updated' || parent.status === 'simulated') {
-                            statusClass = 'bg-green-100 text-green-800';
-                            statusText = isSimulation ? 'Simulado' : 'Actualizado';
-                            parentRowClass = 'bg-green-50 hover:bg-green-100';
-                        } else if (parent.status === 'skipped') {
-                            statusClass = 'bg-gray-100 text-gray-800';
-                            statusText = 'Sin cambios';
-                            parentRowClass = 'bg-gray-50 hover:bg-gray-100';
-                        } else if (parent.status === 'error') {
-                            statusClass = 'bg-red-100 text-red-800';
-                            statusText = `Error: ${parent.reason || 'Desconocido'}`;
-                            parentRowClass = 'bg-red-50 hover:bg-red-100';
-                        } else if (parent.status === 'parent') {
-                            statusClass = 'bg-purple-100 text-purple-800';
-                            statusText = 'Producto variable';
-                            parentRowClass = 'bg-purple-50 hover:bg-purple-100';
-                        }
-                        
-                        // Precios del padre
-                        const oldPriceReg = parseFloat(parent.old_regular_price || 0).toFixed(2);
-                        const oldPriceSale = parseFloat(parent.old_sale_price || 0).toFixed(2);
-                        const newPriceReg = parseFloat(parent.new_regular_price || 0).toFixed(2);
-                        const newPriceSale = parseFloat(parent.new_sale_price || 0).toFixed(2);
-                        
-                        const percentageChange = parseFloat(parent.percentage_change || 0).toFixed(2);
-                        
-                        // Fila del producto padre
-                        html += `
-                <tr class="${parentRowClass} transition-colors dpuwoo-variable-product" data-product-id="${parent.product_id}">
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0 w-8 h-8 mr-3">
-                                ${isVariable && hasVariations
-                                ? `<span class="dpuwoo-toggle-icon cursor-pointer text-purple-600">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 5.326 5.7a.909.909 0 0 0 1.348 0L13 1"/>
-                                        </svg>
-                                    </span>`
-                                : `<span class="text-gray-400">│</span>`
-                            }
-                            </div>
-                            <div class="ml-4">
-                                <div class="text-sm font-medium text-gray-900">
-                                    <a href="${parent.edit_link || '#'}" target="_blank" class="text-blue-600 hover:text-blue-800 hover:underline">
-                                        ${parent.product_name || `Producto #${parent.product_id}`}
-                                    </a>
-                                </div>
-                                <div class="text-xs text-gray-500">
-                                    SKU: ${parent.product_sku || 'N/A'} | 
-                                    Tipo: ${parent.product_type || 'simple'}
-                                    ${isVariable ? ` (${group.variations.length} variaciones)` : ''}
-                                </div>
-                            </div>
+            <div class="bg-white shadow-lg rounded-xl p-6 border border-gray-200">
+                <div class="flex items-center justify-between mb-8 pb-4 border-b border-gray-100">
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-2xl mr-4">
+                            ${hasRealChanges ? '🔄' : '✨'}
                         </div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-center">
-                        <div class="text-sm text-gray-500">${oldPriceReg !== '0.00' ? '$' + oldPriceReg : '—'}</div>
-                        <div class="text-sm font-semibold text-gray-900">${newPriceReg !== '0.00' ? '$' + newPriceReg : '—'}</div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-center">
-                        <div class="text-sm text-gray-500">${oldPriceSale !== '0.00' ? '$' + oldPriceSale : '—'}</div>
-                        <div class="text-sm font-semibold text-gray-900">${newPriceSale !== '0.00' ? '$' + newPriceSale : '—'}</div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-center">
-                        <span class="px-2 py-1 text-xs rounded-full ${statusClass}">
-                            ${statusText}
-                        </span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-center text-sm">
-                        <span class="${percentageChange >= 0 ? 'text-green-600' : 'text-red-600'} font-medium">
-                            ${percentageChange}%
-                        </span>
-                    </td>
-                </tr>
-                `;
-                        
-                        // Si es variable y tiene variaciones, agregar filas para variaciones
-                        if (isVariable && hasVariations) {
-                            html += `<tbody class="dpuwoo-variation-rows hidden" data-parent-id="${parent.product_id}">`;
-                            
-                            group.variations.forEach((variation, vIndex) => {
-                                const vOldPriceReg = parseFloat(variation.old_regular_price || 0).toFixed(2);
-                                const vOldPriceSale = parseFloat(variation.old_sale_price || 0).toFixed(2);
-                                const vNewPriceReg = parseFloat(variation.new_regular_price || 0).toFixed(2);
-                                const vNewPriceSale = parseFloat(variation.new_sale_price || 0).toFixed(2);
-                                const vPercentageChange = parseFloat(variation.percentage_change || 0).toFixed(2);
-                                
-                                let vStatusClass = '';
-                                let vStatusText = '';
-                                
-                                if (variation.status === 'updated' || variation.status === 'simulated') {
-                                    vStatusClass = 'bg-green-100 text-green-800';
-                                    vStatusText = isSimulation ? 'Simulado' : 'Actualizado';
-                                } else if (variation.status === 'skipped') {
-                                    vStatusClass = 'bg-gray-100 text-gray-800';
-                                    vStatusText = 'Sin cambios';
-                                } else if (variation.status === 'error') {
-                                    vStatusClass = 'bg-red-100 text-red-800';
-                                    vStatusText = `Error: ${variation.reason || 'Desconocido'}`;
-                                }
-                                
-                                html += `
-                        <tr class="bg-gray-50 hover:bg-gray-100">
-                            <td class="px-6 py-3 whitespace-nowrap pl-16">
-                                <div class="flex items-center">
-                                    <div class="text-sm text-gray-700">
-                                        <span class="text-gray-500">└─</span> ${variation.variation_name || variation.product_name || `Variación ${vIndex + 1}`}
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="px-6 py-3 whitespace-nowrap text-center">
-                                <div class="text-sm text-gray-500">${vOldPriceReg !== '0.00' ? '$' + vOldPriceReg : '—'}</div>
-                                <div class="text-sm font-medium text-gray-900">${vNewPriceReg !== '0.00' ? '$' + vNewPriceReg : '—'}</div>
-                            </td>
-                            <td class="px-6 py-3 whitespace-nowrap text-center">
-                                <div class="text-sm text-gray-500">${vOldPriceSale !== '0.00' ? '$' + vOldPriceSale : '—'}</div>
-                                <div class="text-sm font-medium text-gray-900">${vNewPriceSale !== '0.00' ? '$' + vNewPriceSale : '—'}</div>
-                            </td>
-                            <td class="px-6 py-3 whitespace-nowrap text-center">
-                                <span class="px-2 py-1 text-xs rounded-full ${vStatusClass}">
-                                    ${vStatusText}
-                                </span>
-                            </td>
-                            <td class="px-6 py-3 whitespace-nowrap text-center text-sm">
-                                <span class="${vPercentageChange >= 0 ? 'text-green-600' : 'text-red-600'}">
-                                    ${vPercentageChange}%
-                                </span>
-                            </td>
-                        </tr>
-                        `;
-                            });
-                            
-                            html += `</tbody>`;
-                        }
-                    }
-                });
-
-                html += `
-                </tbody>
-            </table>
-        </div>
-        `;
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-800">${isSimulation ? 'Simulación Finalizada' : 'Proceso Completado'}</h3>
+                            <p class="text-gray-500 text-sm italic">${totalProcessed} productos analizados en total</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="block text-[10px] uppercase font-bold text-gray-400 tracking-wider">Estado del Sistema</span>
+                        <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold uppercase">Sincronizado</span>
+                    </div>
+                </div>
                 
-                console.groupEnd();
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                    <div class="flex items-center p-4 bg-gray-50 rounded-xl border border-gray-100">
+                        <div class="mr-4 text-gray-400 text-2xl">⏳</div>
+                        <div>
+                            <p class="text-[10px] uppercase font-bold text-gray-500">Tasa Anterior</p>
+                            <p class="text-2xl font-mono font-bold text-gray-700">$${parseFloat(oldRate).toFixed(2)}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center p-4 bg-blue-600 rounded-xl shadow-md border border-blue-700">
+                        <div class="mr-4 text-white opacity-80 text-2xl">📊</div>
+                        <div>
+                            <p class="text-[10px] uppercase font-bold text-blue-100">Tasa Aplicada</p>
+                            <p class="text-2xl font-mono font-bold text-white">$${parseFloat(newRate).toFixed(2)}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-4 mb-8">
+                    <div class="p-3 text-center border border-gray-100 rounded-lg">
+                        <p class="text-2xl font-bold text-blue-600">${summary.updated || 0}</p>
+                        <p class="text-[10px] uppercase text-gray-500 font-bold">${isSimulation ? 'A Modificar' : 'Actualizados'}</p>
+                    </div>
+                    <div class="p-3 text-center border border-gray-100 rounded-lg bg-gray-50">
+                        <p class="text-2xl font-bold text-gray-400">${summary.skipped || 0}</p>
+                        <p class="text-[10px] uppercase text-gray-500 font-bold">Sin Cambios</p>
+                    </div>
+                    <div class="p-3 text-center border border-gray-100 rounded-lg ${summary.errors > 0 ? 'bg-red-50' : ''}">
+                        <p class="text-2xl font-bold ${summary.errors > 0 ? 'text-red-600' : 'text-gray-300'}">${summary.errors || 0}</p>
+                        <p class="text-[10px] uppercase text-gray-500 font-bold">Errores</p>
+                    </div>
+                </div>`;
+
+                if (!hasRealChanges) {
+                    // MODO: TODO AL DÍA
+                    html += `
+                <div class="bg-blue-50 border border-blue-100 p-6 rounded-xl text-center">
+                    <div class="inline-block p-3 bg-blue-100 text-blue-600 rounded-full mb-4">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                    <h4 class="text-lg font-bold text-blue-900 mb-2">Todo bajo control</h4>
+                    <p class="text-blue-800 text-sm max-w-md mx-auto">
+                        Tus precios ya están alineados con la tasa de <strong>$${parseFloat(newRate).toFixed(2)}</strong>. 
+                        No se realizaron cambios porque los productos mantienen el valor correcto.
+                    </p>
+                    <div class="mt-6">
+                        <button onclick="location.reload()" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-bold shadow-sm">
+                            Volver al Inicio
+                        </button>
+                    </div>
+                </div>`;
+                } else {
+                    // MODO: HAY CAMBIOS (Tabla estándar)
+                    html += `
+                <div class="mt-4">
+                    <div class="flex items-center justify-between mb-4">
+                        <h4 class="text-sm font-bold text-gray-700 uppercase tracking-wide">Detalle de Variaciones</h4>
+                        <span class="px-2 py-1 bg-gray-100 text-gray-500 text-[10px] font-mono rounded">Ratio: ${parseFloat(data.ratio || 1).toFixed(4)}x</span>
+                    </div>
+                    ${this.generateResultsTable(changes, isSimulation)}
+                </div>
+                
+                <div class="mt-8 pt-6 border-t border-gray-200 flex justify-between items-center">
+                    <button onclick="location.reload()" class="text-gray-500 hover:text-gray-800 text-sm font-semibold transition">
+                        ← Cancelar y volver
+                    </button>
+                    ${isSimulation ? `
+                        <button id="dpuwoo-proceed-update" class="px-8 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all shadow-lg hover:shadow-xl font-bold flex items-center transform hover:-translate-y-1">
+                            <span class="mr-2">🚀</span> Confirmar y Aplicar Cambios
+                        </button>
+                    ` : ''}
+                </div>`;
+                }
+
+                html += `</div>`;
                 return html;
             },
 
-            // NUEVA FUNCIÓN: Mostrar resultados finales
-            showFinalResults: function (data, isSimulation) {
-                const title = isSimulation ? 'Simulación Completada' : 'Actualización Completada';
-                const bgColor = isSimulation ? 'bg-green-50 border-green-200' : 'bg-blue-50 border-blue-200';
-                const icon = isSimulation ? '✅' : '🎉';
-                const summary = data.summary || { updated: 0, skipped: 0, errors: 0, total: 0 };
+            /**
+             * GENERAR TABLA CON RANGOS DIFERENCIADOS
+             */
+            generateResultsTable: function (changes, isSimulation = false) {
+                if (!changes || changes.length === 0) return '<p class="p-4 text-gray-500">No hay cambios para mostrar.</p>';
 
-                const resultsHtml = `
-            <div class="bg-white shadow rounded-xl p-6 border ${bgColor}">
-                <div class="flex items-center mb-6">
-                    <div class="text-2xl mr-3">${icon}</div>
-                    <div>
-                        <h3 class="text-xl font-semibold text-gray-800">${title}</h3>
-                        <p class="text-gray-600 text-sm">${isSimulation ? 'Resultados de la simulación' : 'Precios actualizados correctamente'}</p>
-                    </div>
-                </div>
+                // 1. Agrupar variaciones bajo padres
+                const enhancedChanges = [...changes];
+                const parentIds = [...new Set(changes.filter(i => i.parent_id).map(i => parseInt(i.parent_id)))];
                 
-                <!-- Resumen estadístico -->
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                    <div class="text-center p-3 bg-green-100 rounded-lg">
-                        <div class="text-2xl font-bold text-green-700">${summary.updated || 0}</div>
-                        <div class="text-green-600">Actualizados</div>
-                    </div>
-                    <div class="text-center p-3 bg-gray-100 rounded-lg">
-                        <div class="text-2xl font-bold text-gray-700">${summary.skipped || 0}</div>
-                        <div class="text-gray-600">Sin cambios</div>
-                    </div>
-                    <div class="text-center p-3 bg-red-100 rounded-lg">
-                        <div class="text-2xl font-bold text-red-700">${summary.errors || 0}</div>
-                        <div class="text-red-600">Errores</div>
-                    </div>
-                    <div class="text-center p-3 bg-blue-100 rounded-lg">
-                        <div class="text-2xl font-bold text-blue-700">${data.rate ? '$' + parseFloat(data.rate).toFixed(4) : 'n/a'}</div>
-                        <div class="text-blue-600">Dólar aplicado</div>
-                    </div>
-                </div>
-                
-                ${data.ratio ? `<p class="text-sm text-gray-600 mb-4"><strong>Ratio de ajuste:</strong> ${parseFloat(data.ratio).toFixed(4)}x</p>` : ''}
-                
-                ${!isSimulation && data.run_id ?
-                        `<p class="text-sm text-gray-600 mb-4"><strong>ID de ejecución:</strong> ${data.run_id}</p>` :
-                        ''
+                parentIds.forEach(pId => {
+                    if (!changes.some(i => parseInt(i.product_id) === pId)) {
+                        const vars = changes.filter(i => parseInt(i.parent_id) === pId);
+                        enhancedChanges.unshift({
+                            product_id: pId,
+                            product_name: vars[0].product_name.split(' - ')[0],
+                            product_type: 'variable',
+                            status: 'parent',
+                            edit_link: `post.php?post=${pId}&action=edit`
+                        });
                     }
-                
-                <!-- Tabla de resultados -->
-                <div class="mt-6">
-                    <h4 class="text-lg font-semibold text-gray-800 mb-4">${isSimulation ? 'Cambios propuestos' : 'Precios actualizados'}</h4>
-                    ${this.generateResultsTable(data.changes || [], isSimulation)}
-                </div>
-                
-                <div class="mt-6 pt-4 border-t border-gray-200">
-                    <button onclick="location.reload()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-                        Volver al Dashboard
-                    </button>
-                </div>
-            </div>
-        `;
-
-                $('#dpuwoo-final-results').html(resultsHtml);
-                
-                // Configurar el acordeón
-                this.setupVariationAccordion();
-                
-                // Mostrar alerta de éxito si es actualización real
-                if (!isSimulation && summary.updated > 0) {
-                    this.showSuccessAlert(summary.updated, summary.errors);
-                }
-            },
-
-            // NUEVA FUNCIÓN: Configurar acordeón
-            setupVariationAccordion: function () {
-                // Escuchar clics en las filas de productos variables
-                $(document).on('click', '.dpuwoo-variable-product', function() {
-                    const $parentRow = $(this);
-                    const parentId = $parentRow.data('product-id');
-                    const $variationRows = $(`.dpuwoo-variation-rows[data-parent-id="${parentId}"]`);
-                    const $toggleIcon = $parentRow.find('.dpuwoo-toggle-icon');
-                    
-                    // Solo actuar si hay variaciones
-                    if ($variationRows.length === 0) {
-                        return;
-                    }
-                    
-                    // Toggle (Mostrar/Ocultar) las filas de las variaciones con animación suave
-                    $variationRows.slideToggle(150, function() {
-                        // Cambiar el SVG para indicar el estado
-                        if ($variationRows.is(':visible')) {
-                            // Expandido: flecha hacia arriba
-                            $toggleIcon.html(`
-                                <svg class="w-4 h-4 text-purple-600" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 8">
-                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7 7.674 1.3a.91.91 0 0 0-1.348 0L1 7"/>
-                                </svg>
-                            `);
-                            $parentRow.addClass('bg-purple-100');
-                        } else {
-                            // Colapsado: flecha hacia abajo
-                            $toggleIcon.html(`
-                                <svg class="w-4 h-4 text-purple-600" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 8">
-                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 5.326 5.7a.909.909 0 0 0 1.348 0L13 1"/>
-                                </svg>
-                            `);
-                            $parentRow.removeClass('bg-purple-100');
-                        }
-                    });
                 });
+
+                const groups = enhancedChanges.reduce((acc, item) => {
+                    const id = item.parent_id || item.product_id;
+                    if (!acc[id]) acc[id] = { parent: null, variations: [] };
+                    if (item.product_type === 'variation') acc[id].variations.push(item);
+                    else acc[id].parent = item;
+                    return acc;
+                }, {});
+
+                let html = `
+                <div class="overflow-hidden rounded-xl border border-gray-200">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-[10px] font-bold text-gray-500 uppercase">Producto / Variación</th>
+                                <th class="px-6 py-3 text-center text-[10px] font-bold text-gray-500 uppercase">Precio Regular</th>
+                                <th class="px-6 py-3 text-center text-[10px] font-bold text-gray-500 uppercase">Precio Oferta</th>
+                                <th class="px-6 py-3 text-center text-[10px] font-bold text-gray-500 uppercase">Estado</th>
+                                <th class="px-6 py-3 text-center text-[10px] font-bold text-gray-500 uppercase">Var. %</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">`;
+
+                Object.values(groups).forEach(group => {
+                    const p = group.parent;
+                    if (!p) return;
+                    const hasVars = group.variations.length > 0;
+                    
+                    let regRange = '—', saleRange = '—';
+
+                    if (hasVars) {
+                        const rP = group.variations.map(v => parseFloat(v.new_regular_price || 0)).filter(n => n > 0);
+                        const sP = group.variations.map(v => parseFloat(v.new_sale_price || 0)).filter(n => n > 0);
+                        if (rP.length) {
+                            const min = Math.min(...rP), max = Math.max(...rP);
+                            regRange = min === max ? `$${min.toFixed(2)}` : `$${min.toFixed(2)} - $${max.toFixed(2)}`;
+                        }
+                        if (sP.length) {
+                            const min = Math.min(...sP), max = Math.max(...sP);
+                            saleRange = min === max ? `$${min.toFixed(2)}` : `$${min.toFixed(2)} - $${max.toFixed(2)}`;
+                        }
+                    } else {
+                        regRange = p.new_regular_price > 0 ? `$${parseFloat(p.new_regular_price).toFixed(2)}` : '—';
+                        saleRange = p.new_sale_price > 0 ? `$${parseFloat(p.new_sale_price).toFixed(2)}` : '—';
+                    }
+
+                    html += `
+                    <tr class="dpuwoo-variable-product hover:bg-gray-50 transition-colors cursor-pointer" data-product-id="${p.product_id}">
+                        <td class="px-6 py-4">
+                            <div class="flex items-center">
+                                ${hasVars ? '<span class="dpuwoo-toggle-icon mr-3 text-purple-600 font-bold text-lg">⊕</span>' : '<span class="mr-3 text-gray-300">●</span>'}
+                                <div>
+                                    <div class="text-sm font-bold text-gray-900">${p.product_name}</div>
+                                    <div class="text-[10px] text-gray-400">ID: ${p.product_id} | ${p.product_type.toUpperCase()}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <span class="text-xs font-mono bg-gray-100 px-2 py-1 rounded border border-gray-200">${regRange}</span>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            ${saleRange !== '—' ? `<span class="text-xs font-mono bg-red-50 text-red-700 px-2 py-1 rounded border border-red-100 font-bold">${saleRange}</span>` : '<span class="text-gray-300">—</span>'}
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${this.getStatusClass(p.status)}">${this.getStatusText(p.status, isSimulation)}</span>
+                        </td>
+                        <td class="px-6 py-4 text-center font-bold text-sm ${p.percentage_change >= 0 ? 'text-green-600' : 'text-red-600'}">
+                            ${p.percentage_change ? p.percentage_change + '%' : '0%'}
+                        </td>
+                    </tr>`;
+
+                    if (hasVars) {
+                        html += `<tbody class="dpuwoo-variation-rows hidden bg-gray-50" data-parent-id="${p.product_id}">`;
+                        group.variations.forEach(v => {
+                            html += `
+                            <tr class="border-l-4 border-purple-400">
+                                <td class="px-6 py-2 pl-14 text-xs italic text-gray-500">└ ${v.variation_name || 'Variación'}</td>
+                                <td class="px-6 py-2 text-center text-xs font-mono">$${parseFloat(v.new_regular_price).toFixed(2)}</td>
+                                <td class="px-6 py-2 text-center text-xs font-mono text-red-500">${v.new_sale_price > 0 ? '$' + parseFloat(v.new_sale_price).toFixed(2) : '—'}</td>
+                                <td class="px-6 py-2 text-center text-[9px] uppercase font-bold text-gray-400">${v.status}</td>
+                                <td class="px-6 py-2 text-center text-xs font-bold text-gray-400">${v.percentage_change}%</td>
+                            </tr>`;
+                        });
+                        html += `</tbody>`;
+                    }
+                });
+
+                return html + `</tbody></table></div>`;
             },
 
-            // NUEVA FUNCIÓN: Mostrar alerta de éxito
-            showSuccessAlert: function (updatedCount, errorCount) {
-                Swal.fire({
-                    icon: 'success',
-                    title: '¡Actualización Completada!',
-                    html: `
-                <div class="text-left">
-                    <p class="mb-2">✅ <strong>${updatedCount} productos</strong> actualizados correctamente</p>
-                    ${errorCount > 0 ?
-                            `<p class="mb-2">⚠️ <strong>${errorCount} productos</strong> con errores (revisa la tabla)</p>` :
-                            `<p class="mb-2">🎉 Todos los productos se procesaron sin errores</p>`
-                        }
-                    <p class="text-sm text-gray-600 mt-3">Los cambios se han aplicado a los precios de WooCommerce.</p>
-                </div>
-            `,
-                    confirmButtonText: 'Ver Resultados',
-                    confirmButtonColor: '#3B82F6',
-                    timer: 5000,
-                    timerProgressBar: true,
-                    didOpen: function () {
-                        setTimeout(function () {
-                            $('html, body').animate({
-                                scrollTop: $('#dpuwoo-final-results').offset().top - 100
-                            }, 1000);
-                        }, 500);
-                    }
+            showCompleteResults: function (data, isSimulation) {
+                const resultsHtml = this.generateCompleteResults(data, isSimulation);
+                const target = isSimulation ? '#dpuwoo-simulation-results' : '#dpuwoo-final-results';
+                $(target).html(resultsHtml);
+                this.showSection(target.replace('#', ''));
+                this.setupVariationAccordion();
+                this.enableButtons();
+            },
+
+            setupVariationAccordion: function () {
+                $(document).off('click', '.dpuwoo-variable-product').on('click', '.dpuwoo-variable-product', function () {
+                    const id = $(this).data('product-id');
+                    const $icon = $(this).find('.dpuwoo-toggle-icon');
+                    const $rows = $(`.dpuwoo-variation-rows[data-parent-id="${id}"]`);
+                    
+                    $rows.toggleClass('hidden');
+                    $icon.text($rows.hasClass('hidden') ? '⊕' : '⊖');
+                    $(this).toggleClass('bg-purple-50');
                 });
             }
         };
 
-        // Exponer variables globales para los módulos
-        window.DPUWOO_Globals = {
-            isProcessing: isProcessing,
-            currentProcessType: currentProcessType,
-            cumulativeResults: cumulativeResults
-        };
+        // Exponer variables globales
+        window.DPUWOO_Globals = { isProcessing, currentProcessType, cumulativeResults };
 
         // Inicializar módulos
         if (window.DPUWOO_Tabs) DPUWOO_Tabs.init();
-        if (window.DPUWOO_Logs) DPUWOO_Logs.init();
         if (window.DPUWOO_Simulation) DPUWOO_Simulation.init();
         if (window.DPUWOO_Update) DPUWOO_Update.init();
     });
