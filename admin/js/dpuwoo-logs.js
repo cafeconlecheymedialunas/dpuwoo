@@ -195,42 +195,95 @@
                         <thead class="bg-gray-50 sticky top-0">
                             <tr>
                                 <th class="p-2 border border-gray-200">Producto</th>
-                                <th class="p-2 border border-gray-200">SKU</th>
                                 <th class="p-2 border border-gray-200">Precio Regular Anterior</th>
                                 <th class="p-2 border border-gray-200">Precio Regular Nuevo</th>
                                 <th class="p-2 border border-gray-200">% Cambio</th>
                                 <th class="p-2 border border-gray-200">Estado</th>
-                                <th class="p-2 border border-gray-200">Razón</th>
                             </tr>
                         </thead>
                         <tbody>
             `;
+            console.log(items)
 
-            items.forEach(function(item) {
-                const statusClass = DPUWOO_Utils.getStatusClass(item.status);
-                const statusText = DPUWOO_Utils.getStatusText(item.status);
-                const percentageChange = item.percentage_change ? 
-                    parseFloat(item.percentage_change).toFixed(2) + '%' : '-';
-                
-                detailsHtml += `
-                    <tr class="border-b border-gray-200">
-                        <td class="p-2 border border-gray-200">
-                            <div class="font-medium">${item.product_name || 'N/A'}</div>
-                            <div class="text-xs text-gray-500">ID: ${item.product_id}</div>
-                        </td>
-                        <td class="p-2 border border-gray-200 font-mono text-xs">${item.product_sku || 'N/A'}</td>
-                        <td class="p-2 border border-gray-200 font-mono">${DPUWOO_Utils.formatPrice(item.old_regular_price)}</td>
-                        <td class="p-2 border border-gray-200 font-mono">${DPUWOO_Utils.formatPrice(item.new_regular_price)}</td>
-                        <td class="p-2 border border-gray-200 font-mono ${item.percentage_change > 0 ? 'text-red-600' : 'text-green-600'}">
+       items.forEach(function(item) {
+            const statusClass = DPUWOO_Utils.getStatusClass(item.status);
+            const statusText = DPUWOO_Utils.getStatusText(item.status);
+            const percentageChange = item.percentage_change ? 
+                parseFloat(item.percentage_change).toFixed(2) + '%' : '-';
+            
+            // Formatear precios
+            const oldRegularPrice = DPUWOO_Utils.formatPrice(item.old_regular_price);
+            const newRegularPrice = DPUWOO_Utils.formatPrice(item.new_regular_price);
+            const oldSalePrice = DPUWOO_Utils.formatPrice(item.old_sale_price);
+            const newSalePrice = DPUWOO_Utils.formatPrice(item.new_sale_price);
+            
+            // Determinar si hay cambios
+            const regularChanged = parseFloat(item.old_regular_price || 0) !== parseFloat(item.new_regular_price || 0);
+            const saleChanged = parseFloat(item.old_sale_price || 0) !== parseFloat(item.new_sale_price || 0);
+            
+            detailsHtml += `
+                <tr class="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                    <td class="p-3 border border-gray-200">
+                        <div class="font-medium text-gray-800">${item.product_name || 'N/A'}</div>
+                        <div class="text-xs text-gray-500 mt-1">ID: ${item.product_id}</div>
+                    </td>
+                    
+                    <!-- Precios Regulares -->
+                    <td class="p-3 border border-gray-200">
+                        <div class="flex flex-col">
+                            <!-- Precio Anterior (tachado) -->
+                            <div class="mb-1">
+                                <span class="text-gray-400 text-sm line-through">${oldRegularPrice}</span>
+                            </div>
+                            
+                            <!-- Precio Nuevo -->
+                            <div class="${regularChanged ? 'font-bold' : ''}">
+                                <span class="font-mono ${regularChanged ? 'text-gray-900' : 'text-gray-800'}">
+                                    ${newRegularPrice}
+                                </span>
+                            </div>
+                        </div>
+                    </td>
+                    
+                    <!-- Precios de Oferta -->
+                    <td class="p-3 border border-gray-200">
+                        <div class="flex flex-col">
+                            <!-- Precio Anterior (tachado) -->
+                            <div class="mb-1">
+                                ${parseFloat(item.old_sale_price || 0) > 0 ? 
+                                    `<span class="text-gray-400 text-sm line-through">${oldSalePrice}</span>` :
+                                    '<span class="text-xs text-gray-400 italic">Sin oferta</span>'
+                                }
+                            </div>
+                            
+                            <!-- Precio Nuevo -->
+                            <div class="${saleChanged ? 'font-bold' : ''}">
+                                ${parseFloat(item.new_sale_price || 0) > 0 ? 
+                                    `<span class="font-mono text-gray-900">
+                                        ${newSalePrice}
+                                    </span>` :
+                                    ''
+                                }
+                            </div>
+                        </div>
+                    </td>
+                    
+                    <!-- Porcentaje de Cambio -->
+                    <td class="p-3 border border-gray-200">
+                        <span class="font-bold ${item.percentage_change > 0 ? 'text-red-600' : 'text-green-600'}">
                             ${percentageChange}
-                        </td>
-                        <td class="p-2 border border-gray-200">
-                            <span class="px-2 py-1 rounded-full text-xs ${statusClass}">${statusText}</span>
-                        </td>
-                        <td class="p-2 border border-gray-200 text-xs">${item.reason || '-'}</td>
-                    </tr>
-                `;
-            });
+                        </span>
+                    </td>
+                    
+                    <!-- Estado -->
+                    <td class="p-3 border border-gray-200">
+                        <span class="px-2 py-1 rounded-full text-xs ${statusClass} font-medium">
+                            ${statusText}
+                        </span>
+                    </td>
+                </tr>
+            `;
+        });
 
             detailsHtml += '</tbody></table></div>';
             $('#dpuwoo-run-details-content').html(detailsHtml);

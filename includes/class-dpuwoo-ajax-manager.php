@@ -3,18 +3,10 @@ if (!defined('ABSPATH')) exit;
 
 class Ajax_Manager
 {
-    public static function init()
-    {
-        add_action('wp_ajax_dpuwoo_simulate_batch', [__CLASS__, 'ajax_simulate_batch']);
-        add_action('wp_ajax_dpuwoo_update_batch', [__CLASS__, 'ajax_update_batch']);
-        add_action('wp_ajax_dpuwoo_revert_item', [__CLASS__, 'ajax_revert_item']);
-        add_action('wp_ajax_dpuwoo_revert_run', [__CLASS__, 'ajax_revert_run']);
-    }
-
     /**
      * Nueva simulación por lotes
      */
-    public static function ajax_simulate_batch() {
+    public function ajax_simulate_batch() {
         if (!current_user_can('manage_options')) wp_send_json_error('No permissions');
         check_ajax_referer('dpuwoo_nonce', 'nonce');
         
@@ -36,7 +28,7 @@ class Ajax_Manager
         wp_send_json_success($res);
     }
 
-    public static function ajax_get_runs()
+    public function ajax_get_runs()
     {
         if (!current_user_can('manage_options')) wp_send_json_error('No permissions');
         check_ajax_referer('dpuwoo_nonce', 'nonce');
@@ -46,7 +38,7 @@ class Ajax_Manager
         wp_send_json_success($rows);
     }
 
-    public static function ajax_get_run_items()
+    public function ajax_get_run_items()
     {
         if (!current_user_can('manage_options')) wp_send_json_error('No permissions');
         check_ajax_referer('dpuwoo_nonce', 'nonce');
@@ -64,7 +56,7 @@ class Ajax_Manager
     /**
      * Actualización real por lotes (después de simulación)
      */
-    public static function ajax_update_batch() {
+    public function ajax_update_batch() {
         if (!current_user_can('manage_options')) wp_send_json_error('No permissions');
         check_ajax_referer('dpuwoo_nonce', 'nonce');
         
@@ -85,7 +77,7 @@ class Ajax_Manager
         wp_send_json_success($res);
     }
 
-    public static function ajax_revert_item()
+    public function ajax_revert_item()
     {
         if (!current_user_can('manage_options')) wp_send_json_error('No permissions');
         check_ajax_referer('dpuwoo_nonce', 'nonce');
@@ -98,7 +90,7 @@ class Ajax_Manager
         wp_send_json_success(['message' => 'reverted', 'log_id' => $log_id]);
     }
 
-    public static function ajax_revert_run()
+    public function ajax_revert_run()
     {
         if (!current_user_can('manage_options')) wp_send_json_error('No permissions');
         check_ajax_referer('dpuwoo_nonce', 'nonce');

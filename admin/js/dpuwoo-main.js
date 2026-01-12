@@ -113,9 +113,9 @@
                 // Un proceso es "Exitoso sin cambios" si no hay actualizaciones pero tampoco errores críticos
                 const hasRealChanges = summary.updated > 0;
                 const totalProcessed = (summary.updated || 0) + (summary.skipped || 0) + (summary.errors || 0);
-
-                const oldRate = typeof dpuwoo_params !== 'undefined' ? dpuwoo_params.baseline_rate : '0.00';
-                const newRate = data.rate || '0.00';
+                console.log(data)
+                const oldRate = data.previous_rate;
+                const newRate = data.rate;
                 
                 // Determinar si el dólar cambió o es el mismo
                 const rateChanged = parseFloat(oldRate) !== parseFloat(newRate);
@@ -346,7 +346,13 @@
                     $icon.text($rows.hasClass('hidden') ? '⊕' : '⊖');
                     $(this).toggleClass('bg-purple-50');
                 });
-            }
+            },
+            formatPrice: function(price) {
+                if (price === null || price === undefined || price === '' || parseFloat(price) === 0) {
+                    return '-';
+                }
+                return '$' + parseFloat(price).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            },
         };
 
         // Exponer variables globales
@@ -356,6 +362,7 @@
         if (window.DPUWOO_Tabs) DPUWOO_Tabs.init();
         if (window.DPUWOO_Simulation) DPUWOO_Simulation.init();
         if (window.DPUWOO_Update) DPUWOO_Update.init();
+        if (window.DPUWOO_Logs) DPUWOO_Logs.init();
     });
 
 })(jQuery);

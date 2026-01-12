@@ -192,23 +192,9 @@ class Price_Updater {
         // Si no hay ejecuciones previas, usar baseline
         $last_applied_dollar = $this->get_last_applied_dollar();
         $previous_dollar_value = $last_applied_dollar > 0 ? $last_applied_dollar : $baseline;
-        $reference_type = $last_applied_dollar > 0 ? 'last_applied' : 'baseline';
         
         $ratio = ($previous_dollar_value > 0) ? ($current_rate / $previous_dollar_value) : 1;
         $percentage_change = ($previous_dollar_value > 0) ? (($current_rate - $previous_dollar_value) / $previous_dollar_value * 100) : 0;
-        
-        $margin = 0.0001;
-        
-        // Solo verificar cambio insignificante para actualización real, no para simulación
-        if (!$simulate && abs($ratio - 1.0) < $margin && $batch === 0) {
-            return [
-                'error' => 'insignificant_change',
-                'message' => sprintf('El cambio es insignificante: Referencia: $%s, Actual: $%s', 
-                    number_format($previous_dollar_value, 4), 
-                    number_format($current_rate, 4)),
-                'summary' => ['updated' => 0, 'errors' => 0, 'skipped' => 0, 'simulated' => $simulate]
-            ];
-        }
         
         $total_products = $this->product_repo->count_all_products();
         $total_batches = ($total_products === 0) ? 0 : (int) ceil($total_products / self::BATCH_SIZE);

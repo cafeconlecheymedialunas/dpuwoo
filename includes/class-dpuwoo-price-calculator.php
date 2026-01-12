@@ -82,8 +82,6 @@ class Price_Calculator
             $calculated_new_sale_price = $this->apply_ratio($current_sale_price, $ratio, 'sale_price_ratio');
             
             // Aplicar reglas globales y de categoría (usando la misma lógica)
-            $calculated_new_sale_price = $this->apply_global_extra($calculated_new_sale_price, $opts, 'sale_price_extra');
-            $calculated_new_sale_price = $this->apply_category_rules($calculated_new_sale_price, $product, $product_id, 'sale_price_category');
             $calculated_new_sale_price = $this->apply_global_rounding($calculated_new_sale_price, $opts, 'sale_price_rounding');
 
             $calculated_new_sale_price = round($calculated_new_sale_price, 2);
@@ -195,51 +193,7 @@ class Price_Calculator
         return $price * $ratio;
     }
 
-    protected function apply_global_extra($price, $opts, $rule_key = 'global_extra')
-    {
-        $extra_pct = floatval($opts['extra_pct'] ?? 0);
-        if ($extra_pct != 0 && $rule_key === 'global_extra') {
-            $this->rules[] = "global_extra_{$extra_pct}%";
-        }
-        if ($extra_pct != 0) {
-            $price *= (1 + $extra_pct / 100);
-        }
-        return $price;
-    }
-
-    protected function apply_category_rules($price, $product, $product_id, $rule_key = 'category_rules')
-    {
-        $category_rules = get_option('dpuwoo_category_rules', []);
-
-        $category_product_id = $product->is_type('variation')
-            ? $product->get_parent_id()
-            : $product_id;
-
-        $cats = get_the_terms($category_product_id, 'product_cat');
-        if (!$cats || !is_array($cats)) {
-            return $price;
-        }
-
-        foreach ($cats as $cat) {
-            if (!isset($category_rules[$cat->term_id])) continue;
-
-            $rule = $category_rules[$cat->term_id];
-
-            if (!empty($rule['extra_percent'])) {
-                $extra = floatval($rule['extra_percent']);
-                if ($rule_key === 'category_rules') {
-                    $this->rules[] = "{$cat->name} (+{$extra}%)";
-                }
-                $price *= (1 + $extra / 100);
-            }
-
-            if (!empty($rule['round']) && $rule_key === 'category_rules') {
-                $price = $this->apply_rounding($price, $rule['round'], $rule['round_multiple'] ?? 10, "{$cat->name}_rounding");
-            }
-        }
-
-        return $price;
-    }
+ 
 
     protected function apply_global_rounding($price, $opts, $rule_key = 'global_rounding')
     {
