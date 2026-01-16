@@ -81,6 +81,162 @@
 
             </div>
 
+            <!-- Configuración Activa Detallada -->
+            <div class="mt-8 bg-white rounded-xl border border-gray-200 shadow-sm">
+                <div class="p-6 border-b border-gray-100">
+                    <h3 class="text-lg font-semibold text-gray-800 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                        Configuración Activa del Sistema
+                    </h3>
+                    <p class="text-sm text-gray-500 mt-1">Todas las configuraciones que se aplican en las actualizaciones de precios</p>
+                </div>
+                <div class="p-6">
+                    <?php 
+                    $opts = get_option('dpuwoo_settings', []);
+                    $providers = class_exists('API_Client') ? API_Client::get_available_providers() : [];
+                    $provider_key = $opts['api_provider'] ?? '';
+                    $provider_info = isset($providers[$provider_key]) ? $providers[$provider_key] : [];
+                    $store_currency = get_woocommerce_currency();
+                    ?>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <!-- Columna Izquierda: Configuración Base -->
+                        <div class="space-y-6">
+                            <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                                <h4 class="font-bold text-blue-800 mb-3 flex items-center">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"></path>
+                                    </svg>
+                                    Configuración de Origen
+                                </h4>
+                                <div class="space-y-3">
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-gray-600">Proveedor API:</span>
+                                        <span class="font-semibold"><?php echo esc_html($provider_info['name'] ?? $provider_key ?: 'No configurado'); ?></span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-gray-600">Moneda de Referencia:</span>
+                                        <span class="font-semibold"><?php echo esc_html($opts['reference_currency'] ?? 'USD'); ?></span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-gray-600">Tipo de Cotización:</span>
+                                        <span class="font-semibold capitalize"><?php echo esc_html($opts['dollar_type'] ?? 'oficial'); ?></span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-gray-600">Moneda Tienda:</span>
+                                        <span class="font-semibold"><?php echo esc_html($store_currency); ?></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-green-50 p-4 rounded-lg border border-green-100">
+                                <h4 class="font-bold text-green-800 mb-3 flex items-center">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                    </svg>
+                                    Valores Base
+                                </h4>
+                                <div class="space-y-3">
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-gray-600">Valor Base Histórico:</span>
+                                        <span class="font-semibold">$<?php echo number_format(floatval($opts['baseline_dollar_value'] ?? 0), 2); ?></span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-gray-600">Último Valor Aplicado:</span>
+                                        <span class="font-semibold">$<?php echo number_format(floatval($opts['last_rate'] ?? 0), 2); ?></span>
+                                    </div>
+                                    <?php 
+                                    $baseline = floatval($opts['baseline_dollar_value'] ?? 0);
+                                    $last_rate = floatval($opts['last_rate'] ?? 0);
+                                    if ($baseline > 0 && $last_rate > 0):
+                                        $ratio = $last_rate / $baseline;
+                                    ?>
+                                    <div class="flex justify-between pt-2 border-t border-green-200">
+                                        <span class="text-sm text-gray-600 font-medium">Ratio Actual:</span>
+                                        <span class="font-bold text-green-700"><?php echo number_format($ratio, 4); ?>x</span>
+                                    </div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Columna Derecha: Reglas de Cálculo -->
+                        <div class="space-y-6">
+                            <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-100">
+                                <h4 class="font-bold text-yellow-800 mb-3 flex items-center">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                                    </svg>
+                                    Reglas de Cálculo
+                                </h4>
+                                <div class="space-y-3">
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-gray-600">Margen de Corrección:</span>
+                                        <span class="font-semibold"><?php echo number_format(floatval($opts['margin'] ?? 0), 2); ?>%</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-gray-600">Umbral de Cambio:</span>
+                                        <span class="font-semibold"><?php echo number_format(floatval($opts['threshold'] ?? 0.5), 2); ?>%</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-gray-600">Dirección Permitida:</span>
+                                        <span class="font-semibold capitalize">
+                                            <?php 
+                                            $direction = $opts['update_direction'] ?? 'bidirectional';
+                                            switch($direction) {
+                                                case 'up_only': echo 'Solo Subida'; break;
+                                                case 'down_only': echo 'Solo Bajada'; break;
+                                                default: echo 'Ambas Direcciones';
+                                            }
+                                            ?>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-purple-50 p-4 rounded-lg border border-purple-100">
+                                <h4 class="font-bold text-purple-800 mb-3 flex items-center">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"></path>
+                                    </svg>
+                                    Formato de Precios
+                                </h4>
+                                <div class="space-y-3">
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-gray-600">Tipo de Redondeo:</span>
+                                        <span class="font-semibold capitalize">
+                                            <?php 
+                                            $rounding = $opts['rounding_type'] ?? 'integer';
+                                            switch($rounding) {
+                                                case 'none': echo 'Sin Redondeo'; break;
+                                                case 'integer': echo 'Enteros'; break;
+                                                case 'ceil': echo 'Hacia Arriba'; break;
+                                                case 'floor': echo 'Hacia Abajo'; break;
+                                                case 'nearest': echo 'Al Más Cercano'; break;
+                                                default: echo ucfirst($rounding);
+                                            }
+                                            ?>
+                                        </span>
+                                    </div>
+                                    <?php if ($rounding === 'nearest'): ?>
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-gray-600">Redondear a:</span>
+                                        <span class="font-semibold">$<?php echo esc_html($opts['nearest_to'] ?? '1'); ?></span>
+                                    </div>
+                                    <?php endif; ?>
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-gray-600">Precios Psicológicos:</span>
+                                        <span class="font-semibold"><?php echo !empty($opts['psychological_pricing']) ? 'Activado' : 'Desactivado'; ?></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Sección de Acciones -->
             <div class="mt-8 p-6 bg-blue-50 rounded-lg border border-blue-200">
                 <h3 class="text-lg font-semibold text-blue-800 mb-4">Proceso de Actualización</h3>

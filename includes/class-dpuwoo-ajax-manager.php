@@ -20,10 +20,25 @@ class Ajax_Manager
             wp_send_json_error($res);
         }
         
-        // Añadir información sobre qué referencia se usó
+        // Añadir información detallada de configuración
         $opts = get_option('dpuwoo_settings', []);
         $res['reference_used'] = 'baseline'; // Para simulación
         $res['baseline_rate'] = floatval($opts['baseline_dollar_value'] ?? 0);
+        
+        // Añadir configuración completa para mostrar en resultados
+        $res['execution_config'] = [
+            'reference_currency' => $opts['reference_currency'] ?? 'USD',
+            'api_provider' => $opts['api_provider'] ?? 'dolarapi_argentina',
+            'dollar_type' => $opts['dollar_type'] ?? 'oficial',
+            'margin' => floatval($opts['margin'] ?? 0),
+            'threshold' => floatval($opts['threshold'] ?? 0.5),
+            'update_direction' => $opts['update_direction'] ?? 'bidirectional',
+            'rounding_type' => $opts['rounding_type'] ?? 'integer',
+            'psychological_pricing' => !empty($opts['psychological_pricing']),
+            'exclude_on_sale' => !empty($opts['exclude_on_sale']),
+            'baseline_dollar_value' => floatval($opts['baseline_dollar_value'] ?? 0),
+            'last_rate' => floatval($opts['last_rate'] ?? 0)
+        ];
         
         wp_send_json_success($res);
     }
@@ -73,6 +88,21 @@ class Ajax_Manager
         $res['reference_used'] = 'last_rate'; // Para actualización real
         $res['last_rate'] = floatval($opts['last_rate'] ?? 0);
         $res['baseline_rate'] = floatval($opts['baseline_dollar_value'] ?? 0);
+        
+        // Añadir configuración completa para mostrar en resultados
+        $res['execution_config'] = [
+            'reference_currency' => $opts['reference_currency'] ?? 'USD',
+            'api_provider' => $opts['api_provider'] ?? 'dolarapi_argentina',
+            'dollar_type' => $opts['dollar_type'] ?? 'oficial',
+            'margin' => floatval($opts['margin'] ?? 0),
+            'threshold' => floatval($opts['threshold'] ?? 0.5),
+            'update_direction' => $opts['update_direction'] ?? 'bidirectional',
+            'rounding_type' => $opts['rounding_type'] ?? 'integer',
+            'psychological_pricing' => !empty($opts['psychological_pricing']),
+            'exclude_on_sale' => !empty($opts['exclude_on_sale']),
+            'baseline_dollar_value' => floatval($opts['baseline_dollar_value'] ?? 0),
+            'last_rate' => floatval($opts['last_rate'] ?? 0)
+        ];
         
         wp_send_json_success($res);
     }

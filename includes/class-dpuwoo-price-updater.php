@@ -60,6 +60,22 @@ class Price_Updater {
             $product_sku = $product->get_sku() ?: 'N/A';
             $product_type = $product->get_type();
 
+            // Verificar exclusión de productos en oferta
+            $opts = get_option('dpuwoo_settings', []);
+            if (!empty($opts['exclude_on_sale']) && $product->is_on_sale()) {
+                $skipped_count++;
+                $change_data = $this->create_change_data(
+                    $pid, $product_name, $product_sku, $product_type, 
+                    floatval($product->get_regular_price()), 
+                    floatval($product->get_regular_price()), 
+                    floatval($product->get_sale_price()), 
+                    floatval($product->get_sale_price()), 
+                    0, 0, 'skipped', 'Producto en oferta excluido'
+                );
+                $changes[] = $change_data;
+                continue;
+            }
+
             if ($product->is_type('variable')) {
                  $variable_changes = $this->update_variable_product($product, $current_rate, $previous_dollar_value, $simulate);
                 
@@ -196,6 +212,26 @@ class Price_Updater {
         $ratio = ($previous_dollar_value > 0) ? ($current_rate / $previous_dollar_value) : 1;
         $percentage_change = ($previous_dollar_value > 0) ? (($current_rate - $previous_dollar_value) / $previous_dollar_value * 100) : 0;
         
+        // Aplicar umbral de cambio - si no supera el umbral, no procesar
+        $threshold = floatval($opts['threshold'] ?? 0.5);
+        $abs_percentage_change = abs($percentage_change);
+        
+        if ($threshold > 0 && $abs_percentage_change < $threshold) {
+            return [
+                'rate' => $current_rate,
+                'baseline_rate' => $baseline,
+                'previous_rate' => $previous_dollar_value,
+                'ratio' => $ratio,
+                'percentage_change' => $percentage_change,
+                'threshold_met' => false,
+                'threshold_required' => $threshold,
+                'message' => 'Umbral de cambio no alcanzado',
+                'total_batches' => 0,
+                'changes' => [],
+                'summary' => ['updated' => 0, 'errors' => 0, 'skipped' => 0, 'simulated' => $simulate]
+            ];
+        }
+        
         $total_products = $this->product_repo->count_all_products();
         $total_batches = ($total_products === 0) ? 0 : (int) ceil($total_products / self::BATCH_SIZE);
         $offset = $batch * self::BATCH_SIZE;
@@ -303,6 +339,27 @@ class Price_Updater {
             $parent_name = $variable_product->get_name();
             if (strpos($variation_name, $parent_name) === 0) {
                  $variation_name = trim(str_replace($parent_name, '', $variation_name), ' -');
+            }
+
+            // Verificar exclusión de productos en oferta para variaciones también
+            $opts = get_option('dpuwoo_settings', []);
+            if (!empty($opts['exclude_on_sale']) && $variation->is_on_sale()) {
+                $skipped_count++;
+                $change_data = $this->create_change_data(
+                    $variation_id, 
+                    $variable_product->get_name() . ' - ' . $variation_name, 
+                    $variation->get_sku() ?: 'N/A', 
+                    'variation',
+                    floatval($variation->get_regular_price()), 
+                    floatval($variation->get_regular_price()), 
+                    floatval($variation->get_sale_price()), 
+                    floatval($variation->get_sale_price()), 
+                    0, 0, 'skipped', 'Variación en oferta excluida'
+                );
+                $change_data['parent_id'] = $variable_product->get_id();
+                $change_data['variation_name'] = $variation_name;
+                $changes[] = $change_data;
+                continue;
             }
 
             $calc_result = Price_Calculator::get_instance()->calculate_for_product(

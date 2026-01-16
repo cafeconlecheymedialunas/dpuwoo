@@ -66,7 +66,15 @@ class Price_Calculator
         $new_regular_price = $this->apply_ratio($current_regular_price, $ratio);
         $new_regular_price = $this->apply_global_extra($new_regular_price, $opts);
         $new_regular_price = $this->apply_category_rules($new_regular_price, $product, $product_id);
-        $new_regular_price = $this->apply_global_rounding($new_regular_price, $opts);
+        
+        // Aplicar configuración de redondeo
+        $new_regular_price = $this->apply_configured_rounding($new_regular_price, $opts);
+        
+        // Aplicar precios psicológicos si está activo
+        $new_regular_price = $this->apply_psychological_pricing($new_regular_price, $opts);
+        
+        // Aplicar dirección de actualización
+        $new_regular_price = $this->apply_update_direction($new_regular_price, $current_regular_price, $opts);
         
         $new_regular_price = round($new_regular_price, 2); 
 
@@ -175,6 +183,136 @@ class Price_Calculator
         return $last_dollar ? floatval($last_dollar) : 0;
     }
 
+    /*==============================================================
+    =           Configuración de Redondeo y Precios Psicológicos
+    ==============================================================*/
+    
+    /**
+     * Aplica el redondeo configurado según los settings
+     */
+    protected function apply_configured_rounding($price, $opts)
+    {
+        $rounding_type = $opts['rounding_type'] ?? 'integer';
+        $nearest_to = floatval($opts['nearest_to'] ?? 1);
+        
+        switch ($rounding_type) {
+            case 'none':
+                // Sin redondeo
+                $this->rules[] = 'rounding_none';
+                return $price;
+                
+            case 'integer':
+                // Redondeo a enteros
+                $rounded = round($price);
+                $this->rules[] = 'rounding_integer';
+                return $rounded;
+                
+            case 'ceil':
+                // Redondeo hacia arriba
+                $rounded = ceil($price);
+                $this->rules[] = 'rounding_ceil';
+                return $rounded;
+                
+            case 'floor':
+                // Redondeo hacia abajo
+                $rounded = floor($price);
+                $this->rules[] = 'rounding_floor';
+                return $rounded;
+                
+            case 'nearest':
+                // Redondeo al más cercano (múltiplo)
+                $rounded = round($price / $nearest_to) * $nearest_to;
+                $this->rules[] = "rounding_nearest_{$nearest_to}";
+                return $rounded;
+                
+            default:
+                // Por defecto redondeo normal
+                $this->rules[] = 'rounding_default';
+                return round($price, 2);
+        }
+    }
+    
+    /**
+     * Aplica precios psicológicos si están activos
+     */
+    protected function apply_psychological_pricing($price, $opts)
+    {
+        if (empty($opts['psychological_pricing'])) {
+            return $price;
+        }
+        
+        $ending = $opts['psychological_ending'] ?? '99';
+        
+        // Convertir a entero y ajustar el final
+        $integer_part = intval(floor($price));
+        
+        switch ($ending) {
+            case '99':
+                $final_price = $integer_part + 0.99;
+                break;
+            case '90':
+                $final_price = $integer_part + 0.90;
+                break;
+            case '95':
+                $final_price = $integer_part + 0.95;
+                break;
+            default:
+                $final_price = $price;
+        }
+        
+        $this->rules[] = "psychological_{$ending}";
+        return $final_price;
+    }
+    
+    /**
+     * Aplica margen de corrección configurado
+     */
+    protected function apply_global_extra($price, $opts)
+    {
+        $margin = floatval($opts['margin'] ?? 0);
+        
+        if ($margin != 0) {
+            $adjusted_price = $price * (1 + ($margin / 100));
+            $this->rules[] = "margin_{$margin}%";
+            return $adjusted_price;
+        }
+        
+        return $price;
+    }
+    
+    /**
+     * Aplica reglas de dirección de actualización
+     */
+    protected function apply_update_direction($new_price, $old_price, $opts)
+    {
+        $direction = $opts['update_direction'] ?? 'bidirectional';
+        
+        switch ($direction) {
+            case 'up_only':
+                // Solo permitir aumentos
+                if ($new_price < $old_price) {
+                    $this->rules[] = 'direction_up_only_blocked';
+                    return $old_price; // Mantener precio original
+                }
+                $this->rules[] = 'direction_up_only_allowed';
+                return $new_price;
+                
+            case 'down_only':
+                // Solo permitir disminuciones
+                if ($new_price > $old_price) {
+                    $this->rules[] = 'direction_down_only_blocked';
+                    return $old_price; // Mantener precio original
+                }
+                $this->rules[] = 'direction_down_only_allowed';
+                return $new_price;
+                
+            default:
+                // Bidireccional - permitir ambos
+                $this->rules[] = 'direction_bidirectional';
+                return $new_price;
+        }
+    }
+    
     /*==============================================================
     =           Helpers (incluyendo rules acumulativas)
     ==============================================================*/
