@@ -17,6 +17,26 @@ class API_Client
         return self::init();
     }
 
+    public static function get_available_providers()
+    {
+        return [
+            'dolarapi' => [
+                'name' => 'DolarAPI',
+                'description' => 'API pública de cotizaciones del dólar en Argentina',
+                'url' => 'https://dolarapi.com',
+                'requires_key' => false,
+                'types' => ['oficial', 'blue', 'bolsa', 'contadoconliqui', 'tarjeta']
+            ],
+            'custom' => [
+                'name' => 'API Personalizada',
+                'description' => 'Configurar endpoint personalizado',
+                'url' => '',
+                'requires_key' => true,
+                'types' => []
+            ]
+        ];
+    }
+
     public function get_rate($type = 'oficial')
     {
         $opts = get_option('dpuwoo_settings', []);

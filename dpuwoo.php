@@ -24,6 +24,7 @@
  * Text Domain:       dpuwoo
  * Domain Path:       /languages
  */
+
 require_once plugin_dir_path( __FILE__ ) . 'includes/class-dpuwoo-activator.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/class-dpuwoo-deactivator.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/class-dpuwoo.php';

@@ -48,30 +48,39 @@ class Activator
 
     private static function fetch_initial_dollar_value()
     {
+        // Check if wp_remote_get exists (WordPress environment)
+        if (!function_exists('wp_remote_get')) {
+            error_log('DPU WooCommerce - wp_remote_get not available, using default dollar value');
+            return 1; // Return default value
+        }
+
         $url = "https://dolarapi.com/v1/dolares/oficial";
         $args = ['timeout' => 15, 'sslverify' => false];
 
         $res = wp_remote_get($url, $args);
         if (is_wp_error($res)) {
             error_log('DPU WooCommerce - Error fetching dollar: ' . $res->get_error_message());
-            return false;
+            return 1; // Return default value on error
         }
 
         $body = json_decode(wp_remote_retrieve_body($res), true);
         
         if (!isset($body['venta'])) {
             error_log('DPU WooCommerce - Invalid API response');
-            return false;
+            return 1; // Return default value on invalid response
         }
 
         $rate = floatval($body['venta']);
-        return ($rate > 0) ? $rate : false;
+        return ($rate > 0) ? $rate : 1; // Ensure positive value
     }
 
     private static function add_activation_notice($detected_rate)
     {
+        // Check if esc_html exists
+        $safe_detected_rate = function_exists('esc_html') ? esc_html($detected_rate) : $detected_rate;
+        
         $message = $detected_rate ? 
-            sprintf('DPU WooCommerce activado. Dólar base detectado: <strong>$%s</strong>', esc_html($detected_rate)) :
+            sprintf('DPU WooCommerce activado. Dólar base detectado: <strong>$%s</strong>', $safe_detected_rate) :
             'DPU WooCommerce activado. Configura el dólar base en los ajustes.';
 
         update_option('dpuwoo_admin_notice', [
@@ -84,6 +93,12 @@ class Activator
     private static function create_tables()
     {
         global $wpdb;
+
+        // Check if $wpdb is available
+        if (!isset($wpdb) || !$wpdb) {
+            error_log('DPU WooCommerce - $wpdb not available, skipping table creation');
+            return;
+        }
 
         $charset_collate = $wpdb->get_charset_collate();
 
@@ -118,7 +133,11 @@ class Activator
             KEY product_id (product_id)
         ) $charset_collate;";
 
-        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        // Check if dbDelta function exists
+        if (!function_exists('dbDelta')) {
+            require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        }
+        
         dbDelta($sql_runs);
         dbDelta($sql_items);
     }
