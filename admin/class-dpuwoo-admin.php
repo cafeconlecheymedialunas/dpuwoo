@@ -146,6 +146,21 @@ class Admin
 			false
 		);
 
+		
+		wp_enqueue_script(
+			$this->plugin_name . '-currencies',
+			plugin_dir_url(__FILE__) . 'js/currencies.js',
+			array('jquery', $this->plugin_name . '-main'),
+			$this->version,
+			false
+		);
+
+		 wp_localize_script($this->plugin_name . '-currencies', 'dpuwoo_ajax', [
+			'ajax_url' => admin_url('admin-ajax.php'),
+			'nonce' => wp_create_nonce('dpuwoo_ajax_nonce'),
+			'base_currency' => get_woocommerce_currency()
+		]);
+
 		// CSS
 		wp_enqueue_style($this->plugin_name, plugin_dir_url(__FILE__) . 'css/dpuwoo-main.css');
 	}

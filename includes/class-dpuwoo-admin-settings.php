@@ -56,24 +56,40 @@ class Admin_Settings
         // ========== CAMPOS DE CONFIGURACIÓN DE ORIGEN ==========
         
         add_settings_field(
-            'dpuwoo_baseline_dollar_value',
-            'Tasa de Referencia Base',
-            [__CLASS__, 'render_baseline_dollar'],
-            'dpuwoo_settings',
-            'dpuwoo_main_section'
-        );
-
-        add_settings_field(
             'dpuwoo_api_provider',
             'Proveedor de API',
             [__CLASS__, 'render_api_provider'],
             'dpuwoo_settings',
             'dpuwoo_main_section'
         );
+          
+        add_settings_field(
+            'dpuwoo_country',
+            'País de la tienda',
+            [__CLASS__, 'render_country_selector'],
+            'dpuwoo_settings',
+            'dpuwoo_main_section'
+        );
+
+        add_settings_field(
+            'dpuwoo_base_currency',
+            'Moneda base',
+            [__CLASS__, 'render_base_currency'],
+            'dpuwoo_settings',
+            'dpuwoo_main_section'
+        );
+
+        add_settings_field(
+            'dpuwoo_reference_currency',
+            'Moneda de referencia',
+            [__CLASS__, 'render_reference_currency'],
+            'dpuwoo_settings',
+            'dpuwoo_main_section'
+        );
 
         add_settings_field(
             'dpuwoo_dollar_type',
-            'Tipo de Cotización',
+            'Tipo de cotización',
             [__CLASS__, 'render_dollar_type'],
             'dpuwoo_settings',
             'dpuwoo_main_section'
@@ -166,12 +182,33 @@ class Admin_Settings
     {
         $store_currency = get_woocommerce_currency();
         
+        // Obtener país base de WooCommerce
+        $base_country = get_option('woocommerce_default_country', '');
+        if (strpos($base_country, ':') !== false) {
+            $base_country = substr($base_country, 0, strpos($base_country, ':'));
+        }
+        
+        // Obtener nombre del país
+        $country_name = '';
+        if (function_exists('WC') && method_exists(WC()->countries, 'get_countries')) {
+            $countries = WC()->countries->get_countries();
+            $country_name = $countries[$base_country] ?? $base_country;
+        } else {
+            $country_name = $base_country;
+        }
+        
+        $opts = get_option('dpuwoo_settings', []);
+        
         echo '<div class="dpuwoo-section-description">';
         echo '<p><strong>Configuración base del sistema de actualización:</strong></p>';
         
         echo '<div class="notice notice-info" style="padding: 10px; margin: 10px 0;">';
-        echo '<strong>Moneda base:</strong> ' . esc_html($store_currency) . ' (configurada en WooCommerce)';
+        echo '<strong>País de la tienda:</strong> ' . esc_html($country_name . ' (' . $base_country . ')') . '<br>';
+        echo '<strong>Moneda base:</strong> ' . esc_html($store_currency) . ' (precios actuales del catálogo)<br>';
+        echo '<strong>Moneda de referencia:</strong> ' . esc_html($opts['reference_currency'] ?? 'USD') . ' (para el cálculo)';
         echo '</div>';
+        
+        echo '<p class="description">El país y la moneda base se obtienen de la configuración principal de WooCommerce. Para modificarlos, ve a <strong>WooCommerce → Ajustes → Generales</strong>.</p>';
         echo '</div>';
     }
 
@@ -210,12 +247,14 @@ class Admin_Settings
         $out = [];
         
         // Configuración de Origen
-        $out['baseline_dollar_value'] = floatval($input['baseline_dollar_value'] ?? 0);
         $out['api_provider'] = sanitize_text_field($input['api_provider'] ?? 'dolarsi');
+        $out['country'] = sanitize_text_field($input['country'] ?? 'AR');
+        $out['base_currency'] = sanitize_text_field($input['base_currency'] ?? get_woocommerce_currency());
+        $out['reference_currency'] = sanitize_text_field($input['reference_currency'] ?? 'USD');
         $out['dollar_type'] = sanitize_text_field($input['dollar_type'] ?? 'oficial');
+        $out['baseline_dollar_value'] = floatval($input['baseline_dollar_value'] ?? 0);
         
         // Agregar campos de referencia de moneda
-        $out['reference_currency'] = sanitize_text_field($input['reference_currency'] ?? 'USD');
         $out['last_rate'] = floatval($input['last_rate'] ?? 0);
         
         // Cálculo y Ajuste
@@ -251,74 +290,150 @@ class Admin_Settings
 
     // ========== FUNCIONES DE RENDER ==========
 
-    public static function render_baseline_dollar()
+    public static function render_country_selector()
     {
-        $opts = get_option('dpuwoo_settings', []);
-        $val = $opts['baseline_dollar_value'] ?? '';
-        $current_rate = get_option('dpuwoo_current_rate', 0);
+        // Obtener el país base desde las opciones generales de WooCommerce
+        $base_country = get_option('woocommerce_default_country', '');
+        
+        // Extraer solo el código del país (ej: 'AR' de 'AR:C')
+        if (strpos($base_country, ':') !== false) {
+            $base_country = substr($base_country, 0, strpos($base_country, ':'));
+        }
+        
+        // Obtener el nombre del país a partir de su código
+        $country_name = $base_country;
+        if (function_exists('WC') && method_exists(WC()->countries, 'get_countries')) {
+            $countries = WC()->countries->get_countries();
+            $country_name = $countries[$base_country] ?? $base_country;
+        }
+        
+        // Mostrar la información (solo lectura)
+        echo '<input type="text" readonly value="' . esc_attr($country_name . ' (' . $base_country . ')') . '" class="regular-text" style="background-color:#f0f0f0;">';
+        echo '<p class="description">Configurado en <strong>WooCommerce → Ajustes → Generales → Ubicación de la tienda</strong>. Solo se puede modificar desde allí.</p>';
+        
+        // Campo oculto para guardar el valor en nuestra configuración
+        echo '<input type="hidden" name="dpuwoo_settings[country]" value="' . esc_attr($base_country) . '">';
+    }
+
+    public static function render_base_currency()
+    {
+        // Obtener la moneda base de WooCommerce
         $store_currency = get_woocommerce_currency();
         
-        echo '<input type="number" step="0.01" min="0.01" name="dpuwoo_settings[baseline_dollar_value]" value="' . esc_attr($val) . '" class="regular-text">';
-        echo '<p class="description">';
-        echo 'Valor del ' . esc_html($store_currency) . ' al momento de configurar los precios iniciales.<br>';
+        // Mostrar la información (solo lectura)
+        echo '<input type="text" readonly value="' . esc_attr($store_currency) . '" class="regular-text" style="background-color:#f0f0f0;">';
+        echo '<p class="description">Moneda configurada en <strong>WooCommerce → Ajustes → Generales → Opciones de moneda</strong>. Es la moneda en la que están expresados los precios de tu catálogo.</p>';
         
-        if ($val > 0 && $current_rate > 0) {
-            $variation = (($current_rate - $val) / $val) * 100;
-            
-            echo '<div style="background: #f5f5f5; padding: 8px; margin: 5px 0; border-radius: 4px;">';
-            echo '<strong>Estado actual:</strong><br>';
-            echo '• Base: ' . number_format($val, 2) . ' ARS<br>';
-            echo '• Actual: ' . number_format($current_rate, 2) . ' ARS<br>';
-            echo '• Variación: ' . number_format($variation, 2) . '%';
-            echo '</div>';
-        }
+        // Campo oculto para guardar el valor
+        echo '<input type="hidden" name="dpuwoo_settings[base_currency]" value="' . esc_attr($store_currency) . '">';
+    }
+
+    public static function render_reference_currency()
+    {
+        $opts = get_option('dpuwoo_settings', []);
+        $store_currency = get_woocommerce_currency();
+        $val = $opts['reference_currency'] ?? 'USD';
+
+        // Contenedor para el campo dinámico y el indicador de carga
+        echo '<div id="dpuwoo_currency_selector_container">';
+        echo '<select name="dpuwoo_settings[reference_currency]" id="dpuwoo_reference_currency" class="regular-text" disabled>';
+        echo '<option value="' . esc_attr($val) . '">' . esc_html($val . ' - Cargando...') . '</option>';
+        echo '</select>';
+        echo '<span id="dpuwoo_currency_loading" class="spinner is-active" style="float: none; margin-left: 5px;"></span>';
+        echo '</div>';
+
+        echo '<p class="description" id="dpuwoo_currency_description">';
+        echo 'Moneda cuya cotización se usará para recalcular los precios. Selecciona primero el proveedor de API.';
         echo '</p>';
+
+        // Campo oculto para el país base (obtenido de WooCommerce)
+        $base_country = get_option('woocommerce_default_country', '');
+        if (strpos($base_country, ':') !== false) {
+            $base_country = substr($base_country, 0, strpos($base_country, ':'));
+        }
+        echo '<input type="hidden" id="dpuwoo_base_country" value="' . esc_attr($base_country) . '">';
     }
 
     public static function render_api_provider()
     {
         $opts = get_option('dpuwoo_settings', []);
-        $val = $opts['api_provider'] ?? 'dolarsi';
-        $providers = [
-            'dolarsi' => 'DolarSi.com (Recomendado)',
-            'bluelytics' => 'Bluelytics',
-            'ambito' => 'Ámbito Financiero'
-        ];
-        
-        echo '<select name="dpuwoo_settings[api_provider]" class="regular-text">';
+        $val = $opts['api_provider'] ?? 'dolarapi'; // Valor por defecto DolarAPI
+
+        // Proveedores permitidos
+        $providers = API_Client::get_available_providers();
+
+        echo '<select name="dpuwoo_settings[api_provider]" id="dpuwoo_api_provider" class="regular-text">';
         foreach ($providers as $k => $label) {
-            printf('<option value="%s" %s>%s</option>', 
-                esc_attr($k), 
-                selected($val, $k, false), 
-                esc_html($label)
+            printf(
+                '<option value="%s" %s>%s</option>',
+                esc_attr($k),
+                selected($val, $k, false),
+                esc_html($label["name"])
             );
         }
         echo '</select>';
-        echo '<p class="description">Servicio que provee las cotizaciones actualizadas.</p>';
+        echo '<p class="description">Elige el proveedor de tasas de cambio. Las monedas disponibles se cargarán según tu selección.</p>';
     }
 
     public static function render_dollar_type()
     {
         $opts = get_option('dpuwoo_settings', []);
         $val = $opts['dollar_type'] ?? 'oficial';
-        $types = [
-            'oficial' => 'Oficial', 
-            'blue' => 'Blue', 
-            'mep' => 'MEP', 
-            'ccl' => 'CCL', 
-            'promedio' => 'Promedio'
-        ];
+        
+        // Determinar el país para mostrar tipos relevantes
+        $country = $opts['country'] ?? 'AR';
+        if (empty($country)) {
+            $base_country = get_option('woocommerce_default_country', '');
+            if (strpos($base_country, ':') !== false) {
+                $base_country = substr($base_country, 0, strpos($base_country, ':'));
+            }
+            $country = $base_country;
+        }
+        
+        // Definir tipos según país
+        if ($country === 'AR') {
+            // Tipos para Argentina
+            $currency_types = [
+                'oficial' => 'Oficial (Banco Nación)',
+                'blue' => 'Blue (Informal)',
+                'mep' => 'MEP (Bolsa)',
+                'ccl' => 'CCL (Contado con Liqui)',
+                'mayorista' => 'Mayorista',
+                'tarjeta' => 'Tarjeta (con impuestos)'
+            ];
+        } elseif ($country === 'VE') {
+            // Tipos para Venezuela
+            $currency_types = [
+                'oficial' => 'Oficial BCV',
+                'paralelo' => 'Paralelo',
+                'cripto' => 'Dólar Crypto'
+            ];
+        } else {
+            // Tipos para otros países
+            $currency_types = [
+                'official' => 'Oficial',
+                'buy' => 'Compra',
+                'sell' => 'Venta',
+                'average' => 'Promedio'
+            ];
+        }
         
         echo '<select name="dpuwoo_settings[dollar_type]" class="regular-text">';
-        foreach ($types as $k => $label) {
-            printf('<option value="%s" %s>%s</option>', 
-                esc_attr($k), 
-                selected($val, $k, false), 
+        foreach ($currency_types as $k => $label) {
+            printf(
+                '<option value="%s" %s>%s</option>',
+                esc_attr($k),
+                selected($val, $k, false),
                 esc_html($label)
             );
         }
         echo '</select>';
-        echo '<p class="description">Tipo de cambio a usar para los cálculos.</p>';
+        
+        if ($country === 'AR') {
+            echo '<p class="description">Tipos de cambio específicos para Argentina. El "Oficial" es el más común para importaciones.</p>';
+        } else {
+            echo '<p class="description">Tipo de cambio a usar para los cálculos. Varía según el proveedor de API seleccionado.</p>';
+        }
     }
 
     public static function render_margin()
@@ -327,7 +442,7 @@ class Admin_Settings
         $val = $opts['margin'] ?? 0;
         
         echo '<input type="number" step="0.1" name="dpuwoo_settings[margin]" value="' . esc_attr($val) . '" class="small-text"> %';
-        echo '<p class="description">Porcentaje extra que se suma a la variación del dólar.</p>';
+        echo '<p class="description">Porcentaje extra que se suma a la variación del tipo de cambio.</p>';
     }
 
     public static function render_threshold()
@@ -351,9 +466,10 @@ class Admin_Settings
         
         echo '<select name="dpuwoo_settings[update_direction]" class="regular-text">';
         foreach ($directions as $k => $label) {
-            printf('<option value="%s" %s>%s</option>', 
-                esc_attr($k), 
-                selected($val, $k, false), 
+            printf(
+                '<option value="%s" %s>%s</option>',
+                esc_attr($k),
+                selected($val, $k, false),
                 esc_html($label)
             );
         }
@@ -375,9 +491,10 @@ class Admin_Settings
         
         echo '<select name="dpuwoo_settings[rounding_type]" class="regular-text">';
         foreach ($types as $k => $label) {
-            printf('<option value="%s" %s>%s</option>', 
-                esc_attr($k), 
-                selected($val, $k, false), 
+            printf(
+                '<option value="%s" %s>%s</option>',
+                esc_attr($k),
+                selected($val, $k, false),
                 esc_html($label)
             );
         }
@@ -398,9 +515,10 @@ class Admin_Settings
         
         echo '<select name="dpuwoo_settings[nearest_to]" class="regular-text">';
         foreach ($options as $k => $label) {
-            printf('<option value="%s" %s>%s</option>', 
-                esc_attr($k), 
-                selected($val, $k, false), 
+            printf(
+                '<option value="%s" %s>%s</option>',
+                esc_attr($k),
+                selected($val, $k, false),
                 esc_html($label)
             );
         }
@@ -423,9 +541,10 @@ class Admin_Settings
         echo 'Terminar en: <select name="dpuwoo_settings[psychological_ending]">';
         $endings = ['99' => '.99', '90' => '.90', '95' => '.95'];
         foreach ($endings as $k => $label) {
-            printf('<option value="%s" %s>%s</option>', 
-                esc_attr($k), 
-                selected($ending, $k, false), 
+            printf(
+                '<option value="%s" %s>%s</option>',
+                esc_attr($k),
+                selected($ending, $k, false),
                 esc_html($label)
             );
         }
@@ -447,7 +566,7 @@ class Admin_Settings
         echo '<div style="margin-top: 5px;">';
         echo 'Equivalente a: ' . esc_html($hours) . 'h ' . esc_html($minutes) . 'm';
         echo '</div>';
-        echo '<p class="description">Frecuencia de consulta a la API (mínimo: 300 segundos).</p>';
+        echo '<p class="description">Frecuencia de consulta a la API (mínimo: 300 segundos = 5 minutos).</p>';
     }
 
     public static function render_exclude_on_sale()
@@ -489,5 +608,43 @@ class Admin_Settings
         } else {
             echo '<p>No hay categorías creadas.</p>';
         }
+    }
+
+    // ========== FUNCIONES AUXILIARES ==========
+    
+    private static function get_currency_types_by_country($country_code)
+    {
+        $types_by_country = [
+            'AR' => [
+                'oficial' => 'Oficial (Banco Nación)',
+                'blue' => 'Blue (Informal)',
+                'mep' => 'MEP (Bolsa)',
+                'ccl' => 'CCL (Contado con Liqui)',
+                'mayorista' => 'Mayorista',
+                'tarjeta' => 'Tarjeta (con impuestos)'
+            ],
+            'VE' => [
+                'oficial' => 'Oficial BCV',
+                'paralelo' => 'Paralelo',
+                'cripto' => 'Dólar Crypto'
+            ],
+            'default' => [
+                'official' => 'Oficial',
+                'buy' => 'Compra',
+                'sell' => 'Venta',
+                'average' => 'Promedio'
+            ]
+        ];
+        
+        return $types_by_country[$country_code] ?? $types_by_country['default'];
+    }
+    
+    private static function get_country_name($country_code)
+    {
+        if (function_exists('WC') && method_exists(WC()->countries, 'get_countries')) {
+            $countries = WC()->countries->get_countries();
+            return $countries[$country_code] ?? $country_code;
+        }
+        return $country_code;
     }
 }

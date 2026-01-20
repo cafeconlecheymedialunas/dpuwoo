@@ -169,6 +169,7 @@ class Dpuwoo {
 		$this->loader->add_action('wp_ajax_dpuwoo_get_run_items', $ajax_manager, 'ajax_get_run_items');
 		$this->loader->add_action('wp_ajax_dpuwoo_revert_item', $ajax_manager, 'ajax_revert_item');
 		$this->loader->add_action('wp_ajax_dpuwoo_revert_run', $ajax_manager, 'ajax_revert_run');
+		$this->loader->add_action('wp_ajax_dpuwoo_get_currencies', $ajax_manager, 'ajax_get_currencies');
 	}
 	
 
