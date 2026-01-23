@@ -111,6 +111,11 @@ class Dpuwoo {
 
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-log-repository.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-product-repository.php';
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-trait-request.php';
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-currencyapi-provider.php';
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-exhangerateapi-provider.php';
+
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-dolarapi-provider.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-api.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-price-calculator.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-price-updater.php';
@@ -170,6 +175,7 @@ class Dpuwoo {
 		$this->loader->add_action('wp_ajax_dpuwoo_revert_item', $ajax_manager, 'ajax_revert_item');
 		$this->loader->add_action('wp_ajax_dpuwoo_revert_run', $ajax_manager, 'ajax_revert_run');
 		$this->loader->add_action('wp_ajax_dpuwoo_get_currencies', $ajax_manager, 'ajax_get_currencies');
+		$this->loader->add_action('wp_ajax_dpuwoo_save_settings', $ajax_manager, 'ajax_save_settings');
 	}
 	
 

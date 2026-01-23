@@ -76,3 +76,37 @@
 .price-range {
     font-weight: 500;
 }
+
+/* Estilos para campos de API key condicionales */
+.dpuwoo-api-key-field {
+    transition: all 0.3s ease-in-out;
+    margin-bottom: 15px;
+}
+
+/* Estilos para filas de tabla de API key */
+.dpuwoo-api-row-hidden {
+    display: none !important;
+}
+
+.dpuwoo-api-row-visible {
+    display: table-row !important;
+}
+
+/* Estilos para campos dentro de filas visibles */
+.dpuwoo-api-row-visible .dpuwoo-api-key-field {
+    display: block !important;
+}
+
+.dpuwoo-api-key-hidden {
+    display: none;
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+}
+
+.dpuwoo-api-key-visible {
+    display: block;
+    opacity: 1;
+    max-height: 200px;
+    overflow: visible;
+}

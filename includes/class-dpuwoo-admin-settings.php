@@ -62,6 +62,22 @@ class Admin_Settings
             'dpuwoo_settings',
             'dpuwoo_main_section'
         );
+
+        add_settings_field(
+            'dpuwoo_currencyapi_api_key',
+            'Api Key de CurrencyAPI',
+            [__CLASS__, 'render_currencyapi_api_key'],
+            'dpuwoo_settings',
+            'dpuwoo_main_section'
+        );
+
+        add_settings_field(
+            'dpuwoo_exchangerate_api_key',
+            'Api Key de Exchange Rate',
+            [__CLASS__, 'render_exchangerate_api_key'],
+            'dpuwoo_settings',
+            'dpuwoo_main_section'
+        );
           
         add_settings_field(
             'dpuwoo_country',
@@ -86,15 +102,6 @@ class Admin_Settings
             'dpuwoo_settings',
             'dpuwoo_main_section'
         );
-
-        add_settings_field(
-            'dpuwoo_dollar_type',
-            'Tipo de cotización',
-            [__CLASS__, 'render_dollar_type'],
-            'dpuwoo_settings',
-            'dpuwoo_main_section'
-        );
-
         // ========== CAMPOS DE CÁLCULO Y AJUSTE ==========
         
         add_settings_field(
@@ -248,10 +255,11 @@ class Admin_Settings
         
         // Configuración de Origen
         $out['api_provider'] = sanitize_text_field($input['api_provider'] ?? 'dolarsi');
+        $out['currencyapi_api_key'] = sanitize_text_field($input['currencyapi_api_key'] ?? '');
+        $out['exchangerate_api_key'] = sanitize_text_field($input['exchangerate_api_key'] ?? '');
         $out['country'] = sanitize_text_field($input['country'] ?? 'AR');
         $out['base_currency'] = sanitize_text_field($input['base_currency'] ?? get_woocommerce_currency());
         $out['reference_currency'] = sanitize_text_field($input['reference_currency'] ?? 'USD');
-        $out['dollar_type'] = sanitize_text_field($input['dollar_type'] ?? 'oficial');
         $out['baseline_dollar_value'] = floatval($input['baseline_dollar_value'] ?? 0);
         
         // Agregar campos de referencia de moneda
@@ -375,65 +383,29 @@ class Admin_Settings
         echo '<p class="description">Elige el proveedor de tasas de cambio. Las monedas disponibles se cargarán según tu selección.</p>';
     }
 
-    public static function render_dollar_type()
+   public static function render_currencyapi_api_key()
     {
         $opts = get_option('dpuwoo_settings', []);
-        $val = $opts['dollar_type'] ?? 'oficial';
+        $val = $opts['currencyapi_api_key'] ?? '';
+        $current_provider = $opts['api_provider'] ?? 'dolarapi';
+        $is_visible = ($current_provider === 'currencyapi') ? 'dpuwoo-api-key-visible' : 'dpuwoo-api-key-hidden';
+                
+        echo '<div id="dpuwoo_currencyapi_key_container" class="dpuwoo-api-key-field ' . esc_attr($is_visible) . '">';
+        echo '<input type="password" name="dpuwoo_settings[currencyapi_api_key]" value="' . esc_attr($val) . '" class="regular-text">';
+        echo '<p class="description">Ingrese su API Key de CurrencyAPI. <a href="https://currencyapi.com/" target="_blank">Obtener clave</a></p>';
+    }
+
+    public static function render_exchangerate_api_key()
+    {
+        $opts = get_option('dpuwoo_settings', []);
+        $val = $opts['exchangerate_api_key'] ?? '';
+        $current_provider = $opts['api_provider'] ?? 'dolarapi';
+        $is_visible = ($current_provider === 'exchangerate-api') ? 'dpuwoo-api-key-visible' : 'dpuwoo-api-key-hidden';
         
-        // Determinar el país para mostrar tipos relevantes
-        $country = $opts['country'] ?? 'AR';
-        if (empty($country)) {
-            $base_country = get_option('woocommerce_default_country', '');
-            if (strpos($base_country, ':') !== false) {
-                $base_country = substr($base_country, 0, strpos($base_country, ':'));
-            }
-            $country = $base_country;
-        }
-        
-        // Definir tipos según país
-        if ($country === 'AR') {
-            // Tipos para Argentina
-            $currency_types = [
-                'oficial' => 'Oficial (Banco Nación)',
-                'blue' => 'Blue (Informal)',
-                'mep' => 'MEP (Bolsa)',
-                'ccl' => 'CCL (Contado con Liqui)',
-                'mayorista' => 'Mayorista',
-                'tarjeta' => 'Tarjeta (con impuestos)'
-            ];
-        } elseif ($country === 'VE') {
-            // Tipos para Venezuela
-            $currency_types = [
-                'oficial' => 'Oficial BCV',
-                'paralelo' => 'Paralelo',
-                'cripto' => 'Dólar Crypto'
-            ];
-        } else {
-            // Tipos para otros países
-            $currency_types = [
-                'official' => 'Oficial',
-                'buy' => 'Compra',
-                'sell' => 'Venta',
-                'average' => 'Promedio'
-            ];
-        }
-        
-        echo '<select name="dpuwoo_settings[dollar_type]" class="regular-text">';
-        foreach ($currency_types as $k => $label) {
-            printf(
-                '<option value="%s" %s>%s</option>',
-                esc_attr($k),
-                selected($val, $k, false),
-                esc_html($label)
-            );
-        }
-        echo '</select>';
-        
-        if ($country === 'AR') {
-            echo '<p class="description">Tipos de cambio específicos para Argentina. El "Oficial" es el más común para importaciones.</p>';
-        } else {
-            echo '<p class="description">Tipo de cambio a usar para los cálculos. Varía según el proveedor de API seleccionado.</p>';
-        }
+        echo '<div id="dpuwoo_exchangerate_key_container" class="dpuwoo-api-key-field ' . esc_attr($is_visible) . '">';
+        echo '<input type="password" name="dpuwoo_settings[exchangerate_api_key]" value="' . esc_attr($val) . '" class="regular-text">';
+        echo '<p class="description">Ingrese su API Key de ExchangeRate-API. <a href="https://www.exchangerate-api.com/" target="_blank">Obtener clave</a></p>';
+        echo '</div>';
     }
 
     public static function render_margin()
@@ -608,35 +580,6 @@ class Admin_Settings
         } else {
             echo '<p>No hay categorías creadas.</p>';
         }
-    }
-
-    // ========== FUNCIONES AUXILIARES ==========
-    
-    private static function get_currency_types_by_country($country_code)
-    {
-        $types_by_country = [
-            'AR' => [
-                'oficial' => 'Oficial (Banco Nación)',
-                'blue' => 'Blue (Informal)',
-                'mep' => 'MEP (Bolsa)',
-                'ccl' => 'CCL (Contado con Liqui)',
-                'mayorista' => 'Mayorista',
-                'tarjeta' => 'Tarjeta (con impuestos)'
-            ],
-            'VE' => [
-                'oficial' => 'Oficial BCV',
-                'paralelo' => 'Paralelo',
-                'cripto' => 'Dólar Crypto'
-            ],
-            'default' => [
-                'official' => 'Oficial',
-                'buy' => 'Compra',
-                'sell' => 'Venta',
-                'average' => 'Promedio'
-            ]
-        ];
-        
-        return $types_by_country[$country_code] ?? $types_by_country['default'];
     }
     
     private static function get_country_name($country_code)

@@ -121,10 +121,6 @@
                                         <span class="font-semibold"><?php echo esc_html($opts['reference_currency'] ?? 'USD'); ?></span>
                                     </div>
                                     <div class="flex justify-between">
-                                        <span class="text-sm text-gray-600">Tipo de Cotización:</span>
-                                        <span class="font-semibold capitalize"><?php echo esc_html($opts['dollar_type'] ?? 'oficial'); ?></span>
-                                    </div>
-                                    <div class="flex justify-between">
                                         <span class="text-sm text-gray-600">Moneda Tienda:</span>
                                         <span class="font-semibold"><?php echo esc_html($store_currency); ?></span>
                                     </div>
@@ -428,15 +424,26 @@
 
         <div class="bg-white shadow rounded-xl p-8 border border-gray-200">
             <h2 class="text-xl font-semibold text-gray-800 mb-6">Configuración</h2>
-            <form method="post" action="options.php" class="space-y-6">
+            <form id="dpuwoo-settings-form" method="post" class="space-y-6">
 
                 <?php
                 settings_fields('dpuwoo_settings_group');
                 do_settings_sections('dpuwoo_settings');
-                submit_button('Guardar cambios', 'primary', null, false, [
-                    'class' => 'px-5 py-2 bg-blue-600 text-white rounded-lg'
-                ]);
                 ?>
+                
+                <div class="pt-6 border-t border-gray-200">
+                    <button type="submit" id="dpuwoo-save-settings" class="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors relative">
+                        <span class="btn-text">Guardar cambios</span>
+                        <span class="btn-loading" style="display: none;">
+                            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Guardando...
+                        </span>
+                    </button>
+                    <span id="dpuwoo-save-status" class="ml-4 text-sm"></span>
+                </div>
 
             </form>
         </div>

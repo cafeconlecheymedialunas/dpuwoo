@@ -95,6 +95,9 @@ class Admin
 			true
 		);
 
+		wp_enqueue_script('select2', 'https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.0-rc.0/js/select2.min.js', array('jquery'), '4.1.0-rc.0', true);
+    	wp_enqueue_style('select2', 'https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.0-rc.0/css/select2.min.css', array(), '4.1.0-rc.0');
+
 		// Script de tabs PRIMERO (sin dependencias complejas)
 		wp_enqueue_script(
 			$this->plugin_name . '-tabs',
@@ -116,7 +119,7 @@ class Admin
 		// Localizar las variables AJAX en el script principal
 		$ajax_data = array(
 			'ajax_url' => admin_url('admin-ajax.php'), 
-			'nonce' => wp_create_nonce('dpuwoo_nonce')
+			'nonce' => wp_create_nonce('dpuwoo_ajax_nonce')
 		);
 
 		wp_localize_script($this->plugin_name . '-main', 'dpuwoo_ajax', $ajax_data);
@@ -150,8 +153,16 @@ class Admin
 		wp_enqueue_script(
 			$this->plugin_name . '-currencies',
 			plugin_dir_url(__FILE__) . 'js/currencies.js',
-			array('jquery', $this->plugin_name . '-main'),
+			array('jquery', 'select2', $this->plugin_name . '-main'),
 			$this->version,
+			false
+		);
+
+		wp_enqueue_script(
+			$this->plugin_name . '-api-keys',
+			plugin_dir_url(__FILE__) . 'js/dpuwoo-api-keys.js',
+			array('jquery', $this->plugin_name . '-main'),
+			$this->version . '-' . time(), // Cache busting
 			false
 		);
 

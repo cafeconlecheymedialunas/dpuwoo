@@ -27,8 +27,7 @@ class Activator
         // 2. CONFIGURACIÓN MÍNIMA ESENCIAL
         $settings['interval'] = $settings['interval'] ?? 3600;
         $settings['threshold'] = $settings['threshold'] ?? 1.0;
-        $settings['dollar_type'] = $settings['dollar_type'] ?? 'oficial';
-
+        
         update_option('dpuwoo_settings', $settings);
 
         // 3. GUARDAR ESTE DÓLAR COMO "ÚLTIMO DÓLAR" PARA PRÓXIMOS CÁLCULOS
