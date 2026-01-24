@@ -166,10 +166,8 @@ jQuery(document).ready(function($) {
             'dpuwoo_settings[update_direction]': settingsData.update_direction,
             'dpuwoo_settings[rounding_type]': settingsData.rounding_type,
             'dpuwoo_settings[nearest_to]': settingsData.nearest_to,
-            'dpuwoo_settings[psychological_pricing]': settingsData.psychological_pricing,
             'dpuwoo_settings[psychological_ending]': settingsData.psychological_ending,
             'dpuwoo_settings[interval]': settingsData.interval,
-            'dpuwoo_settings[exclude_on_sale]': settingsData.exclude_on_sale,
             'dpuwoo_settings[exclude_categories][]': settingsData['exclude_categories[]'] || ''
         });
         

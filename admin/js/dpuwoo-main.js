@@ -40,12 +40,12 @@
             },
 
             enableButtons: function () {
-                $('#dpuwoo-simulate, #dpuwoo-update-now').prop('disabled', false);
+                $('#dpuwoo-simulate, #dpuwoo-update-now, #dpuwoo-initialize-baseline').prop('disabled', false);
                 isProcessing = false;
             },
 
             disableButtons: function () {
-                $('#dpuwoo-simulate, #dpuwoo-update-now').prop('disabled', true);
+                $('#dpuwoo-simulate, #dpuwoo-update-now, #dpuwoo-initialize-baseline').prop('disabled', true);
                 isProcessing = true;
             },
 
@@ -109,7 +109,7 @@
             generateCompleteResults: function (data, isSimulation = false) {
                 const summary = data.summary || { updated: 0, skipped: 0, errors: 0, total: 0 };
                 const changes = data.changes || [];
-                
+                console.log(summary)
                 // Un proceso es "Exitoso sin cambios" si no hay actualizaciones pero tampoco errores críticos
                 const hasRealChanges = summary.updated > 0;
                 const totalProcessed = (summary.updated || 0) + (summary.skipped || 0) + (summary.errors || 0);
@@ -119,6 +119,8 @@
                 
                 // Determinar si el dólar cambió o es el mismo
                 const rateChanged = parseFloat(oldRate) !== parseFloat(newRate);
+                
+                
 
                 let html = `
             <div class="bg-white shadow-lg rounded-xl p-6 border border-gray-200">
@@ -256,6 +258,7 @@
                                 <th class="px-6 py-3 text-center text-[10px] font-bold text-gray-500 uppercase">Precio Oferta</th>
                                 <th class="px-6 py-3 text-center text-[10px] font-bold text-gray-500 uppercase">Estado</th>
                                 <th class="px-6 py-3 text-center text-[10px] font-bold text-gray-500 uppercase">Var. %</th>
+                                <th class="px-6 py-3 text-center text-[10px] font-bold text-gray-500 uppercase">Multi-Moneda</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">`;
@@ -353,6 +356,48 @@
                 }
                 return '$' + parseFloat(price).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
             },
+            
+            /**
+             * Maneja errores en el proceso de simulación/actualización
+             * @param {string} errorMessage - Mensaje de error a mostrar
+             * @param {string} processType - Tipo de proceso ('simulation' o 'update')
+             */
+            handleProcessError: function(errorMessage, processType) {
+                console.error('DPUWoo Process Error:', errorMessage);
+                
+                // Mostrar mensaje de error en la interfaz
+                const errorHtml = `
+                    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <h3 class="text-sm font-medium text-red-800">Error en el proceso</h3>
+                                <div class="mt-2 text-sm text-red-700">
+                                    <p>${errorMessage}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Insertar error en la sección correspondiente
+                const targetSection = processType === 'simulation' 
+                    ? '#dpuwoo-simulation-process' 
+                    : '#dpuwoo-update-process';
+                
+                $(targetSection).prepend(errorHtml);
+                
+                // Resetear estado y habilitar botones
+                this.resetAllSections();
+                this.enableButtons();
+                
+                // Mostrar sección de error
+                this.showSection(targetSection.replace('#', ''));
+            }
         };
 
         // Exponer variables globales

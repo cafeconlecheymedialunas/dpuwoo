@@ -4,6 +4,9 @@ jQuery(document).ready(function ($) {
     const loadingSpinner = $('#dpuwoo_currency_loading');
     const baseCountry = $('#dpuwoo_base_country').val();
     const baseCurrency = dpuwoo_ajax?.base_currency || '';
+    
+    // Store the saved reference currency value
+    let savedReferenceCurrency = currencySelect.val() || '';
 
     // Función para decodificar entidades HTML
     function decodeHtmlEntities(text) {
@@ -51,6 +54,7 @@ jQuery(document).ready(function ($) {
             minimumResultsForSearch: -1 // Ocultar búsqueda durante carga
         });
         
+        // Mantener el valor guardado durante la carga
         $('#dpuwoo_currency_description').text(loadingText);
     }
 
@@ -69,6 +73,7 @@ jQuery(document).ready(function ($) {
             minimumResultsForSearch: -1
         });
         
+        // Mantener el valor guardado incluso cuando se deshabilita
         $('#dpuwoo_currency_description').text('Seleccione un proveedor para cargar las monedas disponibles.');
     }
 
@@ -126,7 +131,14 @@ jQuery(document).ready(function ($) {
                             } else {
                                 // Decodificar también el código si es necesario
                                 const decodedCode = decodeHtmlEntities(currency.code);
-                                optionText = (currency.name || decodedCode) + ' - ' + decodedCode;
+                                
+                                // Remover el prefijo de moneda de la tienda del código para mostrar
+                                let displayCode = decodedCode;
+                                if (baseCurrency && decodedCode.startsWith(baseCurrency + '_')) {
+                                    displayCode = decodedCode.substring(baseCurrency.length + 1);
+                                }
+                                
+                                optionText = (currency.name || displayCode);
                                 optionValue = 'moneda_' + decodedCode;
                             }
                             
@@ -183,8 +195,18 @@ jQuery(document).ready(function ($) {
                         }
                     });
                     
-                    // Seleccionar la opción por defecto (vacía)
-                    currencySelect.val('').trigger('change');
+                    // Restaurar el valor guardado si existe y está disponible
+                    let valueToSelect = '';
+                    if (savedReferenceCurrency) {
+                        // Verificar si el valor guardado está disponible en las opciones
+                        const availableOptions = currencyOptions.filter(opt => opt.id === savedReferenceCurrency);
+                        if (availableOptions.length > 0) {
+                            valueToSelect = savedReferenceCurrency;
+                        }
+                    }
+                    
+                    // Si no hay valor guardado o no está disponible, usar la opción por defecto
+                    currencySelect.val(valueToSelect).trigger('change');
                     
                     // Actualizar descripción
                     $('#dpuwoo_currency_description').html(
@@ -278,8 +300,16 @@ jQuery(document).ready(function ($) {
             disabled: false
         });
         
-        // Seleccionar USD por defecto en caso de error
-        currencySelect.val('USD').trigger('change');
+        // Restaurar el valor guardado si existe, de lo contrario usar USD
+        let valueToSelect = 'USD'; // Valor por defecto
+        if (savedReferenceCurrency && savedReferenceCurrency !== '') {
+            // Verificar si el valor guardado está disponible
+            if (savedReferenceCurrency === 'USD' || currencySelect.find('option[value="' + savedReferenceCurrency + '"]').length > 0) {
+                valueToSelect = savedReferenceCurrency;
+            }
+        }
+        
+        currencySelect.val(valueToSelect).trigger('change');
         
         const errorMsg = providerName ? 
             `Error al cargar monedas de ${providerName}. Se usará USD por defecto.` :
@@ -291,6 +321,9 @@ jQuery(document).ready(function ($) {
     // Cargar monedas al cambiar el proveedor
     providerSelect.on('change', function () {
         const selectedProvider = $(this).val();
+        
+        // Actualizar el valor guardado cuando cambia
+        savedReferenceCurrency = currencySelect.val() || '';
         
         // Limpiar selección anterior de moneda
         localStorage.removeItem('dpuwoo_last_currency');
@@ -311,6 +344,9 @@ jQuery(document).ready(function ($) {
 
     // Cargar monedas automáticamente al cargar la página si hay un proveedor seleccionado
     if (providerSelect.val()) {
+        // Actualizar el valor guardado
+        savedReferenceCurrency = currencySelect.val() || '';
+        
         // Mostrar estado de carga inmediatamente
         showLoadingState(providerSelect.find('option:selected').text());
         

@@ -43,11 +43,15 @@
                     </p>
                 </div>
 
-                <!-- Baseline -->
+                <!-- Baseline Info -->
                 <div class="p-5 bg-gray-50 rounded-lg border border-gray-200">
-                    <p class="text-gray-500 text-sm">Valor de referencia (baseline)</p>
+                    <p class="text-gray-500 text-sm">Estado del Baseline</p>
                     <p class="text-3xl font-semibold text-gray-800 mt-1">
-                        <?php echo esc_html($opts['baseline_dollar_value'] ?? 'n/a'); ?>
+                        <?php 
+                        $baseline_manager = DPUWOO_Baseline_Manager::get_instance();
+                        $current_baseline = $baseline_manager->get_current_baseline('dollar');
+                        echo $current_baseline ? '$' . number_format($current_baseline, 2) : 'No configurado';
+                        ?>
                     </p>
                 </div>
 
@@ -56,8 +60,8 @@
                     <p class="text-gray-500 text-sm">Ratio de ajuste</p>
                     <p class="text-3xl font-semibold text-gray-800 mt-1">
                         <?php 
-                        $opts = get_option('dpuwoo_settings');
-                        $baseline = floatval($opts['baseline_dollar_value'] ?? 0);
+                        $baseline_manager = DPUWOO_Baseline_Manager::get_instance();
+                        $baseline = $baseline_manager->get_current_baseline('dollar');
                         $last_rate = floatval($opts['last_rate'] ?? 0);
                         if ($baseline > 0 && $last_rate > 0) {
                             echo number_format($last_rate / $baseline, 2) . 'x';
@@ -137,14 +141,21 @@
                                 <div class="space-y-3">
                                     <div class="flex justify-between">
                                         <span class="text-sm text-gray-600">Valor Base Histórico:</span>
-                                        <span class="font-semibold">$<?php echo number_format(floatval($opts['baseline_dollar_value'] ?? 0), 2); ?></span>
+                                        <span class="font-semibold">
+                                            <?php 
+                                            $baseline_manager = DPUWOO_Baseline_Manager::get_instance();
+                                            $current_baseline = $baseline_manager->get_current_baseline('dollar');
+                                            echo $current_baseline ? '$' . number_format($current_baseline, 2) : 'No configurado';
+                                            ?>
+                                        </span>
                                     </div>
                                     <div class="flex justify-between">
                                         <span class="text-sm text-gray-600">Último Valor Aplicado:</span>
                                         <span class="font-semibold">$<?php echo number_format(floatval($opts['last_rate'] ?? 0), 2); ?></span>
                                     </div>
                                     <?php 
-                                    $baseline = floatval($opts['baseline_dollar_value'] ?? 0);
+                                    $baseline_manager = DPUWOO_Baseline_Manager::get_instance();
+                                    $baseline = $baseline_manager->get_current_baseline('dollar');
                                     $last_rate = floatval($opts['last_rate'] ?? 0);
                                     if ($baseline > 0 && $last_rate > 0):
                                         $ratio = $last_rate / $baseline;
@@ -222,10 +233,6 @@
                                         <span class="font-semibold">$<?php echo esc_html($opts['nearest_to'] ?? '1'); ?></span>
                                     </div>
                                     <?php endif; ?>
-                                    <div class="flex justify-between">
-                                        <span class="text-sm text-gray-600">Precios Psicológicos:</span>
-                                        <span class="font-semibold"><?php echo !empty($opts['psychological_pricing']) ? 'Activado' : 'Desactivado'; ?></span>
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -257,6 +264,16 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                         </svg>
                         Actualizar Directamente
+                    </button>
+                    
+                    <span class="text-gray-500">o</span>
+                    
+                    <button id="dpuwoo-initialize-baseline"
+                        class="px-6 py-3 bg-purple-600 text-white rounded-lg shadow hover:bg-purple-700 transition flex items-center font-medium">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                        Inicializar Baseline
                     </button>
                 </div>
                 

@@ -146,14 +146,6 @@ class Admin_Settings
             'dpuwoo_rounding_section'
         );
 
-        add_settings_field(
-            'dpuwoo_psychological_pricing',
-            'Precios Psicológicos',
-            [__CLASS__, 'render_psychological_pricing'],
-            'dpuwoo_settings',
-            'dpuwoo_rounding_section'
-        );
-
         // ========== CAMPOS DE AUTOMATIZACIÓN ==========
         
         add_settings_field(
@@ -165,14 +157,7 @@ class Admin_Settings
         );
 
         // ========== CAMPOS DE EXCLUSIÓN ==========
-        
-        add_settings_field(
-            'dpuwoo_exclude_on_sale',
-            'Excluir Productos en Oferta',
-            [__CLASS__, 'render_exclude_on_sale'],
-            'dpuwoo_settings',
-            'dpuwoo_exclusion_section'
-        );
+    
 
         add_settings_field(
             'dpuwoo_exclude_categories',
@@ -260,7 +245,6 @@ class Admin_Settings
         $out['country'] = sanitize_text_field($input['country'] ?? 'AR');
         $out['base_currency'] = sanitize_text_field($input['base_currency'] ?? get_woocommerce_currency());
         $out['reference_currency'] = sanitize_text_field($input['reference_currency'] ?? 'USD');
-        $out['baseline_dollar_value'] = floatval($input['baseline_dollar_value'] ?? 0);
         
         // Agregar campos de referencia de moneda
         $out['last_rate'] = floatval($input['last_rate'] ?? 0);
@@ -273,25 +257,12 @@ class Admin_Settings
         // Reglas de Redondeo
         $out['rounding_type'] = sanitize_text_field($input['rounding_type'] ?? 'integer');
         $out['nearest_to'] = sanitize_text_field($input['nearest_to'] ?? '1');
-        $out['psychological_pricing'] = isset($input['psychological_pricing']) ? 1 : 0;
-        $out['psychological_ending'] = sanitize_text_field($input['psychological_ending'] ?? '99');
-        
+       
         // Automatización
         $out['interval'] = intval($input['interval'] ?? 3600);
         
         // Exclusiones
-        $out['exclude_on_sale'] = isset($input['exclude_on_sale']) ? 1 : 0;
         $out['exclude_categories'] = array_map('intval', $input['exclude_categories'] ?? []);
-
-        // Validación principal
-        if ($out['baseline_dollar_value'] <= 0) {
-            add_settings_error(
-                'dpuwoo_settings',
-                'baseline_required',
-                'Debes ingresar un valor de dólar base histórico para poder usar el plugin',
-                'error'
-            );
-        }
 
         return $out;
     }
@@ -498,34 +469,6 @@ class Admin_Settings
         echo '<p class="description">A qué valor se redondea el precio.</p>';
     }
 
-    public static function render_psychological_pricing()
-    {
-        $opts = get_option('dpuwoo_settings', []);
-        $checked = isset($opts['psychological_pricing']) ? $opts['psychological_pricing'] : 0;
-        $ending = $opts['psychological_ending'] ?? '99';
-        
-        echo '<label>';
-        echo '<input type="checkbox" name="dpuwoo_settings[psychological_pricing]" value="1" ' . checked(1, $checked, false) . '> ';
-        echo 'Activar';
-        echo '</label>';
-        
-        echo '<div style="margin-top: 5px; margin-left: 25px;">';
-        echo 'Terminar en: <select name="dpuwoo_settings[psychological_ending]">';
-        $endings = ['99' => '.99', '90' => '.90', '95' => '.95'];
-        foreach ($endings as $k => $label) {
-            printf(
-                '<option value="%s" %s>%s</option>',
-                esc_attr($k),
-                selected($ending, $k, false),
-                esc_html($label)
-            );
-        }
-        echo '</select>';
-        echo '</div>';
-        
-        echo '<p class="description">Ajusta precios para que terminen en valores psicológicos.</p>';
-    }
-
     public static function render_interval()
     {
         $opts = get_option('dpuwoo_settings', []);
@@ -539,18 +482,6 @@ class Admin_Settings
         echo 'Equivalente a: ' . esc_html($hours) . 'h ' . esc_html($minutes) . 'm';
         echo '</div>';
         echo '<p class="description">Frecuencia de consulta a la API (mínimo: 300 segundos = 5 minutos).</p>';
-    }
-
-    public static function render_exclude_on_sale()
-    {
-        $opts = get_option('dpuwoo_settings', []);
-        $checked = isset($opts['exclude_on_sale']) ? $opts['exclude_on_sale'] : 0;
-        
-        echo '<label>';
-        echo '<input type="checkbox" name="dpuwoo_settings[exclude_on_sale]" value="1" ' . checked(1, $checked, false) . '> ';
-        echo 'No actualizar productos que tienen precio de oferta';
-        echo '</label>';
-        echo '<p class="description">Mantiene los precios promocionales fijos.</p>';
     }
 
     public static function render_exclude_categories()

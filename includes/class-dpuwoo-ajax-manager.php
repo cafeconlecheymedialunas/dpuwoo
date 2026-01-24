@@ -23,7 +23,11 @@ class Ajax_Manager
         // Añadir información detallada de configuración
         $opts = get_option('dpuwoo_settings', []);
         $res['reference_used'] = 'baseline'; // Para simulación
-        $res['baseline_rate'] = floatval($opts['baseline_dollar_value'] ?? 0);
+        
+        // Get current baseline from manager
+        $baseline_manager = DPUWOO_Baseline_Manager::get_instance();
+        $current_baseline = $baseline_manager->get_current_baseline('dollar');
+        $res['baseline_rate'] = $current_baseline ? floatval($current_baseline) : 0;
         
         // Añadir configuración completa para mostrar en resultados
         $res['execution_config'] = [
@@ -33,9 +37,6 @@ class Ajax_Manager
             'threshold' => floatval($opts['threshold'] ?? 0.5),
             'update_direction' => $opts['update_direction'] ?? 'bidirectional',
             'rounding_type' => $opts['rounding_type'] ?? 'integer',
-            'psychological_pricing' => !empty($opts['psychological_pricing']),
-            'exclude_on_sale' => !empty($opts['exclude_on_sale']),
-            'baseline_dollar_value' => floatval($opts['baseline_dollar_value'] ?? 0),
             'last_rate' => floatval($opts['last_rate'] ?? 0)
         ];
         
@@ -86,7 +87,11 @@ class Ajax_Manager
         $opts = get_option('dpuwoo_settings', []);
         $res['reference_used'] = 'last_rate'; // Para actualización real
         $res['last_rate'] = floatval($opts['last_rate'] ?? 0);
-        $res['baseline_rate'] = floatval($opts['baseline_dollar_value'] ?? 0);
+        
+        // Get current baseline from manager
+        $baseline_manager = DPUWOO_Baseline_Manager::get_instance();
+        $current_baseline = $baseline_manager->get_current_baseline('dollar');
+        $res['baseline_rate'] = $current_baseline ? floatval($current_baseline) : 0;
         
         // Añadir configuración completa para mostrar en resultados
         $res['execution_config'] = [
@@ -96,9 +101,6 @@ class Ajax_Manager
             'threshold' => floatval($opts['threshold'] ?? 0.5),
             'update_direction' => $opts['update_direction'] ?? 'bidirectional',
             'rounding_type' => $opts['rounding_type'] ?? 'integer',
-            'psychological_pricing' => !empty($opts['psychological_pricing']),
-            'exclude_on_sale' => !empty($opts['exclude_on_sale']),
-            'baseline_dollar_value' => floatval($opts['baseline_dollar_value'] ?? 0),
             'last_rate' => floatval($opts['last_rate'] ?? 0)
         ];
         
@@ -453,7 +455,6 @@ class Ajax_Manager
         $sanitized_data['country'] = sanitize_text_field($settings_data['country'] ?? 'AR');
         $sanitized_data['base_currency'] = sanitize_text_field($settings_data['base_currency'] ?? get_woocommerce_currency());
         $sanitized_data['reference_currency'] = sanitize_text_field($settings_data['reference_currency'] ?? 'USD');
-        $sanitized_data['baseline_dollar_value'] = floatval($settings_data['baseline_dollar_value'] ?? 0);
         
         // Valores de referencia
         $sanitized_data['last_rate'] = floatval($settings_data['last_rate'] ?? 0);
@@ -466,14 +467,12 @@ class Ajax_Manager
         // Redondeo
         $sanitized_data['rounding_type'] = sanitize_text_field($settings_data['rounding_type'] ?? 'integer');
         $sanitized_data['nearest_to'] = sanitize_text_field($settings_data['nearest_to'] ?? '1');
-        $sanitized_data['psychological_pricing'] = isset($settings_data['psychological_pricing']) ? 1 : 0;
         $sanitized_data['psychological_ending'] = sanitize_text_field($settings_data['psychological_ending'] ?? '99');
         
         // Automatización
         $sanitized_data['interval'] = intval($settings_data['interval'] ?? 3600);
         
         // Exclusiones
-        $sanitized_data['exclude_on_sale'] = isset($settings_data['exclude_on_sale']) ? 1 : 0;
         $exclude_categories = $settings_data['exclude_categories'] ?? [];
         $sanitized_data['exclude_categories'] = is_array($exclude_categories) && !empty($exclude_categories)
             ? array_map('intval', $exclude_categories)
@@ -567,4 +566,60 @@ class Ajax_Manager
             'success' => true
         ]);
     }
+    
+    /**
+     * Manual baseline initialization endpoint
+     */
+    public function ajax_initialize_baseline() {
+        error_log('DPUWoo: ajax_initialize_baseline called');
+        error_log('DPUWoo: POST data: ' . print_r($_POST, true));
+        error_log('DPUWoo: Current user ID: ' . get_current_user_id());
+        error_log('DPUWoo: User can manage_options: ' . (current_user_can('manage_options') ? 'YES' : 'NO'));
+        
+        if (!current_user_can('manage_options')) {
+            error_log('DPUWoo: Permission denied');
+            wp_send_json_error('No permissions');
+        }
+        
+        if (!check_ajax_referer('dpuwoo_ajax_nonce', 'nonce', false)) {
+            error_log('DPUWoo: Invalid nonce');
+            wp_send_json_error('Invalid nonce');
+        }
+        
+        error_log('DPUWoo: Nonce verified, proceeding with initialization');
+        
+        try {
+            error_log('DPUWoo: Instantiating baseline manager');
+            $baseline_manager = DPUWOO_Baseline_Manager::get_instance();
+            error_log('DPUWoo: Calling force_initialize');
+            $result = $baseline_manager->force_initialize();
+            error_log('DPUWoo: force_initialize result: ' . var_export($result, true));
+            
+            $current_baseline = $baseline_manager->get_current_baseline('dollar');
+            error_log('DPUWoo: Current baseline value: ' . var_export($current_baseline, true));
+            
+            if ($current_baseline && $current_baseline > 0) {
+                update_option('dpuwoo_last_dollar_value', $current_baseline);
+                error_log('DPUWoo: Updated dpuwoo_last_dollar_value option');
+                
+                wp_send_json_success([
+                    'message' => 'Baseline successfully initialized',
+                    'baseline_value' => $current_baseline,
+                    'formatted_value' => number_format($current_baseline, 2)
+                ]);
+            } else {
+                error_log('DPUWoo: Failed to get valid baseline value');
+                wp_send_json_error([
+                    'message' => 'Failed to initialize baseline - could not fetch dollar rate'
+                ]);
+            }
+        } catch (Exception $e) {
+            error_log('DPUWoo: Exception in ajax_initialize_baseline: ' . $e->getMessage());
+            error_log('DPUWoo: Exception trace: ' . $e->getTraceAsString());
+            wp_send_json_error([
+                'message' => 'Error initializing baseline: ' . $e->getMessage()
+            ]);
+        }
+    }
+    
 }

@@ -20,15 +20,22 @@ class Cron
 
     public static function run_cron()
     {
-        $opts = get_option('dpuwoo_settings', []);
+        // Use the new baseline manager for reliable baseline retrieval
+        $baseline_manager = DPUWOO_Baseline_Manager::get_instance();
+        $baseline = $baseline_manager->get_current_baseline('dollar');
         
-        // Verificar que tenemos baseline configurado
-        $baseline = floatval($opts['baseline_dollar_value'] ?? 0);
-        if ($baseline <= 0) {
+        // If no baseline, try to initialize
+        if ($baseline === null || $baseline <= 0) {
+            $baseline_manager->force_initialize();
+            $baseline = $baseline_manager->get_current_baseline('dollar');
+        }
+        
+        if ($baseline === null || $baseline <= 0) {
+            error_log('DPUWoo Cron: Cannot run - missing baseline configuration');
             return;
         }
 
-        $type = $opts['dollar_type'] ?? 'oficial';
+        $type = get_option('dpuwoo_settings', [])['dollar_type'] ?? 'oficial';
         $api = API_Client::get_instance();
         $rate = $api->get_rate($type);
         
@@ -41,8 +48,8 @@ class Cron
         }
 
         $current_rate = floatval($rate['value']);
-        $last_rate = floatval($opts['last_rate'] ?? 0);
-        $threshold = floatval($opts['threshold'] ?? 0);
+        $last_rate = floatval(get_option('dpuwoo_settings', [])['last_rate'] ?? 0);
+        $threshold = floatval(get_option('dpuwoo_settings', [])['threshold'] ?? 0);
 
         // CORREGIDO: En la primera ejecución (last_rate = 0), comparar con baseline
         $reference_rate = ($last_rate > 0) ? $last_rate : $baseline;
@@ -63,6 +70,7 @@ class Cron
         }
 
         // Guardar el rate actual para la próxima comparación
+        $opts = get_option('dpuwoo_settings', []);
         $opts['last_rate'] = $current_rate;
         update_option('dpuwoo_settings', $opts);
     }
