@@ -110,7 +110,14 @@
                 const summary = data.summary || { updated: 0, skipped: 0, errors: 0, total: 0 };
                 const changes = data.changes || [];
                 console.log(summary)
-                // Un proceso es "Exitoso sin cambios" si no hay actualizaciones pero tampoco errores críticos
+                
+                // Check if threshold was met
+                const thresholdMet = data.threshold_met !== undefined ? data.threshold_met : true;
+                const threshold = data.threshold;
+                const percentageChange = data.percentage_change || 0;
+                
+                // A process is "Successful without changes" if there are no updates but also no critical errors
+                // AND the threshold was not met (meaning no processing occurred due to threshold)
                 const hasRealChanges = summary.updated > 0;
                 const totalProcessed = (summary.updated || 0) + (summary.skipped || 0) + (summary.errors || 0);
                 console.log(data)
@@ -156,7 +163,18 @@
                         </div>
                     </div>
                 </div>
-
+                
+                <!-- Threshold Information -->
+                <div class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div class="flex items-center">
+                        <div class="mr-3 text-yellow-600 text-xl">⚠️</div>
+                        <div>
+                            <p class="font-bold text-yellow-800">Variación: ${Math.abs(percentageChange).toFixed(2)}%</p>
+                            <p class="text-sm text-yellow-700">Umbral configurado: ${threshold}% ${thresholdMet ? '✓ Alcanzado' : '✗ No alcanzado'}</p>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="grid grid-cols-3 gap-4 mb-8">
                     <div class="p-3 text-center border border-gray-100 rounded-lg">
                         <p class="text-2xl font-bold text-blue-600">${summary.updated || 0}</p>
@@ -172,7 +190,29 @@
                     </div>
                 </div>`;
 
-                if (!hasRealChanges) {
+                if (!hasRealChanges && !thresholdMet) {
+                    // MODE: THRESHOLD NOT MET - Show threshold warning
+                    html += `
+                <div class="bg-orange-50 border border-orange-200 p-6 rounded-xl text-center">
+                    <div class="inline-block p-3 bg-orange-100 text-orange-600 rounded-full mb-4">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    </div>
+                    <h4 class="text-lg font-bold text-orange-900 mb-2">Umbral no alcanzado</h4>
+                    <p class="text-orange-800 text-sm max-w-md mx-auto mb-4">
+                        La variación del ${Math.abs(percentageChange).toFixed(2)}% no supera el umbral configurado del ${threshold}%. 
+                        No se realizaron cambios en los precios.
+                    </p>
+                    <div class="text-xs text-orange-700 bg-orange-100 p-3 rounded-lg inline-block">
+                        <strong>Tasa actual:</strong> $${parseFloat(newRate).toFixed(2)} | 
+                        <strong>Variación:</strong> ${percentageChange > 0 ? '+' : ''}${percentageChange.toFixed(2)}%
+                    </div>
+                    <div class="mt-6">
+                        <button onclick="location.reload()" class="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition font-bold shadow-sm">
+                            Volver al Inicio
+                        </button>
+                    </div>
+                </div>`;
+                } else if (!hasRealChanges) {
                     // MODO: TODO AL DÍA
                     html += `
                 <div class="bg-blue-50 border border-blue-100 p-6 rounded-xl text-center">
