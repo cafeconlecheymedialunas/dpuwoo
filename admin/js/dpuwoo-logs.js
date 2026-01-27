@@ -33,7 +33,7 @@
                     }
                 }.bind(this),
                 error: function (xhr, status, error) {
-                    console.error('DPUWOO: Error loading logs', xhr, status, error);
+                    
                     this.showLogsError('Error de conexión: ' + error);
                 }.bind(this)
             });
@@ -203,7 +203,7 @@
                         </thead>
                         <tbody>
             `;
-            console.log(items)
+            
 
        items.forEach(function(item) {
             const statusClass = DPUWOO_Utils.getStatusClass(item.status);

@@ -95,7 +95,7 @@ trait HTTP_Request_Trait {
      * Log de errores
      */
     protected function log_error($message) {
-        error_log('[API Provider] ' . $message);
+        
     }
     
     /**

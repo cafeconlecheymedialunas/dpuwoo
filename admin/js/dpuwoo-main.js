@@ -54,7 +54,7 @@
                 const progressBarId = type === 'simulation' ? 'dpuwoo-sim-progress' : 'dpuwoo-update-progress';
                 const percentId = type === 'simulation' ? 'dpuwoo-sim-percent' : 'dpuwoo-update-percent';
                 const textId = type === 'simulation' ? 'dpuwoo-sim-text' : 'dpuwoo-update-text';
-                
+
                 $('#' + progressBarId).css('width', percent + '%');
                 $('#' + percentId).text(percent + '%');
                 $('#' + textId).text(text);
@@ -109,148 +109,156 @@
             generateCompleteResults: function (data, isSimulation = false) {
                 const summary = data.summary || { updated: 0, skipped: 0, errors: 0, total: 0 };
                 const changes = data.changes || [];
-                console.log(summary)
-                
-                // Check if threshold was met
+
+                // Obtener threshold correctamente del execution_config
+                const threshold = data.execution_config?.threshold || 0.1;
                 const thresholdMet = data.threshold_met !== undefined ? data.threshold_met : true;
-                const threshold = data.threshold;
-                const percentageChange = data.percentage_change || 0;
-                
-                // A process is "Successful without changes" if there are no updates but also no critical errors
-                // AND the threshold was not met (meaning no processing occurred due to threshold)
-                const hasRealChanges = summary.updated > 0;
+                const percentageChange = Math.abs(data.percentage_change || 0);
+
+                // Para simulación, hay cambios si hay elementos en "changes" con status "simulated"
+                // En actualización real, hay cambios si summary.updated > 0
+                const hasRealChanges = isSimulation
+                    ? changes.some(item => item.status === 'simulated' || item.status === 'updated')
+                    : (summary.updated || 0) > 0;
+
                 const totalProcessed = (summary.updated || 0) + (summary.skipped || 0) + (summary.errors || 0);
-                console.log(data)
-                const oldRate = data.previous_rate;
-                const newRate = data.rate;
-                
+
+                const oldRate = data.previous_rate || 1;
+                const newRate = data.rate || 1;
+
                 // Determinar si el dólar cambió o es el mismo
                 const rateChanged = parseFloat(oldRate) !== parseFloat(newRate);
-                
-                
+
+                // Contar productos simulados para mostrar correctamente
+                const simulatedCount = changes.filter(item =>
+                    item.status === 'simulated' || item.status === 'updated'
+                ).length;
 
                 let html = `
-            <div class="bg-white shadow-lg rounded-xl p-6 border border-gray-200">
-                <div class="flex items-center justify-between mb-8 pb-4 border-b border-gray-100">
-                    <div class="flex items-center">
-                        <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-2xl mr-4">
-                            ${hasRealChanges ? '🔄' : '✨'}
-                        </div>
-                        <div>
-                            <h3 class="text-xl font-bold text-gray-800">${isSimulation ? 'Simulación Finalizada' : 'Proceso Completado'}</h3>
-                            <p class="text-gray-500 text-sm italic">${totalProcessed} productos analizados en total</p>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        <span class="block text-[10px] uppercase font-bold text-gray-400 tracking-wider">Estado del Sistema</span>
-                        <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold uppercase">Sincronizado</span>
-                    </div>
+    <div class="bg-white shadow-lg rounded-xl p-6 border border-gray-200">
+        <div class="flex items-center justify-between mb-8 pb-4 border-b border-gray-100">
+            <div class="flex items-center">
+                <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-2xl mr-4">
+                    ${hasRealChanges ? '🔄' : '✨'}
                 </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                    <div class="flex items-center p-4 bg-gray-50 rounded-xl border border-gray-100">
-                        <div class="mr-4 text-gray-400 text-2xl">⏳</div>
-                        <div>
-                            <p class="text-[10px] uppercase font-bold text-gray-500">Tasa Anterior</p>
-                            <p class="text-2xl font-mono font-bold text-gray-700">$${parseFloat(oldRate).toFixed(2)}</p>
-                        </div>
-                    </div>
-                    <div class="flex items-center p-4 bg-blue-600 rounded-xl shadow-md border border-blue-700">
-                        <div class="mr-4 text-white opacity-80 text-2xl">📊</div>
-                        <div>
-                            <p class="text-[10px] uppercase font-bold text-blue-100">Tasa Aplicada</p>
-                            <p class="text-2xl font-mono font-bold text-white">$${parseFloat(newRate).toFixed(2)}</p>
-                        </div>
-                    </div>
+                <div>
+                    <h3 class="text-xl font-bold text-gray-800">${isSimulation ? 'Simulación Finalizada' : 'Proceso Completado'}</h3>
+                    <p class="text-gray-500 text-sm italic">${changes.length} productos analizados en total</p>
                 </div>
-                
-                <!-- Threshold Information -->
-                <div class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <div class="flex items-center">
-                        <div class="mr-3 text-yellow-600 text-xl">⚠️</div>
-                        <div>
-                            <p class="font-bold text-yellow-800">Variación: ${Math.abs(percentageChange).toFixed(2)}%</p>
-                            <p class="text-sm text-yellow-700">Umbral configurado: ${threshold}% ${thresholdMet ? '✓ Alcanzado' : '✗ No alcanzado'}</p>
-                        </div>
-                    </div>
+            </div>
+            <div class="text-right">
+                <span class="block text-[10px] uppercase font-bold text-gray-400 tracking-wider">Estado del Sistema</span>
+                <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold uppercase">Sincronizado</span>
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            <div class="flex items-center p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <div class="mr-4 text-gray-400 text-2xl">⏳</div>
+                <div>
+                    <p class="text-[10px] uppercase font-bold text-gray-500">Tasa Anterior</p>
+                    <p class="text-2xl font-mono font-bold text-gray-700">$${parseFloat(oldRate).toFixed(2)}</p>
                 </div>
-                
-                <div class="grid grid-cols-3 gap-4 mb-8">
-                    <div class="p-3 text-center border border-gray-100 rounded-lg">
-                        <p class="text-2xl font-bold text-blue-600">${summary.updated || 0}</p>
-                        <p class="text-[10px] uppercase text-gray-500 font-bold">${isSimulation ? 'A Modificar' : 'Actualizados'}</p>
-                    </div>
-                    <div class="p-3 text-center border border-gray-100 rounded-lg bg-gray-50">
-                        <p class="text-2xl font-bold text-gray-400">${summary.skipped || 0}</p>
-                        <p class="text-[10px] uppercase text-gray-500 font-bold">Sin Cambios</p>
-                    </div>
-                    <div class="p-3 text-center border border-gray-100 rounded-lg ${summary.errors > 0 ? 'bg-red-50' : ''}">
-                        <p class="text-2xl font-bold ${summary.errors > 0 ? 'text-red-600' : 'text-gray-300'}">${summary.errors || 0}</p>
-                        <p class="text-[10px] uppercase text-gray-500 font-bold">Errores</p>
-                    </div>
-                </div>`;
+            </div>
+            <div class="flex items-center p-4 bg-blue-600 rounded-xl shadow-md border border-blue-700">
+                <div class="mr-4 text-white opacity-80 text-2xl">📊</div>
+                <div>
+                    <p class="text-[10px] uppercase font-bold text-blue-100">Tasa Aplicada</p>
+                    <p class="text-2xl font-mono font-bold text-white">$${parseFloat(newRate).toFixed(2)}</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Threshold Information -->
+        <div class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div class="flex items-center">
+                <div class="mr-3 text-yellow-600 text-xl">⚠️</div>
+                <div>
+                    <p class="font-bold text-yellow-800">Variación: ${percentageChange.toFixed(2)}%</p>
+                    <p class="text-sm text-yellow-700">Umbral configurado: ${threshold}% ${thresholdMet ? '✓ Alcanzado' : '✗ No alcanzado'}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-3 gap-4 mb-8">
+            <div class="p-3 text-center border border-gray-100 rounded-lg">
+                <p class="text-2xl font-bold text-blue-600">${isSimulation ? simulatedCount : (summary.updated || 0)}</p>
+                <p class="text-[10px] uppercase text-gray-500 font-bold">${isSimulation ? 'A Modificar' : 'Actualizados'}</p>
+            </div>
+            <div class="p-3 text-center border border-gray-100 rounded-lg bg-gray-50">
+                <p class="text-2xl font-bold text-gray-400">${summary.skipped || 0}</p>
+                <p class="text-[10px] uppercase text-gray-500 font-bold">Sin Cambios</p>
+            </div>
+            <div class="p-3 text-center border border-gray-100 rounded-lg ${summary.errors > 0 ? 'bg-red-50' : ''}">
+                <p class="text-2xl font-bold ${summary.errors > 0 ? 'text-red-600' : 'text-gray-300'}">${summary.errors || 0}</p>
+                <p class="text-[10px] uppercase text-gray-500 font-bold">Errores</p>
+            </div>
+        </div>`;
 
-                if (!hasRealChanges && !thresholdMet) {
-                    // MODE: THRESHOLD NOT MET - Show threshold warning
+                // Lógica para decidir qué mostrar
+                const shouldShowTable = hasRealChanges && thresholdMet;
+
+                if (!shouldShowTable && !thresholdMet) {
+                    // MODO: UMBRAL NO ALCANZADO
                     html += `
-                <div class="bg-orange-50 border border-orange-200 p-6 rounded-xl text-center">
-                    <div class="inline-block p-3 bg-orange-100 text-orange-600 rounded-full mb-4">
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                    </div>
-                    <h4 class="text-lg font-bold text-orange-900 mb-2">Umbral no alcanzado</h4>
-                    <p class="text-orange-800 text-sm max-w-md mx-auto mb-4">
-                        La variación del ${Math.abs(percentageChange).toFixed(2)}% no supera el umbral configurado del ${threshold}%. 
-                        No se realizaron cambios en los precios.
-                    </p>
-                    <div class="text-xs text-orange-700 bg-orange-100 p-3 rounded-lg inline-block">
-                        <strong>Tasa actual:</strong> $${parseFloat(newRate).toFixed(2)} | 
-                        <strong>Variación:</strong> ${percentageChange > 0 ? '+' : ''}${percentageChange.toFixed(2)}%
-                    </div>
-                    <div class="mt-6">
-                        <button onclick="location.reload()" class="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition font-bold shadow-sm">
-                            Volver al Inicio
-                        </button>
-                    </div>
-                </div>`;
-                } else if (!hasRealChanges) {
-                    // MODO: TODO AL DÍA
+        <div class="bg-orange-50 border border-orange-200 p-6 rounded-xl text-center">
+            <div class="inline-block p-3 bg-orange-100 text-orange-600 rounded-full mb-4">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+            </div>
+            <h4 class="text-lg font-bold text-orange-900 mb-2">Umbral no alcanzado</h4>
+            <p class="text-orange-800 text-sm max-w-md mx-auto mb-4">
+                La variación del ${percentageChange.toFixed(2)}% no supera el umbral configurado del ${threshold}%. 
+                No se realizaron cambios en los precios.
+            </p>
+            <div class="text-xs text-orange-700 bg-orange-100 p-3 rounded-lg inline-block">
+                <strong>Tasa actual:</strong> $${parseFloat(newRate).toFixed(2)} | 
+                <strong>Variación:</strong> ${data.percentage_change > 0 ? '+' : ''}${data.percentage_change.toFixed(2)}%
+            </div>
+            <div class="mt-6">
+                <button onclick="location.reload()" class="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition font-bold shadow-sm">
+                    Volver al Inicio
+                </button>
+            </div>
+        </div>`;
+                } else if (shouldShowTable) {
+                    // MODO: MOSTRAR TABLA (hay cambios y umbral alcanzado)
                     html += `
-                <div class="bg-blue-50 border border-blue-100 p-6 rounded-xl text-center">
-                    <div class="inline-block p-3 bg-blue-100 text-blue-600 rounded-full mb-4">
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    </div>
-                    <h4 class="text-lg font-bold text-blue-900 mb-2">Todo bajo control</h4>
-                    <p class="text-blue-800 text-sm max-w-md mx-auto">
-                        Tus precios ya están alineados con la tasa de <strong>$${parseFloat(newRate).toFixed(2)}</strong>. 
-                        No se realizaron cambios porque los productos mantienen el valor correcto.
-                    </p>
-                    <div class="mt-6">
-                        <button onclick="location.reload()" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-bold shadow-sm">
-                            Volver al Inicio
-                        </button>
-                    </div>
-                </div>`;
+        <div class="mt-4">
+            <div class="flex items-center justify-between mb-4">
+                <h4 class="text-sm font-bold text-gray-700 uppercase tracking-wide">Detalle de Variaciones</h4>
+                <span class="px-2 py-1 bg-gray-100 text-gray-500 text-[10px] font-mono rounded">Ratio: ${parseFloat(data.ratio || 1).toFixed(4)}x</span>
+            </div>
+            ${this.generateResultsTable(changes, isSimulation)}
+        </div>
+        
+        <div class="mt-8 pt-6 border-t border-gray-200 flex justify-between items-center">
+            <button onclick="location.reload()" class="text-gray-500 hover:text-gray-800 text-sm font-semibold transition">
+                ← Cancelar y volver
+            </button>
+            ${isSimulation ? `
+                <button id="dpuwoo-proceed-update" class="px-8 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all shadow-lg hover:shadow-xl font-bold flex items-center transform hover:-translate-y-1">
+                    <span class="mr-2">🚀</span> Confirmar y Aplicar Cambios
+                </button>
+            ` : ''}
+        </div>`;
                 } else {
-                    // MODO: HAY CAMBIOS (Tabla estándar)
+                    // MODO: TODO AL DÍA (no hay cambios pero umbral alcanzado)
                     html += `
-                <div class="mt-4">
-                    <div class="flex items-center justify-between mb-4">
-                        <h4 class="text-sm font-bold text-gray-700 uppercase tracking-wide">Detalle de Variaciones</h4>
-                        <span class="px-2 py-1 bg-gray-100 text-gray-500 text-[10px] font-mono rounded">Ratio: ${parseFloat(data.ratio || 1).toFixed(4)}x</span>
-                    </div>
-                    ${this.generateResultsTable(changes, isSimulation)}
-                </div>
-                
-                <div class="mt-8 pt-6 border-t border-gray-200 flex justify-between items-center">
-                    <button onclick="location.reload()" class="text-gray-500 hover:text-gray-800 text-sm font-semibold transition">
-                        ← Cancelar y volver
-                    </button>
-                    ${isSimulation ? `
-                        <button id="dpuwoo-proceed-update" class="px-8 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all shadow-lg hover:shadow-xl font-bold flex items-center transform hover:-translate-y-1">
-                            <span class="mr-2">🚀</span> Confirmar y Aplicar Cambios
-                        </button>
-                    ` : ''}
-                </div>`;
+        <div class="bg-blue-50 border border-blue-100 p-6 rounded-xl text-center">
+            <div class="inline-block p-3 bg-blue-100 text-blue-600 rounded-full mb-4">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <h4 class="text-lg font-bold text-blue-900 mb-2">Todo bajo control</h4>
+            <p class="text-blue-800 text-sm max-w-md mx-auto">
+                ${isSimulation ? 'Los precios ya están alineados con la tasa actual.' : 'Tus precios ya están alineados con la tasa de'} <strong>$${parseFloat(newRate).toFixed(2)}</strong>. 
+                No se realizaron cambios porque los productos mantienen el valor correcto.
+            </p>
+            <div class="mt-6">
+                <button onclick="location.reload()" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-bold shadow-sm">
+                    Volver al Inicio
+                </button>
+            </div>
+        </div>`;
                 }
 
                 html += `</div>`;
@@ -266,7 +274,7 @@
                 // 1. Agrupar variaciones bajo padres
                 const enhancedChanges = [...changes];
                 const parentIds = [...new Set(changes.filter(i => i.parent_id).map(i => parseInt(i.parent_id)))];
-                
+
                 parentIds.forEach(pId => {
                     if (!changes.some(i => parseInt(i.product_id) === pId)) {
                         const vars = changes.filter(i => parseInt(i.parent_id) === pId);
@@ -307,7 +315,7 @@
                     const p = group.parent;
                     if (!p) return;
                     const hasVars = group.variations.length > 0;
-                    
+
                     let regRange = '—', saleRange = '—';
 
                     if (hasVars) {
@@ -384,27 +392,27 @@
                     const id = $(this).data('product-id');
                     const $icon = $(this).find('.dpuwoo-toggle-icon');
                     const $rows = $(`.dpuwoo-variation-rows[data-parent-id="${id}"]`);
-                    
+
                     $rows.toggleClass('hidden');
                     $icon.text($rows.hasClass('hidden') ? '⊕' : '⊖');
                     $(this).toggleClass('bg-purple-50');
                 });
             },
-            formatPrice: function(price) {
+            formatPrice: function (price) {
                 if (price === null || price === undefined || price === '' || parseFloat(price) === 0) {
                     return '-';
                 }
                 return '$' + parseFloat(price).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
             },
-            
+
             /**
              * Maneja errores en el proceso de simulación/actualización
              * @param {string} errorMessage - Mensaje de error a mostrar
              * @param {string} processType - Tipo de proceso ('simulation' o 'update')
              */
-            handleProcessError: function(errorMessage, processType) {
+            handleProcessError: function (errorMessage, processType) {
                 console.error('DPUWoo Process Error:', errorMessage);
-                
+
                 // Mostrar mensaje de error en la interfaz
                 const errorHtml = `
                     <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
@@ -423,18 +431,18 @@
                         </div>
                     </div>
                 `;
-                
+
                 // Insertar error en la sección correspondiente
-                const targetSection = processType === 'simulation' 
-                    ? '#dpuwoo-simulation-process' 
+                const targetSection = processType === 'simulation'
+                    ? '#dpuwoo-simulation-process'
                     : '#dpuwoo-update-process';
-                
+
                 $(targetSection).prepend(errorHtml);
-                
+
                 // Resetear estado y habilitar botones
                 this.resetAllSections();
                 this.enableButtons();
-                
+
                 // Mostrar sección de error
                 this.showSection(targetSection.replace('#', ''));
             }

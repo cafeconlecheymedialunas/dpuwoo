@@ -117,9 +117,7 @@ class Dpuwoo {
 
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-dolarapi-provider.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-api.php';
-		error_log('DPUWoo: Loading baseline manager');
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-baseline-manager.php'; // NEW: Baseline manager
-		error_log('DPUWoo: Baseline manager loaded');
+	
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-price-calculator.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-price-updater.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-fallback.php';
@@ -130,8 +128,6 @@ class Dpuwoo {
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/helpers/functions.php';
 		$this->loader = new Loader();
 
-		// Check if baseline needs initialization
-		add_action('admin_init', [$this, 'check_baseline_initialization']);
 
 	}
 
@@ -182,7 +178,6 @@ class Dpuwoo {
 		$this->loader->add_action('wp_ajax_dpuwoo_revert_run', $ajax_manager, 'ajax_revert_run');
 		$this->loader->add_action('wp_ajax_dpuwoo_get_currencies', $ajax_manager, 'ajax_get_currencies');
 		$this->loader->add_action('wp_ajax_dpuwoo_save_settings', $ajax_manager, 'ajax_save_settings');
-		$this->loader->add_action('wp_ajax_dpuwoo_initialize_baseline', $ajax_manager, 'ajax_initialize_baseline');
 	}
 	
 
@@ -233,49 +228,7 @@ class Dpuwoo {
 		return $this->loader;
 	}
 
-	/**
-	 * Check if baseline initialization is needed and trigger it
-	 * This handles cases where the plugin was activated before baseline manager existed
-	 */
-	public function check_baseline_initialization() {
-		// Only run for admin users
-		if (!current_user_can('manage_options')) {
-			return;
-		}
-		
-		// Check if we have a baseline
-		$baseline_manager = DPUWOO_Baseline_Manager::get_instance();
-		$current_baseline = $baseline_manager->get_current_baseline('dollar');
-		
-		if ($current_baseline === null || $current_baseline <= 0) {
-			// Try to initialize baseline system
-			try {
-				$baseline_manager->force_initialize();
-				
-				// Check again
-				$current_baseline = $baseline_manager->get_current_baseline('dollar');
-				
-				if ($current_baseline && $current_baseline > 0) {
-					// Success - update the last dollar value option
-					update_option('dpuwoo_last_dollar_value', $current_baseline);
-					
-					// Add admin notice
-					add_action('admin_notices', function() {
-						echo '<div class="notice notice-success is-dismissible"><p>DPUWoo: Baseline dollar rate successfully initialized to ' . number_format(get_option("dpuwoo_last_dollar_value"), 2) . '</p></div>';
-					});
-				} else {
-					// Still failed
-					add_action('admin_notices', function() {
-						echo '<div class="notice notice-error is-dismissible"><p>DPUWoo: Failed to initialize baseline dollar rate. Please check plugin configuration.</p></div>';
-					});
-				}
-			} catch (Exception $e) {
-				add_action('admin_notices', function() use ($e) {
-					echo '<div class="notice notice-error is-dismissible"><p>DPUWoo: Error initializing baseline: ' . esc_html($e->getMessage()) . '</p></div>';
-				});
-			}
-		}
-	}
+	
 
 	/**
 	 * Retrieve the version number of the plugin.

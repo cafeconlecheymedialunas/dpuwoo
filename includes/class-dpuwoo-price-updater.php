@@ -141,19 +141,11 @@ class Price_Updater
                 $saved_ok_sale = true;
                 $update_happened = false;
 
-                // Establecer baseline USD (solo una vez por producto)
-                $calculator = Price_Calculator::get_instance();
-                $calculator->establish_usd_baseline($pid, $old_regular_price, $previous_dollar_value);
-
-                // Usar cálculo desde baseline USD (ignora precio actual manual)
-                $baseline_price = $calculator->calculate_from_usd_baseline($pid, $current_rate);
-
-                // Si el cálculo desde baseline es diferente del cálculo normal, usar baseline
-                if ($baseline_price > 0 && abs($baseline_price - $new_regular_price) > 0.01) {
-                    $new_regular_price = $baseline_price;
-                    $change_data['baseline_used'] = true;
-                    $change_data['calculated_from_baseline'] = true;
-                }
+                // Calcular nuevo precio usando tasa de cambio directa
+                $new_regular_price = $old_regular_price * $ratio;
+                $new_sale_price = $sale_price_enabled 
+                    ? $old_sale_price * $ratio
+                    : false;
 
                 if ($regular_changed && $new_regular_price > 0) {
                     $saved_ok_regular = $this->product_repo->save_regular_price($product, $new_regular_price);
@@ -177,15 +169,12 @@ class Price_Updater
                 }
             } else {
                 $change_data['status'] = 'simulated';
-
-                // En simulación también mostrar si se usaría baseline USD
-                $calculator = Price_Calculator::get_instance();
-                if ($calculator->has_usd_baseline($pid)) {
-                    $baseline_price = $calculator->calculate_from_usd_baseline($pid, $current_rate);
-                    if (abs($baseline_price - $new_regular_price) > 0.01) {
-                        $change_data['would_use_baseline'] = true;
-                        $change_data['baseline_price'] = $baseline_price;
-                    }
+                // En simulación mostrar precio calculado
+                $simulated_regular = $old_regular_price * $ratio;
+                $simulated_sale = $sale_price_enabled ? $old_sale_price * $ratio : false;
+                $change_data['simulated_regular'] = $simulated_regular;
+                if ($simulated_sale !== false) {
+                    $change_data['simulated_sale'] = $simulated_sale;
                 }
             }
 
@@ -206,40 +195,9 @@ class Price_Updater
      */
     public function update_all_batch($simulate = false, $batch = 0)
     {
-        // Use the new baseline manager for reliable baseline retrieval
-        error_log('DPUWoo: Attempting to get baseline manager instance');
-
-        if (!class_exists('DPUWOO_Baseline_Manager')) {
-            error_log('DPUWoo: Baseline manager class not found');
-            return ['error' => 'missing_dependencies', 'message' => 'Baseline manager class not found'];
-        }
-
-        try {
-            $baseline_manager = DPUWOO_Baseline_Manager::get_instance();
-            error_log('DPUWoo: Baseline manager instance obtained');
-            $baseline = $baseline_manager->get_current_baseline('dollar');
-            error_log('DPUWoo: Current baseline value: ' . var_export($baseline, true));
-        } catch (Exception $e) {
-            error_log('DPUWoo: Error getting baseline manager: ' . $e->getMessage());
-            return ['error' => 'baseline_manager_error', 'message' => 'Error initializing baseline manager: ' . $e->getMessage()];
-        }
-
+        // 1. GET SETTINGS AND CURRENT RATE
         $opts = get_option('dpuwoo_settings', []);
-
-
-
-        $baseline_manager->auto_setup_baseline();
-        $baseline = $baseline_manager->get_current_baseline('dollar');
-
-
-
-
-
-
-
-
-        // 2. GET CURRENT DOLLAR RATE
-        $type = get_option('dpuwoo_settings', [])['dollar_type'] ?? 'oficial';
+        $type = $opts['dollar_type'] ?? 'oficial';
 
         if (!class_exists('API_Client')) {
             return ['error' => 'missing_dependencies', 'message' => 'Missing dependent classes (API_Client)'];
@@ -253,16 +211,14 @@ class Price_Updater
 
         $current_rate = floatval($api_res['value']);
 
-        // 3. VERIFY ALL PRODUCTS HAVE BASELINES (ENSURE DATA CONSISTENCY)
-        $calculator = Price_Calculator::get_instance();
-        $calculator->ensure_missing_baselines($current_rate);
-
-        // 4. GET LAST APPLIED DOLLAR OR USE BASELINE
+        // 2. GET LAST APPLIED DOLLAR OR USE LAST RATE FROM SETTINGS
         $last_applied_dollar = $this->get_last_applied_dollar();
+        $last_rate_from_settings = floatval($opts['last_rate'] ?? 0);
+        
+        // Use last applied dollar if available, otherwise use last rate from settings
+        $previous_dollar_value = $last_applied_dollar > 0 ? $last_applied_dollar : $last_rate_from_settings;
 
-        $previous_dollar_value = $last_applied_dollar > 0 ? $last_applied_dollar : $baseline;
-
-        // 5. CHECK THRESHOLD - if change doesn't meet threshold, don't process
+        // 3. CHECK THRESHOLD - if change doesn't meet threshold, don't process
         $threshold = floatval($opts['threshold']);
         $threshold_check = self::check_threshold_met($current_rate, $previous_dollar_value, $threshold);
 
@@ -272,7 +228,6 @@ class Price_Updater
         if (!$this->is_threshold_met()) {
             return [
                 'rate' => $current_rate,
-                'baseline_rate' => $baseline,
                 'previous_rate' => $previous_dollar_value,
                 'ratio' => $threshold_check['ratio'],
                 'percentage_change' => $threshold_check['percentage_change'],
@@ -296,8 +251,7 @@ class Price_Updater
         if ($total_products === 0 || $batch >= $total_batches) {
             return [
                 'rate' => $current_rate,
-                'baseline_rate' => $baseline, // Siempre devolver el baseline para referencia
-                'previous_rate' => $previous_dollar_value, // Valor usado para el cálculo (último aplicado o baseline)
+                'previous_rate' => $previous_dollar_value,
                 'ratio' => $ratio,
                 'percentage_change' => $percentage_change,
                 'total_batches' => $total_batches,
@@ -320,8 +274,7 @@ class Price_Updater
 
         return [
             'rate' => $current_rate,
-            'baseline_rate' => $baseline, // Siempre devolver el baseline
-            'previous_rate' => $previous_dollar_value, // Valor usado para el cálculo
+            'previous_rate' => $previous_dollar_value,
             'dollar_type' => $type,
             'ratio' => $ratio,
             'percentage_change' => $percentage_change,
@@ -391,12 +344,15 @@ class Price_Updater
 
     private function verify_and_auto_configure_reference_currency()
     {
-        $reference_currency = get_option('dpuwoo_reference_currency', '');
+        // Obtener la configuración desde dpuwoo_settings (fuente única de verdad)
+        $settings = get_option('dpuwoo_settings', []);
+        $reference_currency = $settings['reference_currency'] ?? '';
 
         // Auto-configure USD if not set
         if (empty($reference_currency)) {
-            update_option('dpuwoo_reference_currency', 'USD');
-            error_log('DPUWoo: Auto-configured USD as reference currency during update process');
+            $settings['reference_currency'] = 'USD';
+            update_option('dpuwoo_settings', $settings);
+            
             return 'USD';
         }
 

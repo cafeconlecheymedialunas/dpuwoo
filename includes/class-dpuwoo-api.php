@@ -43,7 +43,7 @@ class API_Client
         
         // Validar que el proveedor exista
         if (!isset($this->providers[$provider_key])) {
-            error_log("API Provider '{$provider_key}' no encontrado. Usando dolarapi");
+            
             $provider_key = 'dolarapi';
         }
         

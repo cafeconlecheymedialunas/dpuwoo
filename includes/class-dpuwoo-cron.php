@@ -20,20 +20,7 @@ class Cron
 
     public static function run_cron()
     {
-        // Use the new baseline manager for reliable baseline retrieval
-        $baseline_manager = DPUWOO_Baseline_Manager::get_instance();
-        $baseline = $baseline_manager->get_current_baseline('dollar');
-        
-        // If no baseline, try to initialize
-        if ($baseline === null || $baseline <= 0) {
-            $baseline_manager->force_initialize();
-            $baseline = $baseline_manager->get_current_baseline('dollar');
-        }
-        
-        if ($baseline === null || $baseline <= 0) {
-            error_log('DPUWoo Cron: Cannot run - missing baseline configuration');
-            return;
-        }
+        // Sistema de actualización basado en tasas de cambio directas
 
         $type = get_option('dpuwoo_settings', [])['dollar_type'] ?? 'oficial';
         $api = API_Client::get_instance();
@@ -51,8 +38,8 @@ class Cron
         $last_rate = floatval(get_option('dpuwoo_settings', [])['last_rate'] ?? 0);
         $threshold = floatval(get_option('dpuwoo_settings', [])['threshold'] ?? 0);
 
-        // CORREGIDO: En la primera ejecución (last_rate = 0), comparar con baseline
-        $reference_rate = ($last_rate > 0) ? $last_rate : $baseline;
+        // Comparar con el último rate aplicado (no usar precio promedio general)
+        $reference_rate = $last_rate > 0 ? $last_rate : $current_rate;
         
         // Calcular variación respecto a la referencia
         $changed = ($reference_rate > 0) ? abs(($current_rate - $reference_rate) / $reference_rate) * 100 : 100;

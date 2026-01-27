@@ -102,6 +102,22 @@ class Admin_Settings
             'dpuwoo_settings',
             'dpuwoo_main_section'
         );
+        
+        add_settings_field(
+            'dpuwoo_origin_exchange_rate',
+            'Tasa de Cambio de Origen',
+            [__CLASS__, 'render_origin_exchange_rate'],
+            'dpuwoo_settings',
+            'dpuwoo_main_section'
+        );
+        
+        add_settings_field(
+            'dpuwoo_rate_generation_method',
+            'Método de Generación de Tasa',
+            [__CLASS__, 'render_rate_generation_method'],
+            'dpuwoo_settings',
+            'dpuwoo_main_section'
+        );
         // ========== CAMPOS DE CÁLCULO Y AJUSTE ==========
         
         add_settings_field(
@@ -197,7 +213,8 @@ class Admin_Settings
         echo '<div class="notice notice-info" style="padding: 10px; margin: 10px 0;">';
         echo '<strong>País de la tienda:</strong> ' . esc_html($country_name . ' (' . $base_country . ')') . '<br>';
         echo '<strong>Moneda base:</strong> ' . esc_html($store_currency) . ' (precios actuales del catálogo)<br>';
-        echo '<strong>Moneda de referencia:</strong> ' . esc_html($opts['reference_currency'] ?? 'USD') . ' (para el cálculo)';
+        echo '<strong>Moneda de referencia:</strong> ' . esc_html($opts['reference_currency'] ?? 'USD') . ' (para el cálculo)<br>';
+        echo '<strong>Tasa de cambio de origen:</strong> ' . esc_html($opts['origin_exchange_rate'] ?? '1.0') . ' (tasa histórica base)';
         echo '</div>';
         
         echo '<p class="description">El país y la moneda base se obtienen de la configuración principal de WooCommerce. Para modificarlos, ve a <strong>WooCommerce → Ajustes → Generales</strong>.</p>';
@@ -245,6 +262,10 @@ class Admin_Settings
         $out['country'] = sanitize_text_field($input['country'] ?? 'AR');
         $out['base_currency'] = sanitize_text_field($input['base_currency'] ?? get_woocommerce_currency());
         $out['reference_currency'] = sanitize_text_field($input['reference_currency'] ?? 'USD');
+        $out['origin_exchange_rate'] = floatval($input['origin_exchange_rate'] ?? 1.0);
+        
+        // Campo de método de generación de tasa (mutuamente excluyente)
+        $out['rate_generation_method'] = in_array($input['rate_generation_method'], ['api', 'manual']) ? $input['rate_generation_method'] : 'manual';
         
         // Agregar campos de referencia de moneda
         $out['last_rate'] = floatval($input['last_rate'] ?? 0);
@@ -315,10 +336,32 @@ class Admin_Settings
 
         // Contenedor para el campo dinámico y el indicador de carga
         echo '<div id="dpuwoo_currency_selector_container">';
-        echo '<select name="dpuwoo_settings[reference_currency]" id="dpuwoo_reference_currency" class="regular-text" disabled>';
-        echo '<option value="' . esc_attr($val) . '">' . esc_html($val . ' - Cargando...') . '</option>';
+        echo '<select name="dpuwoo_settings[reference_currency]" id="dpuwoo_reference_currency" class="regular-text">';
+        
+        // Agregar todas las opciones comunes de monedas
+        $common_currencies = [
+            'USD' => 'Dólar Estadounidense (USD)',
+            'EUR' => 'Euro (EUR)',
+            'GBP' => 'Libra Esterlina (GBP)',
+            'ARS' => 'Peso Argentino (ARS)',
+            'BRL' => 'Real Brasileño (BRL)',
+            'CLP' => 'Peso Chileno (CLP)',
+            'MXN' => 'Peso Mexicano (MXN)',
+            'COP' => 'Peso Colombiano (COP)',
+            'PEN' => 'Sol Peruano (PEN)',
+            'UYU' => 'Peso Uruguayo (UYU)'
+        ];
+        
+        // Agregar opción por defecto
+        echo '<option value="">-- Seleccione una moneda --</option>';
+        
+        // Agregar todas las monedas comunes
+        foreach ($common_currencies as $code => $name) {
+            $selected = ($val === $code) ? ' selected' : '';
+            echo '<option value="' . esc_attr($code) . '"' . $selected . '>' . esc_html($name) . '</option>';
+        }
         echo '</select>';
-        echo '<span id="dpuwoo_currency_loading" class="spinner is-active" style="float: none; margin-left: 5px;"></span>';
+        echo '<span id="dpuwoo_currency_loading" class="spinner is-active" style="float: none; margin-left: 5px; display: none;"></span>';
         echo '</div>';
 
         echo '<p class="description" id="dpuwoo_currency_description">';
@@ -331,6 +374,38 @@ class Admin_Settings
             $base_country = substr($base_country, 0, strpos($base_country, ':'));
         }
         echo '<input type="hidden" id="dpuwoo_base_country" value="' . esc_attr($base_country) . '">';
+    }
+    
+    public static function render_origin_exchange_rate()
+    {
+        $opts = get_option('dpuwoo_settings', []);
+        $val = $opts['origin_exchange_rate'] ?? 1.0;
+        $base_currency = get_woocommerce_currency();
+        $reference_currency = $opts['reference_currency'] ?? '';
+        
+        // Solo mostrar el campo si hay una moneda de referencia seleccionada
+        $show_field = !empty($reference_currency);
+        
+        echo '<div class="dpuwoo-origin-rate-container" id="dpuwoo_origin_rate_container" style="' . ($show_field ? '' : 'display: none;') . '">';
+        
+        if ($show_field) {
+            echo '<input type="number" step="0.0001" min="0.0001" name="dpuwoo_settings[origin_exchange_rate]" value="' . esc_attr($val) . '" class="regular-text" id="dpuwoo_origin_exchange_rate">';
+            
+            echo '<div class="dpuwoo-rate-info" style="margin-top: 8px; padding: 10px; background-color: #f0f8ff; border-left: 4px solid #007cba; border-radius: 4px;">';
+            echo '<strong>ℹ️ Tasa de Cambio de Origen:</strong> ';
+            echo 'Cotización histórica cuando estableciste los precios originales de tus productos. ';
+            echo 'Ejemplo: si tus productos costaban 1000 ' . esc_html($base_currency) . ' cuando 1 USD = 100 ' . esc_html($base_currency) . ', ';
+            echo 'entonces esta tasa es <strong>100</strong>. Sirve como referencia para calcular variaciones de precio.';
+            echo '</div>';
+            
+            echo '<p class="description">Tasa de cambio utilizada como punto de partida para calcular variaciones de precios.</p>';
+        } else {
+            echo '<div class="notice notice-info inline" style="margin: 10px 0; padding: 10px;">';
+            echo '<p><strong>ℹ️ Campo disponible:</strong> Selecciona primero una "Moneda de referencia" para configurar la tasa de cambio de origen.</p>';
+            echo '</div>';
+        }
+        
+        echo '</div>';
     }
 
     public static function render_api_provider()
@@ -511,6 +586,43 @@ class Admin_Settings
         } else {
             echo '<p>No hay categorías creadas.</p>';
         }
+    }
+    
+    public static function render_rate_generation_method()
+    {
+        $opts = get_option('dpuwoo_settings', []);
+        // Usar radio buttons para opciones mutuamente excluyentes
+        $selected_method = $opts['rate_generation_method'] ?? 'manual'; // 'api' o 'manual'
+        
+        echo '<div class="dpuwoo-generation-method-container">';
+        
+        echo '<fieldset>';
+        echo '<legend class="screen-reader-text"><span>Método de Generación de Tasa</span></legend>';
+        
+        // Radio button para "Usar por API"
+        echo '<label style="display: block; margin-bottom: 8px;">';
+        echo '<input type="radio" name="dpuwoo_settings[rate_generation_method]" value="api" ' . checked('api', $selected_method, false) . ' />';
+        echo ' <strong>Usar por API</strong> - Obtiene automáticamente la tasa de cambio actual';
+        echo '</label>';
+        
+        // Radio button para "Generar manual"
+        echo '<label style="display: block; margin-bottom: 8px;">';
+        echo '<input type="radio" name="dpuwoo_settings[rate_generation_method]" value="manual" ' . checked('manual', $selected_method, false) . ' />';
+        echo ' <strong>Generar manual</strong> - Ingresa manualmente la tasa de cambio histórica';
+        echo '</label>';
+        
+        echo '</fieldset>';
+        
+        echo '<p class="description">Selecciona una sola opción para determinar cómo se obtiene la tasa de cambio de origen.</p>';
+        
+        echo '<div class="dpuwoo-method-info" style="margin-top: 10px; padding: 10px; background-color: #f0f8ff; border-left: 4px solid #007cba; border-radius: 4px;">';
+        echo '<strong>ℹ️ Flujo de trabajo:</strong><br>';
+        echo '<strong>Generar manual:</strong> Recomendado para mayor control sobre la tasa histórica.<br>';
+        echo '<strong>Usar por API:</strong> Automático pero menos preciso para cálculos históricos.<br>';
+        echo '<strong>Nota:</strong> Solo puedes seleccionar una opción a la vez.';
+        echo '</div>';
+        
+        echo '</div>';
     }
     
     private static function get_country_name($country_code)

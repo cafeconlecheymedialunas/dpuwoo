@@ -18,6 +18,104 @@ jQuery(document).ready(function ($) {
         return textarea.value;
     }
 
+    // Función para mostrar/ocultar el campo de tasa de cambio de origen
+    function toggleOriginRateField() {
+        const hasSelectedCurrency = currencySelect.val() && currencySelect.val() !== '';
+        const $container = $('#dpuwoo_origin_rate_container');
+        
+        if (hasSelectedCurrency) {
+            $container.slideDown(300);
+        } else {
+            $container.slideUp(300);
+        }
+    }
+    
+    // Función para adjuntar eventos de selección (se llama después de cada reinitialización de Select2)
+    function attachSelectEvents() {
+        // Remover eventos anteriores para evitar duplicados
+        $('#dpuwoo_reference_currency').off('select2:select select2:selecting change');
+        
+        // Agregar evento Select2 select
+        $('#dpuwoo_reference_currency').on('select2:select', function(e) {
+            const selectedData = e.params.data;
+            
+            // Verificar que tenemos los datos de moneda correctos
+            if (selectedData && selectedData.currency) {
+                const currencyData = selectedData.currency;
+                
+                // Extraer el valor directamente del objeto currency
+                let rateValue = null;
+                
+                // El valor está directamente en currencyData.value
+                if (currencyData.value !== undefined && currencyData.value !== null) {
+                    rateValue = currencyData.value;
+                } else if (typeof currencyData === 'number') {
+                    rateValue = currencyData;
+                }
+                
+                if (rateValue && !isNaN(parseFloat(rateValue))) {
+                    const numericRate = parseFloat(rateValue);
+                    
+                    // Obtener el campo de tasa de cambio de origen
+                    const originRateInput = $('#dpuwoo_origin_exchange_rate');
+                    
+                    if (originRateInput.length > 0) {
+                        const currentRate = parseFloat(originRateInput.val());
+                        
+                        // Solo actualizar si el valor es diferente
+                        if (isNaN(currentRate) || Math.abs(numericRate - currentRate) > 0.0001) {
+                            originRateInput.val(numericRate);
+                            
+                            // Mostrar notificación de actualización
+                            const notification = $('<div class="notice notice-success inline" style="margin: 5px 0; padding: 5px 10px; font-size: 13px;">')
+                                .html('✅ Tasa de cambio de origen actualizada a <strong>' + numericRate.toFixed(4) + '</strong>');
+                            
+                            // Insertar notificación después del campo
+                            originRateInput.parent().find('.notice').remove(); // Remover notificaciones anteriores
+                            originRateInput.parent().append(notification);
+                            
+                            // Remover notificación después de 3 segundos
+                            setTimeout(function() {
+                                notification.fadeOut(300, function() {
+                                    $(this).remove();
+                                });
+                            }, 3000);
+                        } else {
+                            // Mostrar notificación de que el valor ya estaba correcto
+                            const notification = $('<div class="notice notice-info inline" style="margin: 5px 0; padding: 5px 10px; font-size: 13px;">')
+                                .html('ℹ️ La tasa de cambio de origen ya está configurada correctamente (<strong>' + currentRate.toFixed(4) + '</strong>)');
+                            
+                            // Insertar notificación después del campo
+                            originRateInput.parent().find('.notice').remove(); // Remover notificaciones anteriores
+                            originRateInput.parent().append(notification);
+                            
+                            // Remover notificación después de 2 segundos
+                            setTimeout(function() {
+                                notification.fadeOut(300, function() {
+                                    $(this).remove();
+                                });
+                            }, 2000);
+                        }
+                    }
+                }
+            }
+        });
+        
+        // También agregar evento change tradicional como fallback
+        $('#dpuwoo_reference_currency').on('change', function() {
+            const selectedValue = $(this).val();
+            
+            // Mostrar/ocultar campo de tasa según selección
+            toggleOriginRateField();
+        });
+        
+    }
+    
+    // Adjuntar eventos iniciales
+    attachSelectEvents();
+    
+    // Establecer visibilidad inicial del campo de tasa de cambio
+    toggleOriginRateField();
     // Inicializar Select2 en el select de moneda
     currencySelect.select2({
         placeholder: 'Seleccione un proveedor primero',
@@ -33,8 +131,21 @@ jQuery(document).ready(function ($) {
                 return "Buscando...";
             }
         }
+    }).on('select2:open', function() {
+    }).on('select2:close', function() {
+    }).on('select2:selecting', function(e) {
     });
-
+    
+    // IMPORTANTE: Establecer el valor guardado después de inicializar Select2
+    // Esto asegura que Select2 muestre correctamente la opción seleccionada
+    const initialValue = currencySelect.val();
+    if (initialValue && initialValue !== '') {
+        // Esperar un momento para que Select2 se inicialice completamente
+        setTimeout(function() {
+            currencySelect.val(initialValue).trigger('change');
+        }, 100);
+    }
+    
     // Función para mostrar estado de carga en el select
     function showLoadingState(providerName = '') {
         const loadingText = providerName ? 
@@ -103,13 +214,12 @@ jQuery(document).ready(function ($) {
             },
             success: function(response) {
                 if (response.success && response.data) {
-                    console.log('Monedas recibidas:', response);
                     
                     // Preparar datos para Select2
                     let currencyOptions = [];
                     
                     // Si hay monedas en la respuesta
-                    if (response.data.currencies && Object.keys(response.data.currencies).length > 0) {
+                    if (Array.isArray(response.data.currencies) && response.data.currencies.length > 0) {
                         // Procesar cada moneda
                         $.each(response.data.currencies, function(index, currency) {
                             // Decodificar nombres de moneda
@@ -182,9 +292,34 @@ jQuery(document).ready(function ($) {
                     
                     currencyOptions.unshift(defaultOption);
                     
-                    // Actualizar el select con las nuevas opciones
+                    // Actualizar el select con las nuevas opciones manteniendo las estáticas
+                    // Primero obtener las opciones estáticas existentes
+                    const staticOptions = [];
+                    currencySelect.find('option').each(function() {
+                        const $opt = $(this);
+                        // Solo mantener las opciones estáticas (no las cargadas dinámicamente)
+                        if (!$opt.attr('data-dynamic')) {
+                            staticOptions.push({
+                                id: $opt.val(),
+                                text: $opt.text(),
+                                selected: $opt.is(':selected')
+                            });
+                        }
+                    });
+                    
+                    // Combinar opciones estáticas con las dinámicas
+                    const allOptions = [...staticOptions];
+                    
+                    // Agregar las opciones dinámicas
+                    currencyOptions.forEach(opt => {
+                        // Marcar como dinámicas para identificación futura
+                        opt.dynamic = true;
+                        allOptions.push(opt);
+                    });
+                    
+                    // Re-inicializar Select2 con todas las opciones
                     currencySelect.empty().select2({
-                        data: currencyOptions,
+                        data: allOptions,
                         placeholder: 'Seleccione una moneda o escriba para buscar',
                         allowClear: false,
                         disabled: false,
@@ -194,6 +329,9 @@ jQuery(document).ready(function ($) {
                             return markup;
                         }
                     });
+                    
+                    // IMPORTANTE: Re-attach events after Select2 reinitialization
+                    attachSelectEvents();
                     
                     // Restaurar el valor guardado si existe y está disponible
                     let valueToSelect = '';
@@ -216,13 +354,16 @@ jQuery(document).ready(function ($) {
                             '')
                     );
                     
+                    // Mostrar/ocultar campo de tasa de cambio de origen según si hay moneda seleccionada
+                    toggleOriginRateField();
+                    
                 } else {
                     // Error en la respuesta
                     showCurrencyError(providerName);
                 }
             },
             error: function (xhr, status, error) {
-                console.error('Error cargando monedas:', xhr.responseText);
+                
                 showCurrencyError(providerSelect.find('option:selected').text());
             },
             complete: function () {
@@ -399,8 +540,22 @@ jQuery(document).ready(function ($) {
 
     // Manejar el evento de guardado de formulario
     $('#dpuwoo_settings_form').on('submit', function (e) {
+        // Asegurar que el valor de la moneda se capture antes de enviar
         if (currencySelect.val() && currencySelect.val() !== '') {
             localStorage.setItem('dpuwoo_last_currency', currencySelect.val());
+        }
+        
+        // También asegurar que el valor esté disponible para el guardado
+        const referenceCurrencyValue = currencySelect.val();
+        if (referenceCurrencyValue) {
+            // Crear un campo oculto temporal para asegurar que el valor se envíe
+            const $hiddenField = $('<input type="hidden" name="dpuwoo_settings[reference_currency]" value="' + referenceCurrencyValue + '">');
+            $(this).append($hiddenField);
+            
+            // Remover el campo oculto después de un corto tiempo
+            setTimeout(() => {
+                $hiddenField.remove();
+            }, 100);
         }
     });
 

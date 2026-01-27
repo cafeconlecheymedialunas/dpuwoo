@@ -22,12 +22,12 @@ class Ajax_Manager
         
         // Añadir información detallada de configuración
         $opts = get_option('dpuwoo_settings', []);
-        $res['reference_used'] = 'baseline'; // Para simulación
+        $res['reference_used'] = 'usd_price'; // Para simulación
         
-        // Get current baseline from manager
-        $baseline_manager = DPUWOO_Baseline_Manager::get_instance();
-        $current_baseline = $baseline_manager->get_current_baseline('dollar');
-        $res['baseline_rate'] = $current_baseline ? floatval($current_baseline) : 0;
+        // Usar promedio de baselines USD de productos
+        global $wpdb;
+        $avg_baseline = $wpdb->get_var("SELECT AVG(meta_value) FROM {$wpdb->postmeta} WHERE meta_key = '_dpuwoo_original_price_usd' AND meta_value > 0");
+        $res['baseline_rate'] = $avg_baseline ? floatval($avg_baseline) : 0;
         
         // Añadir configuración completa para mostrar en resultados
         $res['execution_config'] = [
@@ -88,10 +88,10 @@ class Ajax_Manager
         $res['reference_used'] = 'last_rate'; // Para actualización real
         $res['last_rate'] = floatval($opts['last_rate'] ?? 0);
         
-        // Get current baseline from manager
-        $baseline_manager = DPUWOO_Baseline_Manager::get_instance();
-        $current_baseline = $baseline_manager->get_current_baseline('dollar');
-        $res['baseline_rate'] = $current_baseline ? floatval($current_baseline) : 0;
+        // Usar promedio de baselines USD de productos
+        global $wpdb;
+        $avg_baseline = $wpdb->get_var("SELECT AVG(meta_value) FROM {$wpdb->postmeta} WHERE meta_key = '_dpuwoo_original_price_usd' AND meta_value > 0");
+        $res['baseline_rate'] = $avg_baseline ? floatval($avg_baseline) : 0;
         
         // Añadir configuración completa para mostrar en resultados
         $res['execution_config'] = [
@@ -131,7 +131,7 @@ class Ajax_Manager
         $ok = Logger::get_instance()->rollback_run($run_id);
         if (is_wp_error($ok)) wp_send_json_error($ok->get_error_message());
 
-        wp_send_json_success(['message' => 'run_reverted', 'run_id' => $run_id]);
+        wp_send_json_success(['message' => 'run_everted', 'run_id' => $run_id]);
     }
 
     /**
@@ -367,36 +367,18 @@ class Ajax_Manager
     /**
      * AJAX Handler: Guardar configuración de settings
      */
-    public static function ajax_save_settings()
-    {
-        error_log('DPUWoo AJAX Save: Handler called');
-        error_log('DPUWoo AJAX Save: Current user ID: ' . get_current_user_id());
-        error_log('DPUWoo AJAX Save: User can manage_options: ' . (current_user_can('manage_options') ? 'YES' : 'NO'));
-        error_log('DPUWoo AJAX Save: Nonce received: ' . ($_POST['nonce'] ?? 'NONE'));
-        
+    public static function ajax_save_settings() {
         if (!wp_verify_nonce($_POST['nonce'] ?? '', 'dpuwoo_ajax_nonce')) {
-            error_log('DPUWoo AJAX Save: Nonce verification failed');
-            wp_send_json_error(['message' => 'Acceso no autorizado - Token inválido']);
+            wp_send_json_error(['message' => 'Acceso no autorizado']);
         }
         
-        if (!current_user_can('manage_options')) {
-            error_log('DPUWoo AJAX Save: Insufficient permissions');
-            wp_send_json_error(['message' => 'Permisos insuficientes']);
-        }
-        
-        // Log para debugging - show what we actually received
-        error_log('DPUWoo AJAX Save: COMPLETE POST KEYS: ' . print_r(array_keys($_POST), true));
-        error_log('DPUWoo AJAX Save: POST action: ' . ($_POST['action'] ?? 'NONE'));
-        error_log('DPUWoo AJAX Save: POST nonce: ' . ($_POST['nonce'] ?? 'NONE'));
-        
-        // Check specifically for dpuwoo_settings keys
+        // Collect all dpuwoo_settings keys first
         $dpuwoo_keys = [];
         foreach ($_POST as $key => $value) {
             if (strpos($key, 'dpuwoo_settings[') === 0) {
                 $dpuwoo_keys[] = $key;
             }
         }
-        error_log('DPUWoo AJAX Save: Found dpuwoo_settings keys: ' . print_r($dpuwoo_keys, true));
         
         // Collect settings data - try multiple methods
         $settings_data = [];
@@ -404,44 +386,29 @@ class Ajax_Manager
         // Method 1: Check for nested settings array (new format)
         if (isset($_POST['dpuwoo_settings']) && is_array($_POST['dpuwoo_settings'])) {
             $settings_data = $_POST['dpuwoo_settings'];
-            error_log('DPUWoo AJAX Save: Found nested dpuwoo_settings array with ' . count($settings_data) . ' items');
         }
         
         // Method 2: Check for alternative nested format
         if (empty($settings_data) && isset($_POST['settings']) && is_array($_POST['settings'])) {
             $settings_data = $_POST['settings'];
-            error_log('DPUWoo AJAX Save: Found alternative settings array with ' . count($settings_data) . ' items');
         }
         
         // Method 3: Direct collection from flattened format (old format)
         if (empty($settings_data)) {
-            error_log('DPUWoo AJAX Save: Trying direct collection from flattened format');
             foreach ($_POST as $key => $value) {
                 if (strpos($key, 'dpuwoo_settings[') === 0) {
                     // Extract field name: dpuwoo_settings[field_name] -> field_name
                     $field_name = preg_replace('/^dpuwoo_settings\[([^\]]+)\]$/', '$1', $key);
                     $settings_data[$field_name] = $value;
-                    error_log("DPUWoo AJAX Save: Collected {$field_name} = " . (is_array($value) ? 'ARRAY' : $value));
                 }
             }
-            error_log('DPUWoo AJAX Save: Direct collection found ' . count($settings_data) . ' fields');
-        }
-        
-        // Method 3: If still empty, log everything we received
-        if (empty($settings_data)) {
-            error_log('DPUWoo AJAX Save: STILL EMPTY - Complete POST dump: ' . print_r($_POST, true));
         }
         
         if (empty($settings_data) || !is_array($settings_data)) {
-            error_log('DPUWoo AJAX Save: Invalid settings data received');
-            error_log('DPUWoo AJAX Save: POST keys: ' . print_r(array_keys($_POST), true));
             wp_send_json_error([
                 'message' => 'Datos de configuración inválidos - No se recibieron datos del formulario'
             ]);
         }
-        
-        // Log para debugging
-        error_log('DPUWoo AJAX Save: Processing settings for user ' . get_current_user_id());
         
         // Sanitizar y validar los datos
         $sanitized_data = [];
@@ -477,74 +444,17 @@ class Ajax_Manager
         $sanitized_data['exclude_categories'] = is_array($exclude_categories) && !empty($exclude_categories)
             ? array_map('intval', $exclude_categories)
             : [];
-        
+
         // Guardar la configuración
-        error_log('DPUWoo AJAX Save: Attempting to save settings data');
-        error_log('DPUWoo AJAX Save: Data to save: ' . print_r($sanitized_data, true));
-        error_log('DPUWoo AJAX Save: Data type: ' . gettype($sanitized_data));
-        error_log('DPUWoo AJAX Save: Data count: ' . count($sanitized_data));
-        
-        // Test direct database write first
-        global $wpdb;
-        $option_name = 'dpuwoo_settings';
-        $option_value = serialize($sanitized_data);
-        
-        error_log('DPUWoo AJAX Save: Testing direct database write');
-        error_log('DPUWoo AJAX Save: Option name: ' . $option_name);
-        error_log('DPUWoo AJAX Save: Serialized data length: ' . strlen($option_value));
-        
-        // Check if option exists
-        $exists = $wpdb->get_var($wpdb->prepare("SELECT option_id FROM {$wpdb->options} WHERE option_name = %s", $option_name));
-        error_log('DPUWoo AJAX Save: Option exists: ' . ($exists ? 'YES (' . $exists . ')' : 'NO'));
-        
-        // Try direct insert/update
-        if ($exists) {
-            $result_direct = $wpdb->update(
-                $wpdb->options,
-                ['option_value' => $option_value],
-                ['option_name' => $option_name],
-                ['%s'],
-                ['%s']
-            );
-        } else {
-            $result_direct = $wpdb->insert(
-                $wpdb->options,
-                [
-                    'option_name' => $option_name,
-                    'option_value' => $option_value,
-                    'autoload' => 'yes'
-                ],
-                ['%s', '%s', '%s']
-            );
-        }
-        
-        error_log('DPUWoo AJAX Save: Direct DB result: ' . var_export($result_direct, true));
-        error_log('DPUWoo AJAX Save: Last query: ' . $wpdb->last_query);
-        error_log('DPUWoo AJAX Save: Last error: ' . $wpdb->last_error);
-        
-        // Also try update_option
         $result = update_option('dpuwoo_settings', $sanitized_data);
-        
-        error_log('DPUWoo AJAX Save: update_option result: ' . var_export($result, true));
-        error_log('DPUWoo AJAX Save: update_option return type: ' . gettype($result));
-        
-        if ($result !== false) { // update_option returns false on failure
-            error_log('DPUWoo AJAX Save: Settings saved successfully');
-            
-            // Verify the save actually worked
-            $verify_settings = get_option('dpuwoo_settings', []);
-            error_log('DPUWoo AJAX Save: Verification - Saved settings: ' . print_r($verify_settings, true));
-            error_log('DPUWoo AJAX Save: Verification - Match: ' . (($verify_settings == $sanitized_data) ? 'YES' : 'NO'));
-            
+    
+        if ($result !== false) {
             wp_send_json_success([
                 'message' => 'Configuración guardada correctamente',
                 'data' => $sanitized_data,
                 'timestamp' => current_time('mysql')
             ]);
         } else {
-            error_log('DPUWoo AJAX Save: Failed to save settings');
-            error_log('DPUWoo AJAX Save: Current user ID: ' . get_current_user_id());
-            error_log('DPUWoo AJAX Save: Current user can manage_options: ' . (current_user_can('manage_options') ? 'YES' : 'NO'));
             wp_send_json_error([
                 'message' => 'Error al guardar la configuración - Verifique permisos y datos'
             ]);
@@ -568,58 +478,88 @@ class Ajax_Manager
     }
     
     /**
-     * Manual baseline initialization endpoint
+     * AJAX Handler: Get current product price
      */
-    public function ajax_initialize_baseline() {
-        error_log('DPUWoo: ajax_initialize_baseline called');
-        error_log('DPUWoo: POST data: ' . print_r($_POST, true));
-        error_log('DPUWoo: Current user ID: ' . get_current_user_id());
-        error_log('DPUWoo: User can manage_options: ' . (current_user_can('manage_options') ? 'YES' : 'NO'));
-        
+    public function ajax_get_product_current_price() {
         if (!current_user_can('manage_options')) {
-            error_log('DPUWoo: Permission denied');
-            wp_send_json_error('No permissions');
+            wp_send_json_error(['message' => 'No permissions']);
         }
         
         if (!check_ajax_referer('dpuwoo_ajax_nonce', 'nonce', false)) {
-            error_log('DPUWoo: Invalid nonce');
-            wp_send_json_error('Invalid nonce');
+            wp_send_json_error(['message' => 'Invalid nonce']);
         }
         
-        error_log('DPUWoo: Nonce verified, proceeding with initialization');
+        $product_id = intval($_POST['product_id'] ?? 0);
+        if (!$product_id) {
+            wp_send_json_error(['message' => 'Invalid product ID']);
+        }
+        
+        if (!function_exists('wc_get_product')) {
+            wp_send_json_error(['message' => 'WooCommerce not available']);
+        }
+        
+        $product = wc_get_product($product_id);
+        if (!$product) {
+            wp_send_json_error(['message' => 'Product not found']);
+        }
+        
+        $current_price = floatval($product->get_regular_price());
+        
+        wp_send_json_success([
+            'price' => $current_price,
+            'formatted_price' => wc_price($current_price),
+            'product_id' => $product_id,
+            'product_title' => $product->get_title()
+        ]);
+    }
+    
+    /**
+     * AJAX Handler: Get current exchange rate
+     */
+    public function ajax_get_current_exchange_rate() {
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'No permissions']);
+        }
+        
+        if (!check_ajax_referer('dpuwoo_ajax_nonce', 'nonce', false)) {
+            wp_send_json_error(['message' => 'Invalid nonce']);
+        }
         
         try {
-            error_log('DPUWoo: Instantiating baseline manager');
-            $baseline_manager = DPUWOO_Baseline_Manager::get_instance();
-            error_log('DPUWoo: Calling force_initialize');
-            $result = $baseline_manager->force_initialize();
-            error_log('DPUWoo: force_initialize result: ' . var_export($result, true));
-            
-            $current_baseline = $baseline_manager->get_current_baseline('dollar');
-            error_log('DPUWoo: Current baseline value: ' . var_export($current_baseline, true));
-            
-            if ($current_baseline && $current_baseline > 0) {
-                update_option('dpuwoo_last_dollar_value', $current_baseline);
-                error_log('DPUWoo: Updated dpuwoo_last_dollar_value option');
+            if (class_exists('API_Client')) {
+                $api_client = API_Client::get_instance();
+                $settings = get_option('dpuwoo_settings', []);
+                $dollar_type = $settings['dollar_type'] ?? 'oficial';
                 
-                wp_send_json_success([
-                    'message' => 'Baseline successfully initialized',
-                    'baseline_value' => $current_baseline,
-                    'formatted_value' => number_format($current_baseline, 2)
-                ]);
+                $rate_data = $api_client->get_rate($dollar_type);
+                
+                if ($rate_data && isset($rate_data['value'])) {
+                    wp_send_json_success([
+                        'rate' => floatval($rate_data['value']),
+                        'formatted_rate' => '$' . number_format(floatval($rate_data['value']), 2),
+                        'type' => $dollar_type,
+                        'provider' => $rate_data['provider'] ?? 'unknown'
+                    ]);
+                } else {
+                    wp_send_json_error(['message' => 'Could not get exchange rate from API']);
+                }
             } else {
-                error_log('DPUWoo: Failed to get valid baseline value');
-                wp_send_json_error([
-                    'message' => 'Failed to initialize baseline - could not fetch dollar rate'
-                ]);
+                wp_send_json_error(['message' => 'API Client not available']);
             }
         } catch (Exception $e) {
-            error_log('DPUWoo: Exception in ajax_initialize_baseline: ' . $e->getMessage());
-            error_log('DPUWoo: Exception trace: ' . $e->getTraceAsString());
-            wp_send_json_error([
-                'message' => 'Error initializing baseline: ' . $e->getMessage()
-            ]);
+            wp_send_json_error(['message' => 'Error getting exchange rate: ' . $e->getMessage()]);
         }
+    }
+    
+    /**
+     * AJAX Handler: Initialize baseline using current API exchange rate
+     */
+    public function ajax_initialize_baseline_api() {
+        // Esta funcionalidad ha sido simplificada
+        // Los baselines se establecen automáticamente durante la activación
+        wp_send_json_error([
+            'message' => 'Esta funcionalidad ha sido simplificada. Los baselines se establecen automáticamente durante la activación del plugin.'
+        ]);
     }
     
 }
