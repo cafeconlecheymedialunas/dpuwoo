@@ -110,7 +110,7 @@ class Admin_Settings
             'dpuwoo_settings',
             'dpuwoo_main_section'
         );
-        
+
         add_settings_field(
             'dpuwoo_rate_generation_method',
             'Método de Generación de Tasa',
@@ -118,6 +118,7 @@ class Admin_Settings
             'dpuwoo_settings',
             'dpuwoo_main_section'
         );
+
         // ========== CAMPOS DE CÁLCULO Y AJUSTE ==========
         
         add_settings_field(
@@ -407,6 +408,28 @@ class Admin_Settings
         
         echo '</div>';
     }
+    
+    public static function render_rate_generation_method()
+    {
+        $opts = get_option('dpuwoo_settings', []);
+        $val = $opts['rate_generation_method'] ?? 'manual';
+        
+        echo '<fieldset>';
+        echo '<legend class="screen-reader-text"><span>Método de Generación de Tasa</span></legend>';
+        
+        echo '<label>';
+        echo '<input type="radio" name="dpuwoo_settings[rate_generation_method]" value="api" ' . checked($val, 'api', false) . '> ';
+        echo 'Usar por API (automático)';
+        echo '</label><br>';
+        
+        echo '<label>';
+        echo '<input type="radio" name="dpuwoo_settings[rate_generation_method]" value="manual" ' . checked($val, 'manual', false) . '> ';
+        echo 'Ingresar manualmente';
+        echo '</label>';
+        
+        echo '<p class="description">Elige cómo se determina la tasa de cambio de origen. "Usar por API" obtiene el valor automáticamente, "Ingresar manualmente" te permite definirlo tú mismo.</p>';
+        echo '</fieldset>';
+    }
 
     public static function render_api_provider()
     {
@@ -587,43 +610,7 @@ class Admin_Settings
             echo '<p>No hay categorías creadas.</p>';
         }
     }
-    
-    public static function render_rate_generation_method()
-    {
-        $opts = get_option('dpuwoo_settings', []);
-        // Usar radio buttons para opciones mutuamente excluyentes
-        $selected_method = $opts['rate_generation_method'] ?? 'manual'; // 'api' o 'manual'
-        
-        echo '<div class="dpuwoo-generation-method-container">';
-        
-        echo '<fieldset>';
-        echo '<legend class="screen-reader-text"><span>Método de Generación de Tasa</span></legend>';
-        
-        // Radio button para "Usar por API"
-        echo '<label style="display: block; margin-bottom: 8px;">';
-        echo '<input type="radio" name="dpuwoo_settings[rate_generation_method]" value="api" ' . checked('api', $selected_method, false) . ' />';
-        echo ' <strong>Usar por API</strong> - Obtiene automáticamente la tasa de cambio actual';
-        echo '</label>';
-        
-        // Radio button para "Generar manual"
-        echo '<label style="display: block; margin-bottom: 8px;">';
-        echo '<input type="radio" name="dpuwoo_settings[rate_generation_method]" value="manual" ' . checked('manual', $selected_method, false) . ' />';
-        echo ' <strong>Generar manual</strong> - Ingresa manualmente la tasa de cambio histórica';
-        echo '</label>';
-        
-        echo '</fieldset>';
-        
-        echo '<p class="description">Selecciona una sola opción para determinar cómo se obtiene la tasa de cambio de origen.</p>';
-        
-        echo '<div class="dpuwoo-method-info" style="margin-top: 10px; padding: 10px; background-color: #f0f8ff; border-left: 4px solid #007cba; border-radius: 4px;">';
-        echo '<strong>ℹ️ Flujo de trabajo:</strong><br>';
-        echo '<strong>Generar manual:</strong> Recomendado para mayor control sobre la tasa histórica.<br>';
-        echo '<strong>Usar por API:</strong> Automático pero menos preciso para cálculos históricos.<br>';
-        echo '<strong>Nota:</strong> Solo puedes seleccionar una opción a la vez.';
-        echo '</div>';
-        
-        echo '</div>';
-    }
+
     
     private static function get_country_name($country_code)
     {

@@ -4,6 +4,9 @@
 
 <div class="wrap dpuwoo-admin max-w-6xl mx-auto py-6">
 
+    <!-- Display WordPress settings messages -->
+    <?php settings_errors(); ?>
+
     <h1 class="text-3xl font-bold mb-8 text-gray-800">
         Dollar Price Engine – Panel
     </h1>

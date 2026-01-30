@@ -177,7 +177,7 @@ class Dpuwoo {
 		$this->loader->add_action('wp_ajax_dpuwoo_revert_item', $ajax_manager, 'ajax_revert_item');
 		$this->loader->add_action('wp_ajax_dpuwoo_revert_run', $ajax_manager, 'ajax_revert_run');
 		$this->loader->add_action('wp_ajax_dpuwoo_get_currencies', $ajax_manager, 'ajax_get_currencies');
-		$this->loader->add_action('wp_ajax_dpuwoo_save_settings', $ajax_manager, 'ajax_save_settings');
+		// Removed wp_ajax_dpuwoo_save_settings to use traditional form submission instead
 	}
 	
 
