@@ -337,7 +337,7 @@ class Admin_Settings
 
         // Contenedor para el campo dinámico y el indicador de carga
         echo '<div id="dpuwoo_currency_selector_container">';
-        echo '<select name="dpuwoo_settings[reference_currency]" id="dpuwoo_reference_currency" class="regular-text">';
+        echo '<select name="dpuwoo_settings[reference_currency]" id="dpuwoo_reference_currency" class="regular-text" data-saved-value="' . esc_attr($val) . '">';
         
         // Agregar todas las opciones comunes de monedas
         $common_currencies = [
@@ -390,9 +390,17 @@ class Admin_Settings
         echo '<div class="dpuwoo-origin-rate-container" id="dpuwoo_origin_rate_container" style="' . ($show_field ? '' : 'display: none;') . '">';
         
         if ($show_field) {
-            echo '<input type="number" step="0.0001" min="0.0001" name="dpuwoo_settings[origin_exchange_rate]" value="' . esc_attr($val) . '" class="regular-text" id="dpuwoo_origin_exchange_rate">';
+            echo '<div class="dpuwoo-rate-field-group" style="display: flex; align-items: center; gap: 10px; max-width: 400px;">';
+            echo '  <div style="position: relative; flex-grow: 1;">';
+            echo '    <input type="number" step="0.0001" min="0.0001" name="dpuwoo_settings[origin_exchange_rate]" value="' . esc_attr($val) . '" class="regular-text" id="dpuwoo_origin_exchange_rate" readonly style="background-color: #f0f0f0; width: 100%; padding-right: 40px; border-radius: 6px; border: 1px solid #ccc; height: 35px;">';
+            echo '    <span id="dpuwoo_edit_rate_toggle" class="dashicons dashicons-edit" title="Editar manualmente" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #007cba;"></span>';
+            echo '  </div>';
+            echo '  <div id="dpuwoo_rate_sync_indicator" title="Sincronizado con la API" style="color: #46b450; display: flex; align-items: center;">';
+            echo '    <span class="dashicons dashicons-cloud"></span>';
+            echo '  </div>';
+            echo '</div>';
             
-            echo '<div class="dpuwoo-rate-info" style="margin-top: 8px; padding: 10px; background-color: #f0f8ff; border-left: 4px solid #007cba; border-radius: 4px;">';
+            echo '<div class="dpuwoo-rate-info" style="margin-top: 12px; padding: 12px; background-color: #f0f8ff; border-left: 4px solid #007cba; border-radius: 4px; font-size: 13px; line-height: 1.5; max-width: 600px;">';
             echo '<strong>ℹ️ Tasa de Cambio de Origen:</strong> ';
             echo 'Cotización histórica cuando estableciste los precios originales de tus productos. ';
             echo 'Ejemplo: si tus productos costaban 1000 ' . esc_html($base_currency) . ' cuando 1 USD = 100 ' . esc_html($base_currency) . ', ';
@@ -414,21 +422,24 @@ class Admin_Settings
         $opts = get_option('dpuwoo_settings', []);
         $val = $opts['rate_generation_method'] ?? 'manual';
         
-        echo '<fieldset>';
-        echo '<legend class="screen-reader-text"><span>Método de Generación de Tasa</span></legend>';
+        echo '<div class="dpuwoo-method-selector" style="display: flex; gap: 20px;">';
         
-        echo '<label>';
-        echo '<input type="radio" name="dpuwoo_settings[rate_generation_method]" value="api" ' . checked($val, 'api', false) . '> ';
-        echo 'Usar por API (automático)';
-        echo '</label><br>';
-        
-        echo '<label>';
-        echo '<input type="radio" name="dpuwoo_settings[rate_generation_method]" value="manual" ' . checked($val, 'manual', false) . '> ';
-        echo 'Ingresar manualmente';
+        echo '<label style="display: flex; align-items: center; cursor: pointer; font-weight: 500;">';
+        echo '<input type="radio" name="dpuwoo_settings[rate_generation_method]" value="api" ' . checked($val, 'api', false) . ' style="margin-right: 8px;"> ';
+        echo 'Sincronizado con API';
         echo '</label>';
         
-        echo '<p class="description">Elige cómo se determina la tasa de cambio de origen. "Usar por API" obtiene el valor automáticamente, "Ingresar manualmente" te permite definirlo tú mismo.</p>';
-        echo '</fieldset>';
+        echo '<label style="display: flex; align-items: center; cursor: pointer; font-weight: 500;">';
+        echo '<input type="radio" name="dpuwoo_settings[rate_generation_method]" value="manual" ' . checked($val, 'manual', false) . ' style="margin-right: 8px;"> ';
+        echo 'Personalizado (Manual)';
+        echo '</label>';
+        
+        echo '</div>';
+        
+        echo '<p class="description" style="margin-top: 10px;">';
+        echo '<strong>Sincronizado:</strong> La tasa se actualiza automáticamente al cambiar de moneda.<br>';
+        echo '<strong>Personalizado:</strong> El valor se bloquea y solo tú puedes editarlo usando el icono del lápiz.';
+        echo '</p>';
     }
 
     public static function render_api_provider()

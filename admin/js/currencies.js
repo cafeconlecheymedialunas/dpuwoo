@@ -48,6 +48,9 @@ jQuery(document).ready(function ($) {
     
     // Llenar el select de monedas
     function fillCurrencySelect(currencies, provider) {
+        // Obtener el valor de referencia guardado en PHP si existe
+        const dbValue = $currency.attr('data-saved-value') || $currency.val();
+        
         // Limpiar select
         $currency.html('<option value="">-- Seleccione moneda --</option>');
         
@@ -72,10 +75,24 @@ jQuery(document).ready(function ($) {
         // Habilitar select
         $currency.prop('disabled', false);
         
-        // Intentar cargar selección anterior
-        const lastCurrency = localStorage.getItem('dpuwoo_last_currency_' + provider);
-        if (lastCurrency) {
-            $currency.val(lastCurrency);
+        // Intentar restaurar valor: 
+        // 1. Prioridad al valor que ya tenía (DB)
+        // 2. Si no hay valor previo, usar localStorage
+        let restoredValue = '';
+        if (dbValue && $currency.find(`option[value="${dbValue}"]`).length > 0) {
+            restoredValue = dbValue;
+            console.log('Cargando moneda desde DB:', dbValue);
+        } else {
+            const lastCurrency = localStorage.getItem('dpuwoo_last_currency_' + provider);
+            if (lastCurrency && $currency.find(`option[value="${lastCurrency}"]`).length > 0) {
+                restoredValue = lastCurrency;
+                console.log('Cargando moneda desde localStorage:', lastCurrency);
+            }
+        }
+
+        if (restoredValue) {
+            // Usar .val() sin disparar .trigger('change') para no sobreescribir la tasa de origen
+            $currency.val(restoredValue);
         }
         
         // Actualizar descripción
@@ -130,73 +147,34 @@ jQuery(document).ready(function ($) {
         if (currentProvider && $(this).val()) {
             localStorage.setItem('dpuwoo_last_currency_' + currentProvider, $(this).val());
             
-            // Extraer y asignar el valor de la tasa automáticamente
             const selectedOption = $(this).find('option:selected');
             const rateValue = selectedOption.data('rate') || selectedOption.attr('data-rate');
+            const originRateField = $('#dpuwoo_origin_exchange_rate');
+            const isManual = $('input[name="dpuwoo_settings[rate_generation_method]"]:checked').val() === 'manual';
             
-            if (rateValue && !isNaN(parseFloat(rateValue))) {
+            if (rateValue && !isNaN(parseFloat(rateValue)) && originRateField.length > 0) {
+                // Si el modo es manual, NO actualizar automáticamente
+                if (isManual || !originRateField.prop('readonly')) {
+                    console.log('Modo manual detectado, ignorando actualización automática');
+                    return;
+                }
+
                 const numericRate = parseFloat(rateValue);
-                const originRateField = $('#dpuwoo_origin_exchange_rate');
+                const currentRateValue = parseFloat(originRateField.val());
                 
-                if (originRateField.length > 0) {
-                    const currentRate = parseFloat(originRateField.val());
+                if (isNaN(currentRateValue) || Math.abs(numericRate - currentRateValue) > 0.0001) {
+                    originRateField.val(numericRate);
                     
-                    // Solo actualizar si el valor es diferente
-                    if (isNaN(currentRate) || Math.abs(numericRate - currentRate) > 0.0001) {
-                        originRateField.val(numericRate);
-                        
-                        // Mostrar notificación de actualización
-                        const notification = $('<div class="notice notice-success inline" style="margin: 5px 0; padding: 5px 10px; font-size: 13px;">')
-                            .html('✅ Tasa de cambio de origen actualizada a <strong>' + numericRate.toFixed(4) + '</strong>');
-                        
-                        // Insertar notificación después del campo
-                        originRateField.parent().find('.notice').remove(); // Remover notificaciones anteriores
-                        originRateField.parent().append(notification);
-                        
-                        // Remover notificación después de 3 segundos
-                        setTimeout(function() {
-                            notification.fadeOut(300, function() {
-                                $(this).remove();
-                            });
-                        }, 3000);
-                        
-                        console.log('Tasa de cambio actualizada automáticamente:', numericRate);
-                    } else {
-                        // Mostrar notificación de que el valor ya estaba correcto
-                        const notification = $('<div class="notice notice-info inline" style="margin: 5px 0; padding: 5px 10px; font-size: 13px;">')
-                            .html('ℹ️ La tasa de cambio de origen ya está configurada correctamente (<strong>' + currentRate.toFixed(4) + '</strong>)');
-                        
-                        // Insertar notificación después del campo
-                        originRateField.parent().find('.notice').remove(); // Remover notificaciones anteriores
-                        originRateField.parent().append(notification);
-                        
-                        // Remover notificación después de 2 segundos
-                        setTimeout(function() {
-                            notification.fadeOut(300, function() {
-                                $(this).remove();
-                            });
-                        }, 2000);
-                    }
+                    const notification = $('<div id="rate-update-notice" class="notice notice-success inline" style="margin: 5px 0; padding: 5px 10px; font-size: 13px; border-radius: 4px; display: block; width: fit-content;">')
+                        .html('✅ Tasa actualizada a <strong>' + numericRate.toFixed(4) + '</strong>');
+                    
+                    $('#rate-update-notice').remove();
+                    originRateField.closest('.dpuwoo-rate-field-group').after(notification);
+                    
+                    setTimeout(function() {
+                        notification.fadeOut(300, function() { $(this).remove(); });
+                    }, 3000);
                 }
-            }
-            
-            // Automáticamente seleccionar "Usar por API" cuando se elige una moneda
-            const rateMethodRadios = $('input[name="dpuwoo_settings[rate_generation_method]"]');
-            const apiRadio = rateMethodRadios.filter('[value="api"]');
-            
-            if (apiRadio.length > 0 && !apiRadio.is(':checked')) {
-                apiRadio.prop('checked', true);
-                console.log('Automáticamente seleccionado: Usar por API');
-                
-                // Remover el código que deshabilita el campo automáticamente
-                // El campo debe permanecer habilitado para que se envíe con el formulario
-                /*
-                const originRateField = $('#dpuwoo_origin_exchange_rate');
-                if (originRateField.length > 0) {
-                    originRateField.prop('disabled', true).css('background-color', '#f0f0f0');
-                    originRateField.parent().find('.description').text('Campo deshabilitado: la tasa se obtendrá automáticamente por API.');
-                }
-                */
             }
         }
     });
@@ -204,49 +182,70 @@ jQuery(document).ready(function ($) {
     // Manejar la edición manual del campo de tasa con lápiz
     function handleManualRateEditingWithPencil() {
         const originRateField = $('#dpuwoo_origin_exchange_rate');
-        const originRateContainer = $('#dpuwoo_origin_rate_container');
+        const editToggle = $('#dpuwoo_edit_rate_toggle');
+        const syncIndicator = $('#dpuwoo_rate_sync_indicator');
+        const rateMethodRadios = $('input[name="dpuwoo_settings[rate_generation_method]"]');
         
-        // Agregar lápiz de edición
-        if (originRateContainer.length > 0 && $('.edit-pencil').length === 0) {
-            const pencilIcon = $('<span>', {
-                class: 'edit-pencil dashicons dashicons-edit',
-                title: 'Editar tasa manualmente',
-                style: 'cursor: pointer; margin-left: 8px; color: #0073aa; vertical-align: middle;'
-            });
+        // Función central para cambiar entre modos
+        function setRateMode(mode) {
+            $('#manual-mode-notice').remove();
             
-            originRateContainer.find('label').append(pencilIcon);
-            
-            // Por defecto, dejar el campo habilitado para que se envíe con el formulario
-            // originRateField.prop('disabled', true).css('background-color', '#f0f0f0');
-            originRateField.parent().find('.description').text('Ingresa la tasa de cambio histórica de tus productos. Esta tasa se usará como referencia para calcular variaciones de precio.');
-            
-            // Manejar clic en el lápiz
-            pencilIcon.on('click', function() {
-                if (originRateField.prop('disabled')) {
-                    // Habilitar edición
-                    originRateField.prop('disabled', false).css('background-color', '');
+            if (mode === 'manual') {
+                // MODO MANUAL
+                originRateField.prop('readonly', false).css({
+                    'background-color': '#fff',
+                    'border-color': '#007cba',
+                    'transition': 'all 0.3s ease'
+                });
+                
+                editToggle.removeClass('dashicons-edit').addClass('dashicons-yes').css('color', '#46b450').attr('title', 'Bloquear y guardar');
+                syncIndicator.fadeOut(200);
+                
+                // Sincronizar Radio
+                rateMethodRadios.filter('[value="manual"]').prop('checked', true);
+                
+                // Agregar aviso
+                originRateField.closest('.dpuwoo-rate-field-group').after('<div id="manual-mode-notice" class="notice notice-warning inline" style="margin: 5px 0; padding: 5px 10px; font-size: 11px; display: block; width: fit-content; border-radius: 4px;">⚠️ Modo manual: Ingresa el valor que tenían tus productos originalmente.</div>');
+            } else {
+                // MODO API (Sincronizado)
+                originRateField.prop('readonly', true).css({
+                    'background-color': '#f0f0f0',
+                    'border-color': '#ccc',
+                    'transition': 'all 0.3s ease'
+                });
+                
+                editToggle.removeClass('dashicons-yes').addClass('dashicons-edit').css('color', '#007cba').attr('title', 'Editar manualmente');
+                syncIndicator.fadeIn(200);
+                
+                // Sincronizar Radio
+                rateMethodRadios.filter('[value="api"]').prop('checked', true);
+            }
+        }
+
+        if (editToggle.length > 0) {
+            // Evento clic en el lápiz
+            editToggle.on('click', function(e) {
+                e.preventDefault();
+                const isReadonly = originRateField.prop('readonly');
+                const newMode = isReadonly ? 'manual' : 'api';
+                
+                console.log('Cambiando modo desde lápiz a:', newMode);
+                setRateMode(newMode);
+                
+                if (newMode === 'manual') {
                     originRateField.focus();
-                    originRateField.parent().find('.description').text('Campo habilitado para edición manual. Una vez editado, no se harán consultas adicionales.');
-                    
-                    // Cambiar icono a guardar
-                    $(this).removeClass('dashicons-edit').addClass('dashicons-yes')
-                           .attr('title', 'Guardar cambios')
-                           .css('color', '#46b450');
-                    
-                    console.log('Modo edición manual activado');
-                } else {
-                    // Deshabilitar edición (guardar)
-                    originRateField.prop('disabled', true).css('background-color', '#f0f0f0');
-                    originRateField.parent().find('.description').text('Tasa editada manualmente. No se realizarán más consultas automáticas.');
-                    
-                    // Volver a icono de edición
-                    $(this).removeClass('dashicons-yes').addClass('dashicons-edit')
-                           .attr('title', 'Editar tasa manualmente')
-                           .css('color', '#0073aa');
-                    
-                    console.log('Cambios guardados - modo manual fijado');
                 }
             });
+
+            // Evento cambio en los Radios (Sincronización inversa)
+            rateMethodRadios.on('change', function() {
+                console.log('Cambiando modo desde Radio a:', $(this).val());
+                setRateMode($(this).val());
+            });
+
+            // Inicializar estado según el radio seleccionado al cargar
+            const initialMode = rateMethodRadios.filter(':checked').val() || 'api';
+            setRateMode(initialMode);
         }
     }
     

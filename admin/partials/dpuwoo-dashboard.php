@@ -376,7 +376,7 @@
 
         <div class="bg-white shadow rounded-xl p-8 border border-gray-200">
             <h2 class="text-xl font-semibold text-gray-800 mb-6">Configuración</h2>
-            <form id="dpuwoo-settings-form" method="post" class="space-y-6">
+            <form id="dpuwoo-settings-form" method="post" action="options.php" class="space-y-6">
 
                 <?php
                 settings_fields('dpuwoo_settings_group');
