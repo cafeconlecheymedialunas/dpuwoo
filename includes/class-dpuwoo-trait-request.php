@@ -124,11 +124,11 @@ trait HTTP_Request_Trait {
 }
 
 // Clase base abstracta para proveedores
-abstract class Base_API_Provider {
+abstract class Base_API_Provider implements API_Provider_Interface {
     use HTTP_Request_Trait;
-    
+
     protected $auth_header = 'Authorization'; // Header por defecto para auth
-    
+
     abstract public function get_rate($type);
     abstract public function get_currencies();
     abstract public function test_connection();

@@ -27,6 +27,14 @@ class Dpuwoo {
 	protected $loader;
 
 	/**
+	 * Contenedor de Inyección de Dependencias.
+	 * Construido una sola vez durante el bootstrap del plugin.
+	 *
+	 * @var Dpuwoo_Container
+	 */
+	private Dpuwoo_Container $container;
+
+	/**
 	 * The unique identifier of this plugin.
 	 *
 	 * @since    1.0.0
@@ -62,6 +70,7 @@ class Dpuwoo {
 		$this->plugin_name = 'dpuwoo';
 
 		$this->load_dependencies();
+		$this->container = Dpuwoo_Container::build();
 		$this->set_locale();
 		$this->define_admin_hooks();
 		$this->define_public_hooks();
@@ -85,50 +94,84 @@ class Dpuwoo {
 	 * @access   private
 	 */
 	private function load_dependencies() {
+		$base = plugin_dir_path( dirname( __FILE__ ) );
 
-		/**
-		 * The class responsible for orchestrating the actions and filters of the
-		 * core plugin.
-		 */
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-loader.php';
+		// ── Core WordPress ─────────────────────────────────────────────────────────
+		require_once $base . 'includes/class-dpuwoo-loader.php';
+		require_once $base . 'includes/class-dpuwoo-i18n.php';
 
-		/**
-		 * The class responsible for defining internationalization functionality
-		 * of the plugin.
-		 */
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-i18n.php';
+		// ── Admin & Public ─────────────────────────────────────────────────────────
+		require_once $base . 'admin/class-dpuwoo-admin.php';
+		require_once $base . 'public/class-dpuwoo-public.php';
 
-		/**
-		 * The class responsible for defining all actions that occur in the admin area.
-		 */
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'admin/class-dpuwoo-admin.php';
+		// ── Domain — Interfaces ────────────────────────────────────────────────────
+		require_once $base . 'includes/domain/interfaces/interface-dpuwoo-price-rule.php';
+		require_once $base . 'includes/domain/interfaces/interface-dpuwoo-api-provider.php';
+		require_once $base . 'includes/domain/interfaces/interface-dpuwoo-product-repository.php';
+		require_once $base . 'includes/domain/interfaces/interface-dpuwoo-log-repository.php';
 
-		/**
-		 * The class responsible for defining all actions that occur in the public-facing
-		 * side of the site.
-		 */
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'public/class-dpuwoo-public.php';
+		// ── Domain — Value Objects ─────────────────────────────────────────────────
+		require_once $base . 'includes/domain/value-objects/class-dpuwoo-exchange-rate.php';
+		require_once $base . 'includes/domain/value-objects/class-dpuwoo-price-context.php';
+		require_once $base . 'includes/domain/value-objects/class-dpuwoo-calculation-result.php';
+		require_once $base . 'includes/domain/value-objects/class-dpuwoo-batch-result.php';
 
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-log-repository.php';
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-product-repository.php';
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-trait-request.php';
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-currencyapi-provider.php';
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-exhangerateapi-provider.php';
+		// ── Domain — Policies ──────────────────────────────────────────────────────
+		require_once $base . 'includes/domain/policies/class-dpuwoo-threshold-policy.php';
 
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-dolarapi-provider.php';
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-api.php';
-	
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-price-calculator.php';
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-price-updater.php';
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-fallback.php';
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-logger.php';
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-cron.php';
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-admin-settings.php';
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dpuwoo-ajax-manager.php';
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/helpers/functions.php';
+		// ── Domain — Rules (Strategy Pattern) ─────────────────────────────────────
+		require_once $base . 'includes/domain/rules/class-dpuwoo-ratio-rule.php';
+		require_once $base . 'includes/domain/rules/class-dpuwoo-margin-rule.php';
+		require_once $base . 'includes/domain/rules/class-dpuwoo-direction-rule.php';
+		require_once $base . 'includes/domain/rules/class-dpuwoo-rounding-rule.php';
+		require_once $base . 'includes/domain/rules/class-dpuwoo-category-exclusion-rule.php';
+
+		// ── Infrastructure — Repositorios y API ───────────────────────────────────
+		require_once $base . 'includes/class-dpuwoo-log-repository.php';
+		require_once $base . 'includes/class-dpuwoo-product-repository.php';
+		require_once $base . 'includes/class-dpuwoo-trait-request.php';
+		require_once $base . 'includes/class-dpuwoo-currencyapi-provider.php';
+		require_once $base . 'includes/class-dpuwoo-exhangerateapi-provider.php';
+		require_once $base . 'includes/class-dpuwoo-dolarapi-provider.php';
+		require_once $base . 'includes/infrastructure/class-dpuwoo-api-provider-factory.php';
+		require_once $base . 'includes/class-dpuwoo-api.php';
+		require_once $base . 'includes/infrastructure/class-dpuwoo-settings-repository.php';
+		require_once $base . 'includes/class-dpuwoo-logger.php';
+
+		// ── Application — Servicios ────────────────────────────────────────────────
+		require_once $base . 'includes/application/services/class-dpuwoo-price-calculation-engine.php';
+		require_once $base . 'includes/application/services/class-dpuwoo-batch-processor.php';
+
+		// ── Application — Commands (DTOs) ──────────────────────────────────────────
+		require_once $base . 'includes/application/commands/class-dpuwoo-update-prices-command.php';
+		require_once $base . 'includes/application/commands/class-dpuwoo-rollback-item-command.php';
+		require_once $base . 'includes/application/commands/class-dpuwoo-rollback-run-command.php';
+
+		// ── Application — Handlers ─────────────────────────────────────────────────
+		require_once $base . 'includes/application/handlers/class-dpuwoo-update-prices-handler.php';
+		require_once $base . 'includes/application/handlers/class-dpuwoo-rollback-handler.php';
+
+		// ── Application — Command Bus ──────────────────────────────────────────────
+		require_once $base . 'includes/application/class-dpuwoo-command-bus.php';
+
+		// ── Presentation ───────────────────────────────────────────────────────────
+		require_once $base . 'includes/presentation/class-dpuwoo-ajax-controller.php';
+
+		// ── DI Container ───────────────────────────────────────────────────────────
+		require_once $base . 'includes/class-dpuwoo-container.php';
+
+		// ── Miscelánea ─────────────────────────────────────────────────────────────
+		require_once $base . 'includes/class-dpuwoo-fallback.php';
+		require_once $base . 'includes/class-dpuwoo-cron.php';
+		require_once $base . 'includes/class-dpuwoo-admin-settings.php';
+		require_once $base . 'includes/helpers/functions.php';
+
+		// Mantener compatibilidad: cargar Ajax_Manager (legacy) para no romper
+		// código existente hasta completar la migración. Se puede eliminar cuando
+		// todos los AJAX actions estén wired al Ajax_Controller.
+		require_once $base . 'includes/class-dpuwoo-ajax-manager.php';
+
 		$this->loader = new Loader();
-
-
 	}
 
 	/**
@@ -161,23 +204,28 @@ class Dpuwoo {
 		$this->loader->add_action('admin_enqueue_scripts', $plugin_admin, 'enqueue_styles');
 		$this->loader->add_action('admin_enqueue_scripts', $plugin_admin, 'enqueue_scripts');
 		$this->loader->add_action('admin_menu', $plugin_admin, 'register_menu');
-		
+
 		$plugin_setting = new Admin_Settings();
 		$this->loader->add_action('admin_init', $plugin_setting, 'register_settings');
-		
-		// === INSTANCIAR Ajax_Manager COMO LAS DEMÁS CLASES ===
-		$ajax_manager = new Ajax_Manager();
-		
-		// Registrar métodos de AJAX
-		$this->loader->add_action('wp_ajax_dpuwoo_simulate_batch', $ajax_manager, 'ajax_simulate_batch');
-		$this->loader->add_action('wp_ajax_dpuwoo_update_batch', $ajax_manager, 'ajax_update_batch');
-		$this->loader->add_action('wp_ajax_dpuwoo_update_now', $ajax_manager, 'ajax_update_now');
-		$this->loader->add_action('wp_ajax_dpuwoo_get_runs', $ajax_manager, 'ajax_get_runs');
-		$this->loader->add_action('wp_ajax_dpuwoo_get_run_items', $ajax_manager, 'ajax_get_run_items');
-		$this->loader->add_action('wp_ajax_dpuwoo_revert_item', $ajax_manager, 'ajax_revert_item');
-		$this->loader->add_action('wp_ajax_dpuwoo_revert_run', $ajax_manager, 'ajax_revert_run');
-		$this->loader->add_action('wp_ajax_dpuwoo_get_currencies', $ajax_manager, 'ajax_get_currencies');
-		// Removed wp_ajax_dpuwoo_save_settings to use traditional form submission instead
+		$this->loader->add_action('admin_init', Activator::class, 'maybe_upgrade');
+
+		// ── AJAX handlers — Capa de Presentación (via DI Container) ───────────────
+		// Ajax_Controller recibe sus dependencias inyectadas por el Container;
+		// no instancia nada directamente. Los action names se mantienen idénticos
+		// para compatibilidad con el frontend JavaScript existente.
+		/** @var Ajax_Controller $ajax */
+		$ajax = $this->container->get('ajax_controller');
+
+		$this->loader->add_action('wp_ajax_dpuwoo_simulate_batch',    $ajax, 'handle_simulate_batch');
+		$this->loader->add_action('wp_ajax_dpuwoo_update_batch',      $ajax, 'handle_update_batch');
+		$this->loader->add_action('wp_ajax_dpuwoo_get_runs',          $ajax, 'handle_get_runs');
+		$this->loader->add_action('wp_ajax_dpuwoo_get_run_items',     $ajax, 'handle_get_run_items');
+		$this->loader->add_action('wp_ajax_dpuwoo_revert_item',       $ajax, 'handle_revert_item');
+		$this->loader->add_action('wp_ajax_dpuwoo_revert_run',        $ajax, 'handle_revert_run');
+		$this->loader->add_action('wp_ajax_dpuwoo_get_currencies',    $ajax, 'handle_get_currencies');
+		$this->loader->add_action('wp_ajax_dpuwoo_get_current_rate',  $ajax, 'handle_get_current_rate');
+		$this->loader->add_action('wp_ajax_dpuwoo_get_providers_info',$ajax, 'handle_get_providers_info');
+		$this->loader->add_action('wp_ajax_dpuwoo_test_api_connection',$ajax, 'handle_test_api_connection');
 	}
 	
 
@@ -238,6 +286,16 @@ class Dpuwoo {
 	 */
 	public function get_version() {
 		return $this->version;
+	}
+
+	/**
+	 * Retorna el DI Container bootstrapped del plugin.
+	 * Usado para exponer el container al Cron y a tests de integración.
+	 *
+	 * @return Dpuwoo_Container
+	 */
+	public function get_container(): Dpuwoo_Container {
+		return $this->container;
 	}
 
 }

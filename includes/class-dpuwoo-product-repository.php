@@ -4,8 +4,9 @@ if (!defined('ABSPATH')) exit;
 /**
  * Product_Repository
  * Encapsula TODA la lectura/escritura de productos de WooCommerce.
+ * Implementa Product_Repository_Interface (capa de dominio).
  */
-class Product_Repository
+class Product_Repository implements Product_Repository_Interface
 {
     protected static $instance;
     protected $wpdb;
@@ -23,7 +24,7 @@ class Product_Repository
         return self::init();
     }
 
-    private function __construct()
+    public function __construct()
     {
         global $wpdb;
         $this->wpdb = $wpdb;
@@ -37,7 +38,7 @@ class Product_Repository
      * Devuelve el total de productos padre (simples y variables) en estado 'publish'.
      * Los posts con post_type='product' son los que el Price_Updater itera.
      */
-    public function count_all_products()
+    public function count_all_products(): int
     {
         // **MODIFICACIÓN CLAVE:** Usar COUNT(ID) para mayor claridad y asegurar que la consulta es correcta.
         return (int) $this->wpdb->get_var("
@@ -47,7 +48,7 @@ class Product_Repository
         ");
     }
 
-    public function get_product_ids_batch($limit = 500, $offset = 0)
+    public function get_product_ids_batch(int $limit = 500, int $offset = 0): array
     {
         // Se mantiene igual, ya que solo debe traer los IDs de productos padre.
         return $this->wpdb->get_col($this->wpdb->prepare("
@@ -63,33 +64,39 @@ class Product_Repository
      * PRODUCT LOADING
      * ========================================================================= */
 
-    public function get_product($product_id)
-    {
-        return wc_get_product($product_id);
-    }
-
-    public function get_variations($product_id)
+    public function get_product(int $product_id): ?\WC_Product
     {
         $product = wc_get_product($product_id);
+        return ($product instanceof \WC_Product) ? $product : null;
+    }
+
+    /**
+     * Acepta un objeto WC_Product (según Product_Repository_Interface).
+     * También soporta int $product_id para compatibilidad con código legado.
+     */
+    public function get_variations(\WC_Product|int $product): array
+    {
+        if (is_int($product)) {
+            $product = wc_get_product($product);
+        }
         if (!$product || !$product->is_type('variable')) {
             return [];
         }
         return $product->get_children(); // IDs de variaciones
     }
 
-    public function get_variation_product($variation_id)
+    public function get_variation_product(int $variation_id): ?\WC_Product_Variation
     {
-        return wc_get_product($variation_id);
+        $product = wc_get_product($variation_id);
+        return ($product instanceof \WC_Product_Variation) ? $product : null;
     }
 
     /* =========================================================================
      * PRICE UPDATE
      * ========================================================================= */
 
-    public function save_regular_price($product, $new_price)
+    public function save_regular_price(\WC_Product $product, float $new_price): bool
     {
-        if (!$product) return false;
-
         try {
             $product->set_regular_price($new_price);
             $product->save();
@@ -108,10 +115,8 @@ class Product_Repository
      * @param float $new_price Si es 0.0, se limpia el precio de oferta.
      * @return bool
      */
-    public function save_sale_price($product, $new_price)
+    public function save_sale_price(\WC_Product $product, float $new_price): bool
     {
-        if (!$product) return false;
-
         try {
             if ($new_price <= 0.0) {
                 $product->set_sale_price(''); 

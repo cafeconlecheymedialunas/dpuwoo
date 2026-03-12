@@ -77,5 +77,9 @@ function run_dpuwoo() {
 	$plugin = new Dpuwoo();
 	$plugin->run();
 
+	// Exponer el container globalmente para que Cron::run_cron() pueda acceder
+	// sin reconstruirlo si ya está inicializado en el request actual.
+	global $dpuwoo_container;
+	$dpuwoo_container = $plugin->get_container();
 }
 run_dpuwoo();

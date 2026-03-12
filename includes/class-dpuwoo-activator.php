@@ -3,21 +3,26 @@ if (!defined('ABSPATH')) exit;
 
 class Activator
 {
+    /** Versión del esquema de BD. Incrementar cuando cambie la estructura de tablas. */
+    const DB_VERSION = '1.1';
+
     public static function activate()
     {
+        self::create_tables();
+
         if (get_option('dpuwoo_initial_setup_done')) {
             return;
         }
-        
-        self::create_tables();
         
         self::auto_configure_dollar_reference();
         
         $settings = get_option('dpuwoo_settings', []);
         $settings['interval'] = $settings['interval'] ?? 3600;
-        $settings['threshold'] = $settings['threshold'] ?? 1.0;
+        $settings['threshold']     = $settings['threshold']     ?? 1.0;
+        $settings['threshold_max'] = $settings['threshold_max'] ?? 0;
         $settings['reference_currency'] = $settings['reference_currency'] ?? 'USD';
-        $settings['last_rate'] = $settings['last_rate'] ?? 0;
+        $settings['last_rate']            = $settings['last_rate']            ?? 0;
+        $settings['origin_exchange_rate'] = $settings['origin_exchange_rate'] ?? 0;
         
         update_option('dpuwoo_settings', $settings);
         
@@ -96,6 +101,18 @@ class Activator
         ]);
     }
 
+    /**
+     * Ejecuta migraciones de BD si la versión almacenada es anterior a la actual.
+     * Seguro llamar en cada carga de admin — dbDelta solo toca lo necesario.
+     */
+    public static function maybe_upgrade(): void
+    {
+        if (get_option('dpuwoo_db_version') !== self::DB_VERSION) {
+            self::create_tables();
+            update_option('dpuwoo_db_version', self::DB_VERSION);
+        }
+    }
+
     private static function create_tables()
     {
         global $wpdb;
@@ -115,9 +132,10 @@ class Activator
             dollar_type varchar(50) NOT NULL,
             dollar_value decimal(10,4) NOT NULL,
             rules text,
-            total_products int(11) NOT NULL,
-            user_id bigint(20) NOT NULL,
+            total_products int(11) NOT NULL DEFAULT 0,
+            user_id bigint(20) NOT NULL DEFAULT 0,
             note text,
+            percentage_change decimal(10,4) DEFAULT NULL,
             PRIMARY KEY (id)
         ) $charset_collate;";
 

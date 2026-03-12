@@ -4,8 +4,9 @@ if (!defined('ABSPATH')) exit;
 /**
  * DPUWoo_Repository
  * Encapsula todo el acceso a base de datos para runs y run_items.
+ * Implementa Log_Repository_Interface (capa de dominio).
  */
-class Log_Repository
+class Log_Repository implements Log_Repository_Interface
 {
     protected static $instance;
     protected $wpdb;
@@ -25,7 +26,7 @@ class Log_Repository
         return self::init();
     }
 
-    private function __construct()
+    public function __construct()
     {
         global $wpdb;
         $this->wpdb = $wpdb;
@@ -36,7 +37,7 @@ class Log_Repository
     /* ---------------------------
      * Runs
      * --------------------------- */
-    public function insert_run(array $data)
+    public function insert_run(array $data): int|false
     {
         $now = current_time('mysql');
 
@@ -60,7 +61,7 @@ class Log_Repository
         return $this->wpdb->insert_id;
     }
 
-    public function update_run($run_id, array $data)
+    public function update_run(int $run_id, array $data): bool
     {
         return $this->wpdb->update($this->table_runs, $data, ['id' => intval($run_id)]);
     }
@@ -70,9 +71,15 @@ class Log_Repository
         return $this->wpdb->get_row($this->wpdb->prepare("SELECT * FROM {$this->table_runs} WHERE id = %d", intval($run_id)));
     }
 
-    public function get_runs($limit = 100)
+    public function get_runs(int $limit = 100): array
     {
         return $this->wpdb->get_results($this->wpdb->prepare("SELECT * FROM {$this->table_runs} ORDER BY date DESC LIMIT %d", intval($limit)));
+    }
+
+    public function get_last_applied_rate(): float
+    {
+        $value = $this->wpdb->get_var("SELECT dollar_value FROM {$this->table_runs} ORDER BY id DESC LIMIT 1");
+        return $value !== null ? floatval($value) : 0.0;
     }
 
     /* ---------------------------
@@ -103,7 +110,7 @@ class Log_Repository
         return $this->wpdb->insert_id;
     }
 
-    public function insert_items_bulk($run_id, $items)
+    public function insert_items_bulk(int $run_id, array $items): bool
     {
         // El Logger asegura que $items solo contiene updated/error
         foreach ($items as $item) {
@@ -114,7 +121,7 @@ class Log_Repository
         return true;
     }
 
-    public function get_run_items($run_id, $limit = 500)
+    public function get_run_items(int $run_id, int $limit = 500): array
     {
         $rows = $this->wpdb->get_results($this->wpdb->prepare(
             "SELECT * FROM {$this->table_items} WHERE run_id = %d ORDER BY id ASC LIMIT %d",
@@ -166,13 +173,17 @@ class Log_Repository
         return $this->wpdb->get_results($this->wpdb->prepare("SELECT id FROM {$this->table_items} WHERE run_id = %d", intval($run_id)));
     }
 
-    public function rollback_item($item_id)
+    public function rollback_item(int $item_id): array
     {
         $row = $this->get_item($item_id);
-        if (!$row) return new WP_Error('not_found', 'Item not found');
+        if (!$row) {
+            return ['success' => false, 'message' => 'Item no encontrado'];
+        }
 
         $product = wc_get_product($row->product_id);
-        if (!$product) return new WP_Error('no_product', 'Product not found');
+        if (!$product) {
+            return ['success' => false, 'message' => 'Producto no encontrado'];
+        }
 
         if (!is_null($row->old_regular_price)) {
             $product->set_regular_price($row->old_regular_price);
@@ -184,16 +195,21 @@ class Log_Repository
 
         $this->update_item_status($item_id, 'reverted');
 
-        return true;
+        return ['success' => true, 'message' => 'Precio revertido correctamente'];
     }
 
-    public function rollback_run($run_id)
+    public function rollback_run(int $run_id): array
     {
-        $items = $this->get_items_for_run($run_id);
+        $items    = $this->get_items_for_run($run_id);
+        $reverted = 0;
+        $errors   = 0;
+
         foreach ($items as $it) {
-            $this->rollback_item($it->id);
+            $res = $this->rollback_item($it->id);
+            $res['success'] ? $reverted++ : $errors++;
         }
-        return true;
+
+        return ['success' => $errors === 0, 'reverted' => $reverted, 'errors' => $errors];
     }
 
     /* ---------------------------

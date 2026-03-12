@@ -5,8 +5,10 @@ if (!defined('ABSPATH')) exit;
 class API_Client
 {
     protected static $instance;
-    protected $providers = [];
-    
+
+    /** @var array<string, API_Provider_Interface> Cache de providers instanciados */
+    protected array $providers = [];
+
     public static function init()
     {
         if (null === self::$instance) {
@@ -14,39 +16,38 @@ class API_Client
         }
         return self::$instance;
     }
-    
+
     public static function get_instance()
     {
         return self::init();
     }
-    
-    private function __construct()
-    {
-        // Inicializar proveedores
-        $this->providers = [
-            'currencyapi' => new CurrencyAPI_Provider(),
-            'dolarapi' => new DolarAPI_Provider(),
-            'exchangerate-api' => new ExchangeRateAPI_Provider()
-        ];
-    }
-    
+
+    public function __construct() {}
+
     /**
-     * Obtener proveedor específico
+     * Obtiene el provider activo usando API_Provider_Factory.
+     * Reemplaza el array hardcodeado por una Factory extensible.
+     *
+     * @param string|null $provider_key Clave del provider; null = leer de settings.
+     * @return API_Provider_Interface
      */
-    public function get_provider($provider_key = null)
+    public function get_provider(?string $provider_key = null): API_Provider_Interface
     {
-        // Si no se especifica proveedor, usar el de la configuración
         if (empty($provider_key)) {
-            $opts = get_option('dpuwoo_settings', []);
+            $opts         = get_option('dpuwoo_settings', []);
             $provider_key = $opts['api_provider'] ?? 'dolarapi';
         }
-        
-        // Validar que el proveedor exista
+
+        // Cache por clave para evitar reinstanciar en el mismo request
         if (!isset($this->providers[$provider_key])) {
-            
-            $provider_key = 'dolarapi';
+            try {
+                $this->providers[$provider_key] = API_Provider_Factory::create($provider_key);
+            } catch (\InvalidArgumentException $e) {
+                // Fallback al provider por defecto
+                $this->providers[$provider_key] = API_Provider_Factory::create('dolarapi');
+            }
         }
-        
+
         return $this->providers[$provider_key];
     }
     

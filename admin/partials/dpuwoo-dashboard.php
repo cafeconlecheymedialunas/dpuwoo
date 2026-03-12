@@ -42,7 +42,11 @@
                 <div class="p-5 bg-gray-50 rounded-lg border border-gray-200">
                     <p class="text-gray-500 text-sm">Valor actual (última actualización)</p>
                     <p class="text-3xl font-bold text-gray-800 mt-1">
-                        <?php $opts = get_option('dpuwoo_settings'); echo esc_html($opts['last_rate'] ?? 'n/a'); ?>
+                        <?php
+                        global $wpdb;
+                        $last = $wpdb->get_var("SELECT dollar_value FROM {$wpdb->prefix}dpuwoo_runs ORDER BY id DESC LIMIT 1");
+                        echo $last ? esc_html(number_format(floatval($last), 2)) : 'n/a';
+                        ?>
                     </p>
                 </div>
 

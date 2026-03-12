@@ -131,8 +131,16 @@ class Admin_Settings
 
         add_settings_field(
             'dpuwoo_threshold',
-            'Umbral de Cambio',
+            'Variación Mínima para Actualizar',
             [__CLASS__, 'render_threshold'],
+            'dpuwoo_settings',
+            'dpuwoo_calculation_section'
+        );
+
+        add_settings_field(
+            'dpuwoo_threshold_max',
+            'Variación Máxima Permitida',
+            [__CLASS__, 'render_threshold_max'],
             'dpuwoo_settings',
             'dpuwoo_calculation_section'
         );
@@ -272,8 +280,9 @@ class Admin_Settings
         $out['last_rate'] = floatval($input['last_rate'] ?? 0);
         
         // Cálculo y Ajuste
-        $out['margin'] = floatval($input['margin'] ?? 0);
-        $out['threshold'] = floatval($input['threshold'] ?? 0.5);
+        $out['margin']          = floatval($input['margin']          ?? 0);
+        $out['threshold']       = floatval($input['threshold']       ?? 0.5);
+        $out['threshold_max']   = floatval($input['threshold_max']   ?? 0);   // 0 = sin límite superior
         $out['update_direction'] = sanitize_text_field($input['update_direction'] ?? 'bidirectional');
         
         // Reglas de Redondeo
@@ -500,10 +509,19 @@ class Admin_Settings
     public static function render_threshold()
     {
         $opts = get_option('dpuwoo_settings', []);
-        $val = $opts['threshold'] ?? 0.5;
-        
+        $val  = $opts['threshold'] ?? 0.5;
+
         echo '<input type="number" step="0.1" min="0" name="dpuwoo_settings[threshold]" value="' . esc_attr($val) . '" class="small-text"> %';
-        echo '<p class="description">Variación mínima requerida para actualizar precios (recomendado: 0.5%).</p>';
+        echo '<p class="description">El tipo de cambio debe haber variado al menos este porcentaje (en la dirección configurada) para que se ejecute la actualización. Ejemplo: <strong>0.5%</strong> evita actualizaciones por microvariaciones. Con <strong>0%</strong> se actualiza siempre.</p>';
+    }
+
+    public static function render_threshold_max()
+    {
+        $opts = get_option('dpuwoo_settings', []);
+        $val  = $opts['threshold_max'] ?? 0;
+
+        echo '<input type="number" step="0.1" min="0" name="dpuwoo_settings[threshold_max]" value="' . esc_attr($val) . '" class="small-text"> %';
+        echo '<p class="description">Freno de seguridad: si el tipo de cambio varió <strong>más</strong> de este porcentaje, NO se actualiza (puede ser un error de datos o una volatilidad extrema). Ejemplo: <strong>15%</strong> bloquea cambios mayores al 15%. Con <strong>0%</strong> no hay límite superior.</p>';
     }
 
     public static function render_update_direction()

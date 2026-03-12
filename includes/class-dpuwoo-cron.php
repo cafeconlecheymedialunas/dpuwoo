@@ -18,47 +18,43 @@ class Cron
         if ($timestamp) wp_unschedule_event($timestamp, self::HOOK);
     }
 
-    public static function run_cron()
+    /**
+     * Ejecuta la actualización automática vía Command Bus (capa de Aplicación).
+     * Reemplaza la llamada directa a Price_Updater::get_instance().
+     *
+     * Si no existe un container bootstrapped (ej: WP Cron corre aislado),
+     * construye uno propio de forma lazy.
+     */
+    public static function run_cron(): void
     {
-        // Sistema de actualización basado en tasas de cambio directas
+        // Obtener el command bus desde el container global si está disponible,
+        // o construir uno nuevo (Cron puede ejecutarse fuera del ciclo HTTP normal).
+        global $dpuwoo_container;
 
-        $type = get_option('dpuwoo_settings', [])['dollar_type'] ?? 'oficial';
-        $api = API_Client::get_instance();
-        $rate = $api->get_rate($type);
-        
-        if ($rate === false) {
-            $rate = Fallback::get_instance()->get_fallback_rate();
-        }
-        
-        if ($rate === false) {
-            return;
+        if (!$dpuwoo_container instanceof Dpuwoo_Container) {
+            $dpuwoo_container = Dpuwoo_Container::build();
         }
 
-        $current_rate = floatval($rate['value']);
-        $last_rate = floatval(get_option('dpuwoo_settings', [])['last_rate'] ?? 0);
-        $threshold = floatval(get_option('dpuwoo_settings', [])['threshold'] ?? 0);
+        /** @var Command_Bus $bus */
+        $bus = $dpuwoo_container->get('command_bus');
 
-        // Comparar con el último rate aplicado (no usar precio promedio general)
-        $reference_rate = $last_rate > 0 ? $last_rate : $current_rate;
-        
-        // Calcular variación respecto a la referencia
-        $changed = ($reference_rate > 0) ? abs(($current_rate - $reference_rate) / $reference_rate) * 100 : 100;
+        // Refrescar settings por si el cron corre fuera del ciclo HTTP normal
+        $dpuwoo_container->get('settings')->refresh();
 
-        if ($threshold > 0 && $changed < $threshold) {
-            return;
-        }
+        // Procesar lotes secuencialmente (batch 0..n)
+        // El Handler internamente valida threshold y corta si no se cumple.
+        $batch  = 0;
+        $result = $bus->dispatch(new Update_Prices_Command($batch, simulate: false));
 
-        // Actualizar precios
-        $updater = Price_Updater::get_instance();
-        $result = $updater->update_all_batch(false);
-        
         if (isset($result['error'])) {
             return;
         }
 
-        // Guardar el rate actual para la próxima comparación
-        $opts = get_option('dpuwoo_settings', []);
-        $opts['last_rate'] = $current_rate;
-        update_option('dpuwoo_settings', $opts);
+        $total_batches = $result['batch_info']['total_batches'] ?? 1;
+
+        // Procesar lotes adicionales si hay más de uno
+        for ($batch = 1; $batch < $total_batches; $batch++) {
+            $bus->dispatch(new Update_Prices_Command($batch, simulate: false));
+        }
     }
 }

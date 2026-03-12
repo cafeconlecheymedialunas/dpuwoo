@@ -2,27 +2,39 @@
 if (!defined('ABSPATH')) exit;
 
 /**
- * Logger (thin wrapper) - ahora delega todo en DPUWoo_Repository
+ * Logger (thin wrapper) — delega en Log_Repository_Interface.
+ * Soporta inyección de dependencias (Container) manteniendo Singleton legado.
  */
 class Logger
 {
     protected static $instance;
-    protected $repo;
+    protected Log_Repository_Interface $repo;
 
-    public static function init()
+    /**
+     * Constructor público para inyección de dependencias vía DI Container.
+     *
+     * @param Log_Repository_Interface $repo
+     */
+    public function __construct(Log_Repository_Interface $repo)
     {
-        if (null === self::$instance) self::$instance = new self();
+        $this->repo = $repo;
+    }
+
+    /**
+     * Singleton de compatibilidad.
+     * @deprecated Preferir inyección vía Dpuwoo_Container.
+     */
+    public static function init(): static
+    {
+        if (null === self::$instance) {
+            self::$instance = new self(Log_Repository::get_instance());
+        }
         return self::$instance;
     }
 
-    public static function get_instance()
+    public static function get_instance(): static
     {
         return self::init();
-    }
-
-    private function __construct()
-    {
-        $this->repo = Log_Repository::get_instance();
     }
 
     /**
