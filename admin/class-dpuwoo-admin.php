@@ -117,9 +117,12 @@ class Admin
 		);
 
 		// Localizar las variables AJAX en el script principal
+		$opts      = get_option('dpuwoo_settings', []);
 		$ajax_data = array(
-			'ajax_url' => admin_url('admin-ajax.php'), 
-			'nonce' => wp_create_nonce('dpuwoo_ajax_nonce')
+			'ajax_url'      => admin_url('admin-ajax.php'),
+			'nonce'         => wp_create_nonce('dpuwoo_ajax_nonce'),
+			'threshold_min' => floatval($opts['threshold']     ?? 0),
+			'threshold_max' => floatval($opts['threshold_max'] ?? 0),
 		);
 
 		wp_localize_script($this->plugin_name . '-main', 'dpuwoo_ajax', $ajax_data);

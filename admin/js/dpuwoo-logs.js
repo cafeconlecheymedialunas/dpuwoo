@@ -9,31 +9,24 @@
         },
 
         bindEvents: function() {
-            $(document).on('click', '.dpuwoo-view-run', this.viewRunDetails.bind(this));
-            $(document).on('click', '.dpuwoo-revert-run', this.revertRun.bind(this));
-            $('#dpuwoo-close-details-modal').on('click', this.closeDetailsModal.bind(this));
+            $(document).on('click', '.dpuwoo-view-run',    this.viewRunDetails.bind(this));
+            $(document).on('click', '.dpuwoo-revert-run',  this.revertRun.bind(this));
+            $(document).on('click', '#dpuwoo-close-details-modal, #dpuwoo-close-details-modal-2',
+                this.closeDetailsModal.bind(this));
         },
 
         loadLogs: function() {
             this.showLogsLoading();
-            
             $.ajax({
-                url: dpuwoo_ajax.ajax_url,
-                type: 'POST',
-                data: {
-                    action: 'dpuwoo_get_runs',
-                    nonce: dpuwoo_ajax.nonce
-                },
+                url:      dpuwoo_ajax.ajax_url,
+                type:     'POST',
+                data:     { action: 'dpuwoo_get_runs', nonce: dpuwoo_ajax.nonce },
                 dataType: 'json',
-                success: function (res) {
-                    if (res.success) {
-                        this.displayLogs(res.data);
-                    } else {
-                        this.showLogsError('Error al cargar los logs: ' + (res.data || 'Error desconocido'));
-                    }
+                success:  function (res) {
+                    res.success ? this.displayLogs(res.data)
+                                : this.showLogsError('Error al cargar el historial: ' + (res.data || 'Error desconocido'));
                 }.bind(this),
                 error: function (xhr, status, error) {
-                    
                     this.showLogsError('Error de conexión: ' + error);
                 }.bind(this)
             });
@@ -41,21 +34,23 @@
 
         showLogsLoading: function() {
             $('#dpuwoo-log-table').html(`
-                <div class="flex justify-center items-center py-12">
-                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-                    <span class="ml-3 text-gray-600">Cargando historial...</span>
+                <div class="dpu-log-state">
+                    <div class="dpu-log-spinner"></div>
+                    <p class="dpu-log-state__msg">Cargando historial…</p>
                 </div>
             `);
         },
 
         showLogsError: function(message) {
             $('#dpuwoo-log-table').html(`
-                <div class="text-center py-8">
-                    <div class="text-red-500 text-lg mb-2">❌</div>
-                    <p class="text-red-600 mb-4">${message}</p>
-                    <button onclick="DPUWOO_Logs.loadLogs()" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
-                        Reintentar
-                    </button>
+                <div class="dpu-log-state">
+                    <div class="dpu-log-state__icon dpu-log-state__icon--err">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                        </svg>
+                    </div>
+                    <p class="dpu-log-state__msg">${message}</p>
+                    <button onclick="DPUWOO_Logs.loadLogs()" class="dpu-btn dpu-btn--ghost">Reintentar</button>
                 </div>
             `);
         },
@@ -63,102 +58,112 @@
         displayLogs: function(logs) {
             if (!logs || logs.length === 0) {
                 $('#dpuwoo-log-table').html(`
-                    <div class="text-center py-8">
-                        <div class="text-gray-400 text-lg mb-2">📊</div>
-                        <p class="text-gray-500">No hay registros en el historial</p>
-                        <p class="text-sm text-gray-400 mt-1">Los registros aparecerán aquí después de ejecutar actualizaciones</p>
+                    <div class="dpu-log-state">
+                        <div class="dpu-log-state__icon">
+                            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                        </div>
+                        <p class="dpu-log-state__msg">Sin registros</p>
+                        <p class="dpu-log-state__sub">Los registros aparecerán aquí después de ejecutar actualizaciones reales.</p>
                     </div>
                 `);
                 return;
             }
 
-            let tableHtml = `
-                <table class="w-full text-left border-collapse border border-gray-200">
+            let html = `
+                <table class="dpu-log-table">
                     <thead>
-                        <tr class="bg-gray-100">
-                            <th class="p-3 border border-gray-200">ID</th>
-                            <th class="p-3 border border-gray-200">Fecha</th>
-                            <th class="p-3 border border-gray-200">Valor Dólar</th>
-                            <th class="p-3 border border-gray-200">Tipo</th>
-                            <th class="p-3 border border-gray-200">Productos</th>
-                            <th class="p-3 border border-gray-200">Usuario</th>
-                            <th class="p-3 border border-gray-200">Nota</th>
-                            <th class="p-3 border border-gray-200">Acciones</th>
+                        <tr>
+                            <th>#</th>
+                            <th>Fecha</th>
+                            <th>Tasa aplicada</th>
+                            <th>Variación</th>
+                            <th>Productos</th>
+                            <th>Tipo</th>
+                            <th>Acciones</th>
                         </tr>
                     </thead>
-                    <tbody>
-            `;
+                    <tbody>`;
 
             logs.forEach(function(log) {
-                const date = new Date(log.date);
-                const formattedDate = date.toLocaleDateString('es-ES', {
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
+                const date    = new Date(log.date);
+                const dateStr = date.toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' });
+                const timeStr = date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+                const pct     = parseFloat(log.percentage_change || 0);
+                const pctSign = pct > 0 ? '+' : '';
+                const pctClass = pct > 0 ? 'dpu-log-pct--up' : pct < 0 ? 'dpu-log-pct--down' : 'dpu-log-pct--neutral';
+                const typeKey  = (log.dollar_type || 'oficial').toLowerCase();
+                const typeLabel = typeKey === 'oficial' ? 'Oficial' : typeKey.charAt(0).toUpperCase() + typeKey.slice(1);
 
-                const dollarType = log.dollar_type || 'official';
-                const dollarTypeText = dollarType === 'official' ? 'Oficial' : 'Blue';
-
-                tableHtml += `
-                    <tr class="border-b border-gray-200 hover:bg-gray-50">
-                        <td class="p-3 border border-gray-200 font-mono text-sm">#${log.id}</td>
-                        <td class="p-3 border border-gray-200">${formattedDate}</td>
-                        <td class="p-3 border border-gray-200 font-mono">$${parseFloat(log.dollar_value).toFixed(2)}</td>
-                        <td class="p-3 border border-gray-200">
-                            <span class="px-2 py-1 rounded text-xs ${dollarType === 'official' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}">
-                                ${dollarTypeText}
+                html += `
+                    <tr class="dpu-log-row">
+                        <td class="dpu-log-cell dpu-log-cell--id">#${log.id}</td>
+                        <td class="dpu-log-cell dpu-log-cell--date">
+                            <span class="dpu-log-date">${dateStr}</span>
+                            <span class="dpu-log-time">${timeStr}</span>
+                        </td>
+                        <td class="dpu-log-cell dpu-log-cell--rate">
+                            $${parseFloat(log.dollar_value).toFixed(2)}
+                        </td>
+                        <td class="dpu-log-cell dpu-log-cell--pct">
+                            <span class="dpu-log-pct ${pctClass}">
+                                ${pct !== 0 ? pctSign + pct.toFixed(2) + '%' : '—'}
                             </span>
                         </td>
-                        <td class="p-3 border border-gray-200">${log.total_products || 0}</td>
-                        <td class="p-3 border border-gray-200">${log.user_id || 'Sistema'}</td>
-                        <td class="p-3 border border-gray-200 text-sm">${log.note || '-'}</td>
-                        <td class="p-3 border border-gray-200">
-                            <button class="dpuwoo-view-run px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition mr-2" 
-                                    data-run="${log.id}">
-                                Ver Detalles
+                        <td class="dpu-log-cell dpu-log-cell--products">${log.total_products || 0}</td>
+                        <td class="dpu-log-cell">
+                            <span class="dpu-log-badge dpu-log-badge--${typeKey}">${typeLabel}</span>
+                        </td>
+                        <td class="dpu-log-cell dpu-log-cell--actions">
+                            <button class="dpu-btn dpu-btn--ghost dpu-btn--xs dpuwoo-view-run" data-run="${log.id}">
+                                <svg width="11" height="11" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                </svg>
+                                Ver
                             </button>
-                            <button class="dpuwoo-revert-run px-3 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700 transition" 
-                                    data-run="${log.id}">
+                            <button class="dpu-btn dpu-btn--danger dpu-btn--xs dpuwoo-revert-run" data-run="${log.id}">
+                                <svg width="11" height="11" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+                                </svg>
                                 Revertir
                             </button>
                         </td>
-                    </tr>
-                `;
+                    </tr>`;
             });
 
-            tableHtml += '</tbody></table>';
-            $('#dpuwoo-log-table').html(tableHtml);
+            html += `</tbody></table>`;
+            $('#dpuwoo-log-table').html(html);
         },
 
         viewRunDetails: function(e) {
             e.preventDefault();
-            const runId = $(e.target).data('run');
-            
+            const runId = $(e.currentTarget).data('run');
+
             $('#dpuwoo-run-details-modal').removeClass('hidden');
             $('#dpuwoo-run-details-content').html(`
-                <div class="flex justify-center items-center py-12">
-                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                    <span class="ml-3 text-gray-600">Cargando detalles...</span>
+                <div class="dpu-log-state dpu-log-state--modal">
+                    <div class="dpu-log-spinner"></div>
+                    <p class="dpu-log-state__msg">Cargando detalles…</p>
                 </div>
             `);
 
             $.ajax({
-                url: dpuwoo_ajax.ajax_url,
-                type: 'POST',
-                data: {
-                    action: 'dpuwoo_get_run_items',
-                    run_id: runId,
-                    nonce: dpuwoo_ajax.nonce
-                },
+                url:      dpuwoo_ajax.ajax_url,
+                type:     'POST',
+                data:     { action: 'dpuwoo_get_run_items', run_id: runId, nonce: dpuwoo_ajax.nonce },
                 dataType: 'json',
                 success: function (res) {
                     if (!res.success) {
                         $('#dpuwoo-run-details-content').html(`
-                            <div class="text-center py-8 text-red-600">
-                                Error al cargar los detalles: ${res.data || 'Error desconocido'}
+                            <div class="dpu-log-state dpu-log-state--modal">
+                                <div class="dpu-log-state__icon dpu-log-state__icon--err">
+                                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                                    </svg>
+                                </div>
+                                <p class="dpu-log-state__msg">Error al cargar los detalles</p>
                             </div>
                         `);
                         return;
@@ -167,8 +172,8 @@
                 }.bind(this),
                 error: function (xhr, status, error) {
                     $('#dpuwoo-run-details-content').html(`
-                        <div class="text-center py-8 text-red-600">
-                            Error de conexión: ${error}
+                        <div class="dpu-log-state dpu-log-state--modal">
+                            <p class="dpu-log-state__msg">Error de conexión: ${error}</p>
                         </div>
                     `);
                 }
@@ -178,157 +183,120 @@
         displayRunDetails: function(items, runId) {
             if (!items || items.length === 0) {
                 $('#dpuwoo-run-details-content').html(`
-                    <div class="text-center py-8 text-gray-500">
-                        No hay detalles disponibles para esta ejecución
+                    <div class="dpu-log-state dpu-log-state--modal">
+                        <p class="dpu-log-state__msg">Sin detalles para esta ejecución</p>
                     </div>
                 `);
                 return;
             }
 
-            let detailsHtml = `
-                <div class="mb-4">
-                    <h3 class="text-lg font-semibold">Detalles de la Ejecución #${runId}</h3>
-                    <p class="text-sm text-gray-600">${items.length} productos procesados</p>
+            // Stats summary
+            const updated  = items.filter(i => i.status === 'updated').length;
+            const skipped  = items.filter(i => i.status === 'skipped').length;
+            const errors   = items.filter(i => i.status === 'error').length;
+
+            let html = `
+                <div class="dpu-detail-stats">
+                    <div class="dpu-detail-stat">
+                        <span class="dpu-detail-stat__num dpu-detail-stat__num--ok">${updated}</span>
+                        <span class="dpu-detail-stat__label">Actualizados</span>
+                    </div>
+                    <div class="dpu-detail-stat">
+                        <span class="dpu-detail-stat__num dpu-detail-stat__num--skip">${skipped}</span>
+                        <span class="dpu-detail-stat__label">Sin cambios</span>
+                    </div>
+                    <div class="dpu-detail-stat">
+                        <span class="dpu-detail-stat__num ${errors > 0 ? 'dpu-detail-stat__num--err' : 'dpu-detail-stat__num--zero'}">${errors}</span>
+                        <span class="dpu-detail-stat__label">Errores</span>
+                    </div>
+                    <div class="dpu-detail-stat dpu-detail-stat--total">
+                        <span class="dpu-detail-stat__num">${items.length}</span>
+                        <span class="dpu-detail-stat__label">Total</span>
+                    </div>
                 </div>
-                <div class="overflow-y-auto max-h-96">
-                    <table class="w-full text-left border-collapse border border-gray-200 text-sm">
-                        <thead class="bg-gray-50 sticky top-0">
+                <div class="dpu-detail-table-wrap">
+                    <table class="dpu-detail-table">
+                        <thead>
                             <tr>
-                                <th class="p-2 border border-gray-200">Producto</th>
-                                <th class="p-2 border border-gray-200">Precio Regular Anterior</th>
-                                <th class="p-2 border border-gray-200">Precio Regular Nuevo</th>
-                                <th class="p-2 border border-gray-200">% Cambio</th>
-                                <th class="p-2 border border-gray-200">Estado</th>
+                                <th>Producto</th>
+                                <th>Precio regular</th>
+                                <th>Precio oferta</th>
+                                <th>Var. %</th>
+                                <th>Estado</th>
                             </tr>
                         </thead>
-                        <tbody>
-            `;
-            
+                        <tbody>`;
 
-       items.forEach(function(item) {
-            const statusClass = DPUWOO_Utils.getStatusClass(item.status);
-            const statusText = DPUWOO_Utils.getStatusText(item.status);
-            const percentageChange = item.percentage_change ? 
-                parseFloat(item.percentage_change).toFixed(2) + '%' : '-';
-            
-            // Formatear precios
-            const oldRegularPrice = DPUWOO_Utils.formatPrice(item.old_regular_price);
-            const newRegularPrice = DPUWOO_Utils.formatPrice(item.new_regular_price);
-            const oldSalePrice = DPUWOO_Utils.formatPrice(item.old_sale_price);
-            const newSalePrice = DPUWOO_Utils.formatPrice(item.new_sale_price);
-            
-            // Determinar si hay cambios
-            const regularChanged = parseFloat(item.old_regular_price || 0) !== parseFloat(item.new_regular_price || 0);
-            const saleChanged = parseFloat(item.old_sale_price || 0) !== parseFloat(item.new_sale_price || 0);
-            
-            detailsHtml += `
-                <tr class="border-b border-gray-200 hover:bg-gray-50 transition-colors">
-                    <td class="p-3 border border-gray-200">
-                        <div class="font-medium text-gray-800">${item.product_name || 'N/A'}</div>
-                        <div class="text-xs text-gray-500 mt-1">ID: ${item.product_id}</div>
-                    </td>
-                    
-                    <!-- Precios Regulares -->
-                    <td class="p-3 border border-gray-200">
-                        <div class="flex flex-col">
-                            <!-- Precio Anterior (tachado) -->
-                            <div class="mb-1">
-                                <span class="text-gray-400 text-sm line-through">${oldRegularPrice}</span>
-                            </div>
-                            
-                            <!-- Precio Nuevo -->
-                            <div class="${regularChanged ? 'font-bold' : ''}">
-                                <span class="font-mono ${regularChanged ? 'text-gray-900' : 'text-gray-800'}">
-                                    ${newRegularPrice}
-                                </span>
-                            </div>
-                        </div>
-                    </td>
-                    
-                    <!-- Precios de Oferta -->
-                    <td class="p-3 border border-gray-200">
-                        <div class="flex flex-col">
-                            <!-- Precio Anterior (tachado) -->
-                            <div class="mb-1">
-                                ${parseFloat(item.old_sale_price || 0) > 0 ? 
-                                    `<span class="text-gray-400 text-sm line-through">${oldSalePrice}</span>` :
-                                    '<span class="text-xs text-gray-400 italic">Sin oferta</span>'
-                                }
-                            </div>
-                            
-                            <!-- Precio Nuevo -->
-                            <div class="${saleChanged ? 'font-bold' : ''}">
-                                ${parseFloat(item.new_sale_price || 0) > 0 ? 
-                                    `<span class="font-mono text-gray-900">
-                                        ${newSalePrice}
-                                    </span>` :
-                                    ''
-                                }
-                            </div>
-                        </div>
-                    </td>
-                    
-                    <!-- Porcentaje de Cambio -->
-                    <td class="p-3 border border-gray-200">
-                        <span class="font-bold ${item.percentage_change > 0 ? 'text-red-600' : 'text-green-600'}">
-                            ${percentageChange}
-                        </span>
-                    </td>
-                    
-                    <!-- Estado -->
-                    <td class="p-3 border border-gray-200">
-                        <span class="px-2 py-1 rounded-full text-xs ${statusClass} font-medium">
-                            ${statusText}
-                        </span>
-                    </td>
-                </tr>
-            `;
-        });
+            items.forEach(function(item) {
+                const pct      = parseFloat(item.percentage_change || 0);
+                const pctSign  = pct > 0 ? '+' : '';
+                const pctClass = pct > 0 ? 'dpu-tbl-pct--up' : pct < 0 ? 'dpu-tbl-pct--down' : '';
 
-            detailsHtml += '</tbody></table></div>';
-            $('#dpuwoo-run-details-content').html(detailsHtml);
+                html += `
+                    <tr class="dpu-detail-row">
+                        <td class="dpu-detail-cell dpu-detail-cell--product">
+                            <div class="dpu-tbl-product-name">${item.product_name || 'N/A'}</div>
+                            <div class="dpu-tbl-product-meta">ID ${item.product_id}</div>
+                        </td>
+                        <td class="dpu-detail-cell dpu-tbl-price">
+                            ${DPUWOO_Utils.formatPriceChange(item.old_regular_price, item.new_regular_price)}
+                        </td>
+                        <td class="dpu-detail-cell dpu-tbl-price">
+                            ${DPUWOO_Utils.formatPriceChange(item.old_sale_price, item.new_sale_price)}
+                        </td>
+                        <td class="dpu-detail-cell dpu-tbl-pct ${pctClass}">
+                            ${pct !== 0 ? pctSign + pct.toFixed(2) + '%' : '—'}
+                        </td>
+                        <td class="dpu-detail-cell">
+                            <span class="${DPUWOO_Utils.getStatusClass(item.status)}">
+                                ${DPUWOO_Utils.getStatusText(item.status)}
+                            </span>
+                        </td>
+                    </tr>`;
+            });
+
+            html += `</tbody></table></div>`;
+            $('#dpuwoo-run-details-content').html(html);
         },
 
         revertRun: function(e) {
             e.preventDefault();
-            const runId = $(e.target).data('run');
-            
-            if (!confirm('¿Estás seguro de que deseas revertir esta ejecución completa? Esta acción no se puede deshacer.')) {
-                return;
-            }
+            const $btn    = $(e.currentTarget);
+            const runId   = $btn.data('run');
 
-            const $btn = $(e.target);
-            const originalText = $btn.text();
-            $btn.prop('disabled', true).text('Revirtiendo...');
+            if (!confirm('¿Revertir esta ejecución? Los precios volverán al valor anterior. Esta acción no se puede deshacer.')) return;
+
+            const origHtml = $btn.html();
+            $btn.prop('disabled', true).html(`
+                <svg class="dpu-btn-spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                </svg>
+                Revirtiendo…
+            `);
 
             $.ajax({
-                url: dpuwoo_ajax.ajax_url,
-                type: 'POST',
-                data: {
-                    action: 'dpuwoo_revert_run',
-                    run_id: runId,
-                    nonce: dpuwoo_ajax.nonce
-                },
+                url:      dpuwoo_ajax.ajax_url,
+                type:     'POST',
+                data:     { action: 'dpuwoo_revert_run', run_id: runId, nonce: dpuwoo_ajax.nonce },
                 dataType: 'json',
                 success: function (res) {
                     if (res.success) {
-                        $btn.text('✅ Revertido').prop('disabled', true);
                         this.loadLogs();
                         Swal.fire({
                             icon: 'success',
                             title: 'Ejecución revertida',
-                            text: 'La ejecución ha sido revertida correctamente',
+                            text: 'Los precios han vuelto a su estado anterior.',
                             timer: 3000,
                             showConfirmButton: false
                         });
                     } else {
-                        alert('Error al revertir: ' + (res.data || 'Error desconocido'));
-                        $btn.prop('disabled', false).text(originalText);
+                        $btn.prop('disabled', false).html(origHtml);
+                        Swal.fire({ icon: 'error', title: 'Error', text: res.data || 'No se pudo revertir la ejecución.' });
                     }
                 }.bind(this),
                 error: function (xhr, status, error) {
-                    alert('Error de conexión: ' + error);
-                    $btn.prop('disabled', false).text(originalText);
+                    $btn.prop('disabled', false).html(origHtml);
+                    Swal.fire({ icon: 'error', title: 'Error de conexión', text: error });
                 }
             });
         },

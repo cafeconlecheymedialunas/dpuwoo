@@ -18,7 +18,15 @@ class Rounding_Rule implements Price_Rule_Interface
                 return $price;
 
             case 'integer':
-                return (float) round($price);
+                $rounded = (float) round($price);
+                // Si el redondeo entero produce el mismo valor que el precio de referencia
+                // (regular o de oferta), usar 2 decimales para no enmascarar cambios reales.
+                $same_as_regular = $rounded === (float) round($context->old_regular);
+                $same_as_sale    = $context->old_sale > 0 && $rounded === (float) round($context->old_sale);
+                if (($same_as_regular || $same_as_sale) && abs($price - $rounded) > 0.001) {
+                    return round($price, 2);
+                }
+                return $rounded;
 
             case 'ceil':
                 return (float) ceil($price);

@@ -162,21 +162,14 @@
                     $button.prop('disabled', false).html(originalText);
                     
                     if (res.success) {
-                        // Show success message
                         const successHtml = `
-                            <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-                                <div class="flex items-center">
-                                    <div class="flex-shrink-0">
-                                        <svg class="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                                        </svg>
-                                    </div>
-                                    <div class="ml-3">
-                                        <h3 class="text-sm font-medium text-green-800">Baseline inicializado correctamente</h3>
-                                        <div class="mt-2 text-sm text-green-700">
-                                            <p>Valor de baseline: <strong>$${res.data.formatted_value}</strong></p>
-                                        </div>
-                                    </div>
+                            <div class="dpu-process-success">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <div>
+                                    <strong>Baseline inicializado correctamente</strong>
+                                    <p>Valor de baseline: <strong>$${res.data.formatted_value}</strong></p>
                                 </div>
                             </div>
                         `;
@@ -187,21 +180,14 @@
                             location.reload();
                         }, 3000);
                     } else {
-                        // Show error message
                         const errorHtml = `
-                            <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-                                <div class="flex items-center">
-                                    <div class="flex-shrink-0">
-                                        <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-                                        </svg>
-                                    </div>
-                                    <div class="ml-3">
-                                        <h3 class="text-sm font-medium text-red-800">Error al inicializar baseline</h3>
-                                        <div class="mt-2 text-sm text-red-700">
-                                            <p>${res.data?.message || 'Error desconocido'}</p>
-                                        </div>
-                                    </div>
+                            <div class="dpu-process-error">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <div>
+                                    <strong>Error al inicializar baseline</strong>
+                                    <p>${res.data?.message || 'Error desconocido'}</p>
                                 </div>
                             </div>
                         `;
@@ -210,23 +196,14 @@
                 },
                 error: function (xhr, status, error) {
                     $button.prop('disabled', false).html(originalText);
-                    
                     const errorHtml = `
-                        <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-                            <div class="flex items-center">
-                                <div class="flex-shrink-0">
-                                    <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-                                    </svg>
-                                </div>
-                                <div class="ml-3">
-                                    <h3 class="text-sm font-medium text-red-800">Error de conexión</h3>
-                                    <div class="mt-2 text-sm text-red-700">
-                                        <p>No se pudo conectar con el servidor</p>
-                                        <p>Status: ${status}</p>
-                                        <p>Error: ${error}</p>
-                                    </div>
-                                </div>
+                        <div class="dpu-process-error">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <div>
+                                <strong>Error de conexión</strong>
+                                <p>No se pudo conectar con el servidor — ${error}</p>
                             </div>
                         </div>
                     `;

@@ -16,13 +16,8 @@
         },
 
         switchTab: function(tab) {
-            $('.dpuwoo-tab')
-                .removeClass('border-blue-600 text-blue-600 font-semibold')
-                .addClass('border-transparent text-gray-500 font-medium');
-            
-            $('.dpuwoo-tab[data-tab="' + tab + '"]')
-                .removeClass('border-transparent text-gray-500 font-medium')
-                .addClass('border-blue-600 text-blue-600 font-semibold');
+            $('.dpuwoo-tab').removeClass('dpu-tab--active');
+            $('.dpuwoo-tab[data-tab="' + tab + '"]').addClass('dpu-tab--active');
 
             $('.dpuwoo-tab-content').addClass('hidden');
             $('#dpuwoo-tab-' + tab).removeClass('hidden');
