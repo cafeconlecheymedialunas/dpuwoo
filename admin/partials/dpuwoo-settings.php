@@ -24,7 +24,16 @@
     $next_cron  = wp_next_scheduled('dpuwoo_do_update');
 
     global $wpdb;
-    $last_run = $wpdb->get_row("SELECT created_at, dollar_value, updated_count, skipped_count FROM {$wpdb->prefix}dpuwoo_runs WHERE run_type != 'simulation' ORDER BY id DESC LIMIT 1");
+    $last_run = $wpdb->get_row(
+        "SELECT r.date, r.dollar_value, r.percentage_change,
+                SUM(CASE WHEN i.status = 'updated' THEN 1 ELSE 0 END) AS updated_count,
+                SUM(CASE WHEN i.status = 'skipped' THEN 1 ELSE 0 END) AS skipped_count
+         FROM {$wpdb->prefix}dpuwoo_runs r
+         LEFT JOIN {$wpdb->prefix}dpuwoo_run_items i ON i.run_id = r.id
+         GROUP BY r.id
+         ORDER BY r.id DESC
+         LIMIT 1"
+    );
     ?>
 
     <!-- Cron status banner (solo si cron está activo) -->

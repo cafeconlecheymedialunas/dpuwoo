@@ -84,9 +84,13 @@ class Admin_Settings
         $out['country']                = sanitize_text_field($input['country']                ?? 'AR');
         $out['base_currency']          = sanitize_text_field($input['base_currency']          ?? (function_exists('get_woocommerce_currency') ? get_woocommerce_currency() : 'ARS'));
         $out['reference_currency']     = sanitize_text_field($input['reference_currency']     ?? 'USD');
-        $out['origin_exchange_rate']   = floatval($input['origin_exchange_rate']              ?? 1.0);
+        $out['origin_exchange_rate']   = floatval($input['origin_exchange_rate'] ?? 1.0);
         $out['rate_generation_method'] = in_array($input['rate_generation_method'] ?? '', ['api', 'manual']) ? $input['rate_generation_method'] : 'manual';
-        $out['last_rate']              = floatval($input['last_rate']                         ?? 0);
+
+        // Preservar dollar_type: no hay campo de formulario, se setea desde el dashboard.
+        // Evitar que guardar settings lo pise con el default.
+        $existing             = get_option('dpuwoo_settings', []);
+        $out['dollar_type']   = sanitize_text_field($input['dollar_type'] ?? ($existing['dollar_type'] ?? 'oficial'));
 
         // — Cálculo manual ———————————————————————————————————————————————
         $out['margin']           = floatval($input['margin']           ?? 0);

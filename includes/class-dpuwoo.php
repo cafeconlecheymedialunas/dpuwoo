@@ -71,6 +71,7 @@ class Dpuwoo {
 
 		$this->load_dependencies();
 		$this->container = Dpuwoo_Container::build();
+		add_filter('cron_schedules', [Cron::class, 'register_schedule']);
 		$this->set_locale();
 		$this->define_admin_hooks();
 		$this->define_public_hooks();
@@ -166,11 +167,6 @@ class Dpuwoo {
 		require_once $base . 'includes/class-dpuwoo-admin-settings.php';
 		require_once $base . 'includes/helpers/functions.php';
 
-		// Mantener compatibilidad: cargar Ajax_Manager (legacy) para no romper
-		// código existente hasta completar la migración. Se puede eliminar cuando
-		// todos los AJAX actions estén wired al Ajax_Controller.
-		require_once $base . 'includes/class-dpuwoo-ajax-manager.php';
-
 		$this->loader = new Loader();
 	}
 
@@ -211,6 +207,7 @@ class Dpuwoo {
 
 		// Re-agendar (o desagendar) el cron al guardar settings
 		$this->loader->add_action('update_option_dpuwoo_settings', Cron::class, 'schedule');
+		$this->loader->add_action(Cron::HOOK, Cron::class, 'run_cron');
 
 		// ── AJAX handlers — Capa de Presentación (via DI Container) ───────────────
 		// Ajax_Controller recibe sus dependencias inyectadas por el Container;
@@ -229,6 +226,7 @@ class Dpuwoo {
 		$this->loader->add_action('wp_ajax_dpuwoo_get_current_rate',  $ajax, 'handle_get_current_rate');
 		$this->loader->add_action('wp_ajax_dpuwoo_get_providers_info',$ajax, 'handle_get_providers_info');
 		$this->loader->add_action('wp_ajax_dpuwoo_test_api_connection',$ajax, 'handle_test_api_connection');
+		$this->loader->add_action('wp_ajax_dpuwoo_initialize_baseline', $ajax, 'handle_initialize_baseline');
 	}
 	
 

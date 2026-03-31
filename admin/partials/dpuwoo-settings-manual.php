@@ -120,7 +120,7 @@
                     Guardando…
                 </span>
             </button>
-            <a href="<?php echo esc_url(admin_url('admin.php?page=dpuwoo_cron_settings')); ?>" class="dpu-btn dpu-btn--ghost">
+            <a href="<?php echo esc_url(admin_url('admin.php?page=dpuwoo_settings_page#dpu-automation')); ?>" class="dpu-btn dpu-btn--ghost">
                 Configurar Automatización →
             </a>
             <span id="dpuwoo-save-status" style="font-size:.8rem; color:var(--dpu-text-3);"></span>

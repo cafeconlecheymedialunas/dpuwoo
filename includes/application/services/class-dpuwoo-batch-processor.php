@@ -30,6 +30,9 @@ class Batch_Processor
     ): Batch_Result {
         $result = new Batch_Result();
 
+        $margin          = floatval($settings['margin'] ?? 0);
+        $theoretical_pct = round(($exchange_rate->ratio * (1 + $margin / 100) - 1) * 100, 2);
+
         foreach ($product_ids as $pid) {
             $product = $this->product_repo->get_product($pid);
 
@@ -42,11 +45,11 @@ class Batch_Processor
             }
 
             if ($product->is_type('variable')) {
-                $this->process_variable($product, $exchange_rate, $settings, $simulate, $result);
+                $this->process_variable($product, $exchange_rate, $settings, $simulate, $result, $theoretical_pct);
                 continue;
             }
 
-            $this->process_simple($product, $exchange_rate, $settings, $simulate, $result);
+            $this->process_simple($product, $exchange_rate, $settings, $simulate, $result, $theoretical_pct);
         }
 
         return $result;
@@ -61,7 +64,8 @@ class Batch_Processor
         Exchange_Rate $exchange_rate,
         array         $settings,
         bool          $simulate,
-        Batch_Result  $result
+        Batch_Result  $result,
+        float         $theoretical_pct = 0.0
     ): void {
         $context    = Price_Context::from_product($product, $exchange_rate, $settings);
         $calc       = $this->engine->calculate($context);
@@ -76,7 +80,8 @@ class Batch_Processor
             $calc->new_sale,
             'pending',
             null,
-            $calc->applied_rules
+            $calc->applied_rules,
+            $theoretical_pct
         );
 
         if (!$calc->has_any_change()) {
@@ -100,7 +105,8 @@ class Batch_Processor
         Exchange_Rate $exchange_rate,
         array         $settings,
         bool          $simulate,
-        Batch_Result  $result
+        Batch_Result  $result,
+        float         $theoretical_pct = 0.0
     ): void {
         $variation_ids = $this->product_repo->get_variations($variable);
 
@@ -130,7 +136,8 @@ class Batch_Processor
                 $calc->new_sale,
                 'pending',
                 null,
-                $calc->applied_rules
+                $calc->applied_rules,
+                $theoretical_pct
             );
             $change['parent_id']      = $variable->get_id();
             $change['variation_name'] = $variation_display;
@@ -193,8 +200,9 @@ class Batch_Processor
         float   $old_sale,
         float   $new_sale,
         string  $status,
-        ?string $reason        = null,
-        array   $applied_rules = []
+        ?string $reason          = null,
+        array   $applied_rules   = [],
+        float   $theoretical_pct = 0.0
     ): array {
         return [
             'product_id'        => $id,
@@ -205,7 +213,7 @@ class Batch_Processor
             'new_regular_price' => $new_reg,
             'old_sale_price'    => $old_sale,
             'new_sale_price'    => $new_sale,
-            'percentage_change' => $old_reg > 0 ? round((($new_reg - $old_reg) / $old_reg) * 100, 2) : 0,
+            'percentage_change' => ($old_reg > 0 && $new_reg !== $old_reg) ? $theoretical_pct : 0.0,
             'status'            => $status,
             'reason'            => $reason,
             'applied_rules'     => $applied_rules,
