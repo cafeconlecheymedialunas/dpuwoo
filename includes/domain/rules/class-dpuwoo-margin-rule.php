@@ -7,19 +7,24 @@ if (!defined('ABSPATH')) exit;
  */
 class Margin_Rule implements Price_Rule_Interface
 {
+    private float $applied_margin = 0.0;
+
     public function apply(float $price, Price_Context $context): float
     {
-        $margin = floatval($context->get_setting('margin', 0));
+        $this->applied_margin = floatval($context->get_setting('margin', 0));
 
-        if ($margin == 0) {
+        if ($this->applied_margin == 0) {
             return $price;
         }
 
-        return $price * (1 + ($margin / 100));
+        return $price * (1 + ($this->applied_margin / 100));
     }
 
     public function get_rule_key(): string
     {
-        return 'margin';
+        if ($this->applied_margin == 0) {
+            return 'margin';
+        }
+        return 'margin_' . round($this->applied_margin, 2) . '%';
     }
 }

@@ -65,7 +65,13 @@ interface Log_Repository_Interface
     public function rollback_run(int $run_id): array;
 
     /**
-     * Retorna el dollar_value del último run registrado, o 0.0 si no hay ninguno.
+     * Retorna el dollar_value del último run registrado para un tipo específico de dólar
+     * y moneda de referencia.
+     * Si no hay run para esa combinación, retorna 0.0.
+     *
+     * @param string $dollar_type Tipo de cambio (ej: 'oficial', 'blue', 'bolsa')
+     * @param string $reference_currency Moneda de referencia (ej: 'USD', 'EUR')
+     * @return float
      */
-    public function get_last_applied_rate(): float;
+    public function get_last_applied_rate(string $dollar_type, string $reference_currency): float;
 }

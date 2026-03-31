@@ -4,11 +4,12 @@ if (!defined('ABSPATH')) exit;
 class Activator
 {
     /** Versión del esquema de BD. Incrementar cuando cambie la estructura de tablas. */
-    const DB_VERSION = '1.1';
+    const DB_VERSION = '1.3';
 
     public static function activate()
     {
         self::create_tables();
+        self::migrate_run_items_columns();
 
         if (get_option('dpuwoo_initial_setup_done')) {
             return;
@@ -17,21 +18,16 @@ class Activator
         self::auto_configure_dollar_reference();
         
         $settings = get_option('dpuwoo_settings', []);
-        $settings['interval'] = $settings['interval'] ?? 3600;
-        $settings['threshold']     = $settings['threshold']     ?? 1.0;
-        $settings['threshold_max'] = $settings['threshold_max'] ?? 0;
-        $settings['reference_currency'] = $settings['reference_currency'] ?? 'USD';
-        $settings['last_rate']            = $settings['last_rate']            ?? 0;
+        $settings['interval']             = $settings['interval']             ?? 3600;
+        $settings['threshold']            = $settings['threshold']            ?? 1.0;
+        $settings['threshold_max']        = $settings['threshold_max']        ?? 0;
+        $settings['reference_currency']   = $settings['reference_currency']   ?? 'USD';
         $settings['origin_exchange_rate'] = $settings['origin_exchange_rate'] ?? 0;
         
         update_option('dpuwoo_settings', $settings);
         
         self::create_usd_price_fields_for_products();
-        
-        if (!wp_next_scheduled('dpuwoo_do_update')) {
-            wp_schedule_event(time() + 300, 'hourly', 'dpuwoo_do_update');
-        }
-        
+        Cron::schedule();
         update_option('dpuwoo_initial_setup_done', true);
         
         self::add_activation_notice();
@@ -109,6 +105,8 @@ class Activator
     {
         if (get_option('dpuwoo_db_version') !== self::DB_VERSION) {
             self::create_tables();
+            self::migrate_run_items_columns();
+            self::migrate_runs_reference_currency();
             update_option('dpuwoo_db_version', self::DB_VERSION);
         }
     }
@@ -130,6 +128,7 @@ class Activator
             id bigint(20) NOT NULL AUTO_INCREMENT,
             date datetime NOT NULL,
             dollar_type varchar(50) NOT NULL,
+            reference_currency varchar(10) DEFAULT 'USD',
             dollar_value decimal(10,4) NOT NULL,
             rules text,
             total_products int(11) NOT NULL DEFAULT 0,
@@ -158,8 +157,56 @@ class Activator
         if (!function_exists('dbDelta')) {
             require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         }
-        
+
         dbDelta($sql_runs);
         dbDelta($sql_items);
+        self::migrate_run_items_columns();
+    }
+
+    /**
+     * Ejecuta ALTER TABLE para agregar columnas faltantes en run_items.
+     * Compatible con MySQL 5.x (verifica existencia antes de ALTER).
+     */
+    public static function migrate_run_items_columns(): void
+    {
+        global $wpdb;
+        $table = $wpdb->prefix . 'dpuwoo_run_items';
+
+        $migrations = [
+            'percentage_change' => 'decimal(5,2) AFTER new_sale_price',
+            'reason'           => 'text AFTER status',
+        ];
+
+        foreach ($migrations as $column => $definition) {
+            $col_exists = $wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+                 WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s AND COLUMN_NAME = %s",
+                DB_NAME, $table, $column
+            ));
+
+            if (empty($col_exists)) {
+                $wpdb->query("ALTER TABLE {$table} ADD COLUMN {$column} {$definition}");
+            }
+        }
+    }
+
+    /**
+     * Ejecuta ALTER TABLE para agregar reference_currency en runs.
+     * Compatible con MySQL 5.x (verifica existencia antes de ALTER).
+     */
+    public static function migrate_runs_reference_currency(): void
+    {
+        global $wpdb;
+        $table = $wpdb->prefix . 'dpuwoo_runs';
+
+        $col_exists = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+             WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s AND COLUMN_NAME = %s",
+            DB_NAME, $table, 'reference_currency'
+        ));
+
+        if (empty($col_exists)) {
+            $wpdb->query("ALTER TABLE {$table} ADD COLUMN reference_currency varchar(10) DEFAULT 'USD' AFTER dollar_type");
+        }
     }
 }

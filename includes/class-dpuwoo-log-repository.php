@@ -42,19 +42,24 @@ class Log_Repository implements Log_Repository_Interface
         $now = current_time('mysql');
 
         $insert_data = [
-            'date'              => $now,
-            'dollar_type'       => $data['dollar_type'] ?? '',
-            'dollar_value'      => floatval($data['dollar_value'] ?? 0),
-            'rules'             => maybe_serialize($data['rules'] ?? []),
-            'total_products'    => intval($data['total_products'] ?? 0),
-            'user_id'           => intval($data['user_id'] ?? 0),
-            'note'              => $data['note'] ?? '',
-            'percentage_change' => isset($data['percentage_change']) ? floatval($data['percentage_change']) : null,
+            'date'                => $now,
+            'dollar_type'         => $data['dollar_type'] ?? '',
+            'dollar_value'        => floatval($data['dollar_value'] ?? 0),
+            'rules'               => maybe_serialize($data['rules'] ?? []),
+            'total_products'       => intval($data['total_products'] ?? 0),
+            'user_id'            => intval($data['user_id'] ?? 0),
+            'note'               => $data['note'] ?? '',
+            'percentage_change'   => isset($data['percentage_change']) ? floatval($data['percentage_change']) : null,
         ];
+
+        if (isset($data['reference_currency']) && !empty($data['reference_currency'])) {
+            $insert_data['reference_currency'] = $data['reference_currency'];
+        }
 
         $this->wpdb->insert($this->table_runs, $insert_data);
 
         if ($this->wpdb->last_error) {
+            error_log('DPUWoo insert_run error: ' . $this->wpdb->last_error);
             return false;
         }
 
@@ -76,9 +81,15 @@ class Log_Repository implements Log_Repository_Interface
         return $this->wpdb->get_results($this->wpdb->prepare("SELECT * FROM {$this->table_runs} ORDER BY date DESC LIMIT %d", intval($limit)));
     }
 
-    public function get_last_applied_rate(): float
+    public function get_last_applied_rate(string $dollar_type, string $reference_currency): float
     {
-        $value = $this->wpdb->get_var("SELECT dollar_value FROM {$this->table_runs} ORDER BY id DESC LIMIT 1");
+        $value = $this->wpdb->get_var($this->wpdb->prepare(
+            "SELECT dollar_value FROM {$this->table_runs} 
+             WHERE dollar_type = %s AND reference_currency = %s
+             ORDER BY id DESC LIMIT 1",
+            $dollar_type,
+            $reference_currency
+        ));
         return $value !== null ? floatval($value) : 0.0;
     }
 
@@ -99,6 +110,7 @@ class Log_Repository implements Log_Repository_Interface
             'new_regular_price' => isset($item['new_regular_price']) ? $item['new_regular_price'] : null,
             'old_sale_price'    => isset($item['old_sale_price']) ? $item['old_sale_price'] : null,
             'new_sale_price'    => isset($item['new_sale_price']) ? $item['new_sale_price'] : null,
+            'percentage_change' => isset($item['percentage_change']) ? floatval($item['percentage_change']) : null,
             'status'            => $item['status'],
             'reason'            => $item['reason'] ?? null,
         ];
@@ -226,10 +238,10 @@ class Log_Repository implements Log_Repository_Interface
         ", intval($limit), intval($offset)));
     }
 
-    public function count_all_products()
+    public function count_all_products(): int
     {
         return (int) $this->wpdb->get_var("
-            SELECT COUNT(*) FROM {$this->wpdb->posts}
+            SELECT COUNT(ID) FROM {$this->wpdb->posts}
             WHERE post_type = 'product'
             AND post_status = 'publish'
         ");

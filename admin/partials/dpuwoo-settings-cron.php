@@ -22,9 +22,8 @@
         <span class="dpu-settings-nav__sep">›</span>
         <span class="dpu-settings-nav__current">Automatización</span>
         <span class="dpu-settings-nav__sep">·</span>
-        <a href="<?php echo esc_url(admin_url('admin.php?page=dpuwoo_manual_settings')); ?>" class="dpu-settings-nav__link">
-            <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-            ← Ir a Ejecución Manual
+        <a href="<?php echo esc_url(admin_url('admin.php?page=dpuwoo_settings_page')); ?>" class="dpu-settings-nav__link">
+            Ir a Configuración general
         </a>
     </div>
 
@@ -36,7 +35,16 @@
     $next        = wp_next_scheduled('dpuwoo_do_update');
 
     global $wpdb;
-    $last_run = $wpdb->get_row("SELECT created_at, dollar_value, updated_count, skipped_count FROM {$wpdb->prefix}dpuwoo_runs WHERE run_type != 'simulation' ORDER BY id DESC LIMIT 1");
+    $last_run = $wpdb->get_row(
+        "SELECT r.date, r.dollar_value, r.percentage_change,
+                SUM(CASE WHEN i.status = 'updated' THEN 1 ELSE 0 END) AS updated_count,
+                SUM(CASE WHEN i.status = 'skipped' THEN 1 ELSE 0 END) AS skipped_count
+         FROM {$wpdb->prefix}dpuwoo_runs r
+         LEFT JOIN {$wpdb->prefix}dpuwoo_run_items i ON i.run_id = r.id
+         GROUP BY r.id
+         ORDER BY r.id DESC
+         LIMIT 1"
+    );
     ?>
 
     <!-- Status Banner -->
@@ -78,7 +86,7 @@
         <div class="dpu-cron-last-run__grid">
             <div class="dpu-cron-stat">
                 <span class="dpu-cron-stat__label">Fecha</span>
-                <span class="dpu-cron-stat__value"><?php echo esc_html(wp_date('d/m/Y H:i', strtotime($last_run->created_at))); ?></span>
+                <span class="dpu-cron-stat__value"><?php echo esc_html(wp_date('d/m/Y H:i', strtotime($last_run->date))); ?></span>
             </div>
             <div class="dpu-cron-stat">
                 <span class="dpu-cron-stat__label">Tipo de cambio</span>
@@ -115,7 +123,7 @@
                 </div>
             </div>
             <div class="dpu-settings-section__body">
-                <table class="form-table"><tbody><?php do_settings_fields('dpuwoo_cron_settings', 'dpuwoo_automation_section'); ?></tbody></table>
+                <table class="form-table"><tbody><?php do_settings_fields('dpuwoo_settings_page', 'dpuwoo_automation_section'); ?></tbody></table>
             </div>
         </div>
 
@@ -133,7 +141,7 @@
                 </div>
             </div>
             <div class="dpu-settings-section__body">
-                <table class="form-table"><tbody><?php do_settings_fields('dpuwoo_cron_settings', 'dpuwoo_cron_rules_section'); ?></tbody></table>
+                <table class="form-table"><tbody><?php do_settings_fields('dpuwoo_settings_page', 'dpuwoo_cron_rules_section'); ?></tbody></table>
             </div>
         </div>
 
@@ -151,7 +159,7 @@
                 </div>
             </div>
             <div class="dpu-settings-section__body">
-                <table class="form-table"><tbody><?php do_settings_fields('dpuwoo_cron_settings', 'dpuwoo_cron_format_section'); ?></tbody></table>
+                <table class="form-table"><tbody><?php do_settings_fields('dpuwoo_settings_page', 'dpuwoo_cron_format_section'); ?></tbody></table>
             </div>
         </div>
 
@@ -160,7 +168,7 @@
             <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             <div>
                 <strong>Cómo funciona:</strong> Los campos vacíos usan como respaldo la configuración de
-                <a href="<?php echo esc_url(admin_url('admin.php?page=dpuwoo_manual_settings')); ?>">Ejecución Manual</a>.
+                <a href="<?php echo esc_url(admin_url('admin.php?page=dpuwoo_settings_page')); ?>">Configuración</a>.
                 El proveedor de API y las monedas son siempre compartidos entre ambos contextos.
                 El historial de ejecuciones automáticas está en
                 <a href="<?php echo esc_url(admin_url('admin.php?page=dpuwoo_logs')); ?>">Historial</a>.
@@ -182,8 +190,8 @@
                     Guardando…
                 </span>
             </button>
-            <a href="<?php echo esc_url(admin_url('admin.php?page=dpuwoo_manual_settings')); ?>" class="dpu-btn dpu-btn--ghost">
-                ← Configuración Manual
+            <a href="<?php echo esc_url(admin_url('admin.php?page=dpuwoo_settings_page')); ?>" class="dpu-btn dpu-btn--ghost">
+                ← Configuración general
             </a>
             <span id="dpuwoo-save-status" style="font-size:.8rem; color:var(--dpu-text-3);"></span>
         </div>

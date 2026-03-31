@@ -8,25 +8,47 @@ if (!defined('ABSPATH')) exit;
  */
 class Direction_Rule implements Price_Rule_Interface
 {
+    private ?string $applied_direction = null;
+    private bool $was_blocked = false;
+
     public function apply(float $price, Price_Context $context): float
     {
-        $direction = $context->get_setting('update_direction', 'bidirectional');
+        $this->applied_direction = $context->get_setting('update_direction', 'bidirectional');
+        $this->was_blocked = false;
         $old_price = $context->old_regular;
 
-        switch ($direction) {
+        switch ($this->applied_direction) {
             case 'up_only':
-                return ($price < $old_price) ? $old_price : $price;
+                if ($price < $old_price) {
+                    $this->was_blocked = true;
+                    return $old_price;
+                }
+                return $price;
 
             case 'down_only':
-                return ($price > $old_price) ? $old_price : $price;
+                if ($price > $old_price) {
+                    $this->was_blocked = true;
+                    return $old_price;
+                }
+                return $price;
 
-            default: // bidirectional
+            default:
                 return $price;
         }
     }
 
     public function get_rule_key(): string
     {
-        return 'direction';
+        if ($this->applied_direction === null) {
+            return 'direction';
+        }
+
+        if ($this->applied_direction === 'up_only') {
+            return $this->was_blocked ? 'direction_up_only_blocked' : 'direction_up_only_allowed';
+        }
+        if ($this->applied_direction === 'down_only') {
+            return $this->was_blocked ? 'direction_down_only_blocked' : 'direction_down_only_allowed';
+        }
+        return 'direction_bidirectional';
     }
 }

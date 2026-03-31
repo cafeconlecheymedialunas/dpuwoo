@@ -7,13 +7,16 @@ if (!defined('ABSPATH')) exit;
  */
 class Ratio_Rule implements Price_Rule_Interface
 {
+    private float $applied_ratio = 1.0;
+
     public function apply(float $price, Price_Context $context): float
     {
-        return $price * $context->exchange_rate->ratio;
+        $this->applied_ratio = $context->exchange_rate->ratio;
+        return $price * $this->applied_ratio;
     }
 
     public function get_rule_key(): string
     {
-        return 'ratio';
+        return 'ratio_' . round($this->applied_ratio, 6);
     }
 }

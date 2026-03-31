@@ -34,13 +34,8 @@ class Product_Repository implements Product_Repository_Interface
      * PRODUCT IDS – PAGINACIÓN (SÓLO SELECT, PERFORMANTE)
      * ========================================================================= */
 
-    /**
-     * Devuelve el total de productos padre (simples y variables) en estado 'publish'.
-     * Los posts con post_type='product' son los que el Price_Updater itera.
-     */
     public function count_all_products(): int
     {
-        // **MODIFICACIÓN CLAVE:** Usar COUNT(ID) para mayor claridad y asegurar que la consulta es correcta.
         return (int) $this->wpdb->get_var("
             SELECT COUNT(ID) FROM {$this->wpdb->posts}
             WHERE post_type = 'product'
