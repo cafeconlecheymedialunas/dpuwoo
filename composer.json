@@ -1,0 +1,24 @@
+{
+    "name": "dpuwoo/dpuwoo",
+    "description": "Dolar Price Updater for WooCommerce",
+    "type": "wordpress-plugin",
+    "require-dev": {
+        "phpunit/phpunit": "^10.0",
+        "brain/monkey": "^2.6",
+        "mockery/mockery": "^1.6"
+    },
+    "autoload": {
+        "psr-4": {
+            "DPUWoo\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit",
+        "test:coverage": "vendor/bin/phpunit --coverage-html coverage"
+    },
+    "config": {
+        "allow-plugins": {
+            "brain/monkey": true
+        }
+    }
+}

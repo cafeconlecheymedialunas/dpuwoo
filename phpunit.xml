@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="tests/bootstrap.php"
+         colors="true"
+         stopOnFailure="false"
+         cacheDirectory=".phpunit.cache">
+    <testsuites>
+        <testsuite name="Unit">
+            <directory>tests</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>includes</directory>
+        </include>
+        <exclude>
+            <directory>includes/class-dpuwoo-ajax-manager.php</directory>
+            <directory>includes/class-dpuwoo-price-updater.php</directory>
+            <directory>includes/class-dpuwoo-price-calculator.php</directory>
+            <directory>includes/class-dpuwoo-fallback.php</directory>
+        </exclude>
+    </source>
+    <php>
+        <env name="ABSPATH" value="/tmp/wordpress/"/>
+    </php>
+</phpunit>
