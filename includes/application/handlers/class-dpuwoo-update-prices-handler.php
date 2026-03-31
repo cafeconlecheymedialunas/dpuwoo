@@ -26,11 +26,8 @@ class Update_Prices_Handler
      */
     public function handle(Update_Prices_Command $cmd): array
     {
-        // Leer settings efectivos según el contexto: 'manual' usa configuración de la
-        // página Ejecución Manual; 'cron' la de Automatización (con fallback a manual).
         $opts = $this->settings->get_for_context($cmd->context);
 
-        // 1. Obtener tasa de cambio actual
         $type    = $opts['dollar_type'] ?? 'oficial';
         $api_res = $this->api->get_rate($type);
 
@@ -43,17 +40,13 @@ class Update_Prices_Handler
 
         $current_rate = floatval($api_res['value']);
 
-        // 2. Obtener tasa de referencia anterior.
-        //    Prioridad: último run guardado → origin_exchange_rate (tasa a la que se
-        //    cargaron los precios originalmente) → 0 (primera ejecución sin configurar).
-        [$previous_rate, $is_first_run] = $this->get_previous_rate($opts);
+        $reference_currency = $opts['reference_currency'] ?? 'USD';
+        [$previous_rate, $is_first_run] = $this->get_previous_rate($opts, $type, $reference_currency);
 
-        // 3. Construir Value Object de tasa de cambio
         $exchange_rate = ($previous_rate > 0)
             ? new Exchange_Rate($current_rate, $previous_rate)
             : Exchange_Rate::first_run($current_rate);
 
-        // 4. Verificar umbrales y dirección (siempre pasa en primera ejecución)
         $threshold_min = floatval($opts['threshold']     ?? 0.5);
         $threshold_max = floatval($opts['threshold_max'] ?? 0);
         $direction     = $opts['update_direction'] ?? 'bidirectional';
@@ -62,7 +55,6 @@ class Update_Prices_Handler
         if (!$this->threshold_policy->should_update(
             $exchange_rate, $threshold_min, $threshold_max, $direction, $is_first_run
         )) {
-            // Determinar el motivo específico para el frontend
             if ($direction !== 'bidirectional' && (
                 ($direction === 'up_only'   && $exchange_rate->percentage_change <= 0) ||
                 ($direction === 'down_only' && $exchange_rate->percentage_change >= 0)
@@ -86,7 +78,6 @@ class Update_Prices_Handler
             ]);
         }
 
-        // 5. Calcular paginación del lote
         $total_products = $this->product_repo->count_all_products();
         $batch_size     = 50;
         $total_batches  = ($total_products === 0) ? 0 : (int) ceil($total_products / $batch_size);
@@ -94,38 +85,42 @@ class Update_Prices_Handler
 
         if ($total_products === 0 || $cmd->batch >= $total_batches) {
             return array_merge($exchange_rate->to_array(), [
-                'dollar_type'   => $type,
-                'threshold_met' => true,
+                'dollar_type'    => $type,
+                'previous_rate'  => $previous_rate,
+                'is_first_run'  => $is_first_run,
+                'threshold_met'  => true,
                 'total_batches' => $total_batches,
                 'changes'       => [],
-                'summary'       => ['updated' => 0, 'errors' => 0, 'skipped' => 0, 'simulated' => $cmd->simulate],
+                'summary'        => ['updated' => 0, 'errors' => 0, 'skipped' => 0, 'simulated' => $cmd->simulate],
             ]);
         }
 
-        // 6. Obtener IDs del lote y procesar
         $batch_ids    = $this->product_repo->get_product_ids_batch($batch_size, $offset);
         $batch_result = $this->processor->process($batch_ids, $exchange_rate, $opts, $cmd->simulate);
 
-        // 7. Persistir run en el último lote (solo si no es simulación)
         $run_id = null;
-        if (!$cmd->simulate && $cmd->batch === ($total_batches - 1)) {
-            $run_id = $this->persist_run($type, $current_rate, $exchange_rate, $batch_result, $opts, $total_products, $cmd->context);
+        if (!$cmd->simulate) {
+            if ($cmd->batch === 0) {
+                $run_id = $this->persist_run($type, $current_rate, $exchange_rate, $batch_result, $opts, $total_products, $cmd->context);
+            } else {
+                $run_id = $this->add_items_to_run($cmd->run_id ?? 0, $batch_result, $opts);
+            }
         }
 
         return array_merge($exchange_rate->to_array(), [
-            'rate'          => $current_rate,
-            'previous_rate' => $previous_rate,
-            'is_first_run'  => $is_first_run,
-            'dollar_type'   => $type,
-            'threshold_met' => true,
-            'direction'     => $direction,
-            'changes'       => $batch_result->get_changes(),
-            'run_id'        => $run_id,
-            'batch_info'    => [
+            'rate'           => $current_rate,
+            'previous_rate'  => $previous_rate,
+            'is_first_run'   => $is_first_run,
+            'dollar_type'    => $type,
+            'threshold_met'  => true,
+            'direction'      => $direction,
+            'changes'        => $batch_result->get_changes(),
+            'run_id'         => $run_id,
+            'batch_info'     => [
                 'current_batch'      => $cmd->batch,
                 'total_batches'      => $total_batches,
                 'processed_in_batch' => count($batch_ids),
-                'total_products'     => $total_products,
+                'total_products'    => $total_products,
             ],
             'summary'    => $batch_result->to_summary($cmd->simulate),
             'errors_map' => $batch_result->get_errors_map(),
@@ -140,28 +135,26 @@ class Update_Prices_Handler
      * Obtiene [tasa_anterior, es_primera_ejecucion].
      *
      * Prioridad:
-     *  1. Último run guardado en BD (comparación con el último cambio real).
+     *  1. Último run guardado en BD para el MISMO tipo de cambio Y moneda de referencia
+     *     (compara solo la misma combinación para evitar inconsistencias cruzadas).
      *  2. origin_exchange_rate: la tasa a la que se cargaron los precios originalmente.
      *     Permite que la primera ejecución calcule el ratio correcto respecto al origen.
      *  3. 0 → primera ejecución sin configurar (ratio=1, no cambia nada).
      *
      * @return array{float, bool}  [tasa_anterior, es_primera_ejecucion]
      */
-    private function get_previous_rate(array $opts): array
+    private function get_previous_rate(array $opts, string $dollar_type, string $reference_currency): array
     {
-        // Logs: ya hay al menos un run real guardado
-        $last = $this->log_repo->get_last_applied_rate();
+        $last = $this->log_repo->get_last_applied_rate($dollar_type, $reference_currency);
         if ($last > 0) {
             return [$last, false];
         }
 
-        // Primera ejecución: usar origin_exchange_rate como baseline si está configurado
         $origin = floatval($opts['origin_exchange_rate'] ?? 0);
         if ($origin > 0) {
             return [$origin, true];
         }
 
-        // Sin configurar: primera ejecución sin baseline → ratio=1
         return [0.0, true];
     }
 
@@ -178,15 +171,17 @@ class Update_Prices_Handler
         string        $context = 'manual'
     ): int|false {
         $summary = $result->to_summary(false);
+        $reference_currency = $opts['reference_currency'] ?? 'USD';
 
         $run_data = [
-            'dollar_type'       => $type,
-            'dollar_value'      => $current_rate,
-            'rules'             => $opts,
-            'total_products'    => $total_products,
-            'user_id'           => get_current_user_id(),
-            'note'              => $context === 'cron' ? 'Actualización automática (cron)' : 'Actualización manual',
-            'percentage_change' => $exchange_rate->percentage_change,
+            'dollar_type'          => $type,
+            'reference_currency'    => $reference_currency,
+            'dollar_value'         => $current_rate,
+            'rules'                => $opts,
+            'total_products'        => $total_products,
+            'user_id'              => get_current_user_id(),
+            'note'                 => $context === 'cron' ? 'Actualización automática (cron)' : 'Actualización manual',
+            'percentage_change'    => $exchange_rate->percentage_change,
         ];
 
         $run_id = $this->logger->begin_run_transaction($run_data);
@@ -203,6 +198,28 @@ class Update_Prices_Handler
         }
 
         $this->logger->commit_run_transaction($run_id);
+
+        return $run_id;
+    }
+
+    /**
+     * Agrega items de un batch subsiguiente a un run existente.
+     * El run ya fue creado y commiteado en batch 0 por persist_run().
+     */
+    private function add_items_to_run(int $run_id, Batch_Result $result, array $opts): int|false
+    {
+        $items = $result->get_changes();
+
+        if (empty($items)) {
+            return $run_id;
+        }
+
+        $success = $this->logger->add_items_to_transaction($run_id, $items);
+
+        if (!$success) {
+            $this->logger->rollback_run_transaction();
+            return false;
+        }
 
         return $run_id;
     }

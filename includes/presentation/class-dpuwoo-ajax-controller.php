@@ -51,7 +51,8 @@ class Ajax_Controller
         $this->verify_request();
 
         $batch  = intval($_POST['batch'] ?? 0);
-        $result = $this->bus->dispatch(new Update_Prices_Command($batch, simulate: $simulate));
+        $run_id = intval($_POST['run_id'] ?? 0);
+        $result = $this->bus->dispatch(new Update_Prices_Command($batch, simulate: $simulate, run_id: $run_id));
 
         if (isset($result['error'])) {
             wp_send_json_error($result);
@@ -134,6 +135,42 @@ class Ajax_Controller
     }
 
     /*==========================================================
+    =           Handlers de Baseline                             =
+    ==========================================================*/
+
+    /**
+     * POST: dpuwoo_initialize_baseline
+     * Obtiene la tasa actual y la persiste como origin_exchange_rate.
+     * Lo que antes hacía Price_Updater::initialize_from_current_rate().
+     */
+    public function handle_initialize_baseline(): void
+    {
+        $this->verify_nonce_only();
+
+        $type = $this->settings->get('dollar_type', 'oficial');
+        $rate_data = $this->api->get_rate($type);
+
+        if (!$rate_data || empty($rate_data['value'])) {
+            wp_send_json_error(['message' => 'No se pudo obtener la tasa de cambio']);
+        }
+
+        $value = floatval($rate_data['value']);
+
+        if ($value <= 0) {
+            wp_send_json_error(['message' => 'Tasa inválida: el valor debe ser mayor a 0']);
+        }
+
+        $this->settings->set('origin_exchange_rate', $value);
+
+        wp_send_json_success([
+            'formatted_value' => number_format($value, 4),
+            'value'          => $value,
+            'type'           => $type,
+            'provider'       => $rate_data['provider'] ?? '',
+        ]);
+    }
+
+    /*==========================================================
     =           Handlers de API / Proveedores                  =
     ==========================================================*/
 
@@ -170,13 +207,18 @@ class Ajax_Controller
     {
         $this->verify_nonce_only();
 
-        $type    = sanitize_text_field($_POST['type'] ?? $this->settings->get('dollar_type', 'oficial'));
+        $type     = sanitize_text_field($_POST['type'] ?? $this->settings->get('dollar_type', 'oficial'));
         $provider = sanitize_text_field($_POST['provider'] ?? '');
 
         $rate_data = $this->api->get_rate($type, $provider ?: null);
 
         if (!$rate_data) {
             wp_send_json_error(['message' => 'No se pudo obtener la tasa de cambio', 'type' => $type]);
+        }
+
+        // Persistir el tipo seleccionado para que las actualizaciones usen el mismo
+        if (!empty($_POST['type'])) {
+            $this->settings->set('dollar_type', $type);
         }
 
         wp_send_json_success([

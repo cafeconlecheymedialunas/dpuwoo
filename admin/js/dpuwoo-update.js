@@ -79,7 +79,7 @@
                     DPUWOO_Utils.updateCumulativeResults(data, 'update');
 
                     if (totalBatches > 1) {
-                        this.processBatch('dpuwoo_update_batch', 1, totalBatches, 'update', function(finalData) {
+                        this.processBatch('dpuwoo_update_batch', 1, totalBatches, 'update', data.run_id, function(finalData) {
                             DPUWOO_Utils.showCompleteResults(finalData, false);
                             if (window.DPUWOO_Logs) DPUWOO_Logs.refresh();
                         }.bind(this));
@@ -94,13 +94,14 @@
             });
         },
 
-        processBatch: function(action, batch, totalBatches, type, onComplete) {
+        processBatch: function(action, batch, totalBatches, type, runId, onComplete) {
             $.ajax({
                 url: dpuwoo_ajax.ajax_url,
                 type: 'POST',
                 data: {
                     action: action,
                     batch: batch,
+                    run_id: runId,
                     nonce: dpuwoo_ajax.nonce
                 },
                 dataType: 'json',
@@ -123,7 +124,7 @@
                     DPUWOO_Utils.updateCumulativeResults(data, type);
 
                     if (batch < totalBatches - 1) {
-                        this.processBatch(action, batch + 1, totalBatches, type, onComplete);
+                        this.processBatch(action, batch + 1, totalBatches, type, runId, onComplete);
                     } else {
                         onComplete(data);
                     }
