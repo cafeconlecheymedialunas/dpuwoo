@@ -50,9 +50,24 @@
         }
     };
 
-    // Inicializar cuando el DOM esté listo
+    // ── Acordeón ─────────────────────────────────────────────
     $(document).ready(function() {
         DPUWOO_Tabs.init();
+
+        // Accordion toggle
+        $(document).on('click', '.dpu-accordion__trigger', function() {
+            var $trigger = $(this);
+            var $body    = $('#' + $trigger.attr('aria-controls'));
+            var isOpen   = $trigger.attr('aria-expanded') === 'true';
+
+            if (isOpen) {
+                $trigger.attr('aria-expanded', 'false');
+                $body.attr('hidden', true);
+            } else {
+                $trigger.attr('aria-expanded', 'true');
+                $body.removeAttr('hidden');
+            }
+        });
     });
 
     // Exponer al global scope para que otros módulos puedan usarlo

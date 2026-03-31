@@ -26,7 +26,9 @@ class Update_Prices_Handler
      */
     public function handle(Update_Prices_Command $cmd): array
     {
-        $opts = $this->settings->get_all();
+        // Leer settings efectivos según el contexto: 'manual' usa configuración de la
+        // página Ejecución Manual; 'cron' la de Automatización (con fallback a manual).
+        $opts = $this->settings->get_for_context($cmd->context);
 
         // 1. Obtener tasa de cambio actual
         $type    = $opts['dollar_type'] ?? 'oficial';
@@ -107,7 +109,7 @@ class Update_Prices_Handler
         // 7. Persistir run en el último lote (solo si no es simulación)
         $run_id = null;
         if (!$cmd->simulate && $cmd->batch === ($total_batches - 1)) {
-            $run_id = $this->persist_run($type, $current_rate, $exchange_rate, $batch_result, $opts, $total_products);
+            $run_id = $this->persist_run($type, $current_rate, $exchange_rate, $batch_result, $opts, $total_products, $cmd->context);
         }
 
         return array_merge($exchange_rate->to_array(), [
@@ -172,7 +174,8 @@ class Update_Prices_Handler
         Exchange_Rate $exchange_rate,
         Batch_Result  $result,
         array         $opts,
-        int           $total_products
+        int           $total_products,
+        string        $context = 'manual'
     ): int|false {
         $summary = $result->to_summary(false);
 
@@ -182,7 +185,7 @@ class Update_Prices_Handler
             'rules'             => $opts,
             'total_products'    => $total_products,
             'user_id'           => get_current_user_id(),
-            'note'              => 'Actualización automática',
+            'note'              => $context === 'cron' ? 'Actualización automática (cron)' : 'Actualización manual',
             'percentage_change' => $exchange_rate->percentage_change,
         ];
 

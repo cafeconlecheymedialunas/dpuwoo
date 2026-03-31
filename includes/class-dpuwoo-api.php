@@ -98,7 +98,7 @@ class API_Client
         
         // Agregar información común si existe
         if ($result) {
-            $result['store_currency'] = strtoupper(get_woocommerce_currency());
+            $result['store_currency'] = strtoupper(\Dpuwoo\Helpers\dpuwoo_get_store_currency());
             $result['store_country'] = $this->get_store_country();
             $result['timestamp'] = current_time('mysql');
         }
@@ -117,7 +117,7 @@ class API_Client
         // Agregar información común a cada moneda
         if (is_array($currencies)) {
             foreach ($currencies as &$currency) {
-                $currency['store_currency'] = strtoupper(get_woocommerce_currency());
+                $currency['store_currency'] = strtoupper(\Dpuwoo\Helpers\dpuwoo_get_store_currency());
                 $currency['store_country'] = $this->get_store_country();
                 $currency['timestamp'] = current_time('mysql');
             }
@@ -136,7 +136,7 @@ class API_Client
         
         // Agregar información común
         if ($result) {
-            $result['store_currency'] = strtoupper(get_woocommerce_currency());
+            $result['store_currency'] = strtoupper(\Dpuwoo\Helpers\dpuwoo_get_store_currency());
             $result['store_country'] = $this->get_store_country();
         }
         

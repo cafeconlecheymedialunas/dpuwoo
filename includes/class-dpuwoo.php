@@ -209,6 +209,9 @@ class Dpuwoo {
 		$this->loader->add_action('admin_init', $plugin_setting, 'register_settings');
 		$this->loader->add_action('admin_init', Activator::class, 'maybe_upgrade');
 
+		// Re-agendar (o desagendar) el cron al guardar settings
+		$this->loader->add_action('update_option_dpuwoo_settings', Cron::class, 'schedule');
+
 		// ── AJAX handlers — Capa de Presentación (via DI Container) ───────────────
 		// Ajax_Controller recibe sus dependencias inyectadas por el Container;
 		// no instancia nada directamente. Los action names se mantienen idénticos

@@ -169,10 +169,10 @@ class Admin
 			false
 		);
 
-		 wp_localize_script($this->plugin_name . '-currencies', 'dpuwoo_ajax', [
-			'ajax_url' => admin_url('admin-ajax.php'),
-			'nonce' => wp_create_nonce('dpuwoo_ajax_nonce'),
-			'base_currency' => get_woocommerce_currency()
+		wp_localize_script($this->plugin_name . '-currencies', 'dpuwoo_ajax', [
+			'ajax_url'      => admin_url('admin-ajax.php'),
+			'nonce'         => wp_create_nonce('dpuwoo_ajax_nonce'),
+			'base_currency' => function_exists('get_woocommerce_currency') ? get_woocommerce_currency() : 'USD',
 		]);
 
 		// CSS
@@ -192,11 +192,48 @@ class Admin
 			'dashicons-admin-site',
 			60
 		);
+
+		add_submenu_page(
+			'dpuwoo_dashboard',
+			'Dashboard — Dollar Sync',
+			'Dashboard',
+			'manage_options',
+			'dpuwoo_dashboard',
+			[__CLASS__, 'render_dashboard']
+		);
+
+		add_submenu_page(
+			'dpuwoo_dashboard',
+			'Configuración — Dollar Sync',
+			'Configuración',
+			'manage_options',
+			'dpuwoo_settings_page',
+			[__CLASS__, 'render_settings']
+		);
+
+		add_submenu_page(
+			'dpuwoo_dashboard',
+			'Historial — Dollar Sync',
+			'Historial',
+			'manage_options',
+			'dpuwoo_logs',
+			[__CLASS__, 'render_logs']
+		);
 	}
 
 
 	public static function render_dashboard()
 	{
 		include DPUWOO_PLUGIN_DIR . 'admin/partials/dpuwoo-dashboard.php';
+	}
+
+	public static function render_settings()
+	{
+		include DPUWOO_PLUGIN_DIR . 'admin/partials/dpuwoo-settings.php';
+	}
+
+	public static function render_logs()
+	{
+		include DPUWOO_PLUGIN_DIR . 'admin/partials/dpuwoo-logs.php';
 	}
 }

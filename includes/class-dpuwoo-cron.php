@@ -7,6 +7,15 @@ class Cron
 
     public static function schedule()
     {
+        $opts    = get_option('dpuwoo_settings', []);
+        $enabled = $opts['cron_enabled'] ?? 1;
+
+        if (!$enabled) {
+            // Si el cron fue desactivado, desagendarlo
+            self::unschedule();
+            return;
+        }
+
         if (!wp_next_scheduled(self::HOOK)) {
             wp_schedule_event(time(), 'hourly', self::HOOK);
         }
@@ -41,10 +50,18 @@ class Cron
         // Refrescar settings por si el cron corre fuera del ciclo HTTP normal
         $dpuwoo_container->get('settings')->refresh();
 
-        // Procesar lotes secuencialmente (batch 0..n)
-        // El Handler internamente valida threshold y corta si no se cumple.
+        // Verificar que el cron esté activo antes de procesar
+        $opts    = $dpuwoo_container->get('settings')->get_all();
+        $enabled = $opts['cron_enabled'] ?? 1;
+        if (!$enabled) {
+            return;
+        }
+
+        // Procesar lotes secuencialmente con contexto 'cron'.
+        // El Handler usará la configuración de la página Automatización
+        // (cron_margin, cron_threshold, etc.) con fallback a la configuración manual.
         $batch  = 0;
-        $result = $bus->dispatch(new Update_Prices_Command($batch, simulate: false));
+        $result = $bus->dispatch(new Update_Prices_Command($batch, simulate: false, context: 'cron'));
 
         if (isset($result['error'])) {
             return;
@@ -54,7 +71,7 @@ class Cron
 
         // Procesar lotes adicionales si hay más de uno
         for ($batch = 1; $batch < $total_batches; $batch++) {
-            $bus->dispatch(new Update_Prices_Command($batch, simulate: false));
+            $bus->dispatch(new Update_Prices_Command($batch, simulate: false, context: 'cron'));
         }
     }
 }

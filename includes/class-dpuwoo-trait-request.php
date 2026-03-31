@@ -111,7 +111,7 @@ trait HTTP_Request_Trait {
      * Obtener código de moneda base de la tienda
      */
     protected function get_store_currency() {
-        return strtoupper(get_woocommerce_currency());
+        return strtoupper(\Dpuwoo\Helpers\dpuwoo_get_store_currency());
     }
     
     /**

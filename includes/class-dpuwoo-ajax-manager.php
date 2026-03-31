@@ -328,7 +328,7 @@ class Ajax_Manager
         wp_send_json_success([
             'providers' => $providers,
             'current_provider' => $current_provider,
-            'woocommerce_currency' => get_woocommerce_currency(),
+            'woocommerce_currency' => \Dpuwoo\Helpers\dpuwoo_get_store_currency(),
             'woocommerce_country' => get_option('woocommerce_default_country', 'AR')
         ]);
     }

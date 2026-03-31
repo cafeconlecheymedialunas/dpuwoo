@@ -1529,3 +1529,482 @@
 .dpu-process-error svg { flex-shrink: 0; margin-top: 1px; }
 .dpu-process-error strong { display: block; font-weight: 600; margin-bottom: 0.25rem; }
 .dpu-process-error p { margin: 0; opacity: 0.9; }
+
+/* ═══════════════════════════════════════════════════════════
+   SUBMENU PAGES — Settings & Logs
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Page Badge ──────────────────────────────────────────── */
+.dpu-page-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1875rem 0.5625rem;
+  border-radius: 999px;
+  font-family: var(--dpu-font-mono);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.dpu-page-badge--manual {
+  background: var(--sim-100);
+  color: var(--sim-800);
+  border: 1px solid var(--sim-200);
+}
+.dpu-page-badge--cron {
+  background: var(--upd-100);
+  color: var(--upd-800);
+  border: 1px solid var(--upd-200);
+}
+.dpu-page-badge--logs {
+  background: var(--skip-bg);
+  color: var(--skip-text);
+  border: 1px solid var(--skip-border);
+}
+
+/* ── Breadcrumb / Page Nav ───────────────────────────────── */
+.dpu-settings-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.775rem;
+}
+.dpu-settings-nav__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--dpu-text-2);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.dpu-settings-nav__link:hover { color: var(--dpu-text); }
+.dpu-settings-nav__sep { color: var(--dpu-text-3); }
+.dpu-settings-nav__current {
+  color: var(--dpu-text);
+  font-weight: 500;
+}
+
+/* ── Settings Sections (cards) ───────────────────────────── */
+.dpu-settings-section {
+  background: var(--dpu-surface);
+  border: 1px solid var(--dpu-border);
+  border-radius: var(--dpu-radius);
+  box-shadow: var(--dpu-shadow);
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+.dpu-settings-section__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--dpu-border);
+}
+.dpu-settings-section--manual .dpu-settings-section__header { background: var(--sim-50); }
+.dpu-settings-section--cron   .dpu-settings-section__header { background: var(--upd-50); }
+
+.dpu-settings-section__icon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--dpu-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 0.0625rem;
+}
+.dpu-settings-section__icon--origin { background: var(--sim-200); color: var(--sim-800); }
+.dpu-settings-section__icon--calc   { background: var(--sim-200); color: var(--sim-800); }
+.dpu-settings-section__icon--round  { background: var(--sim-200); color: var(--sim-800); }
+.dpu-settings-section__icon--excl   { background: var(--err-bg);  color: var(--err-text); border: 1px solid var(--err-border); }
+.dpu-settings-section__icon--cron   { background: var(--upd-200); color: var(--upd-800); }
+
+.dpu-settings-section__title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--dpu-text);
+  margin: 0 0 0.125rem;
+}
+.dpu-settings-section--manual .dpu-settings-section__title { color: var(--sim-800); }
+.dpu-settings-section--cron   .dpu-settings-section__title { color: var(--upd-800); }
+
+.dpu-settings-section__desc {
+  font-size: 0.75rem;
+  color: var(--dpu-text-3);
+  margin: 0;
+}
+.dpu-settings-section--manual .dpu-settings-section__desc { color: var(--sim-700); }
+.dpu-settings-section--cron   .dpu-settings-section__desc { color: var(--upd-700); }
+
+.dpu-settings-section__body {
+  padding: 0.25rem 1.5rem 0.5rem;
+}
+.dpu-settings-section__body .form-table { margin: 0; }
+.dpu-settings-section__body .form-table:first-child { margin-top: 0; }
+
+/* ── Settings Footer ─────────────────────────────────────── */
+/* (extends the existing .dpu-settings-footer) */
+.dpu-settings-footer {
+  margin-top: 1.5rem;
+}
+
+/* ── Cron Save Button ────────────────────────────────────── */
+.dpu-btn--cron-save {
+  background: var(--upd-600);
+  border-color: var(--upd-600);
+  color: #fff;
+}
+.dpu-btn--cron-save:hover:not(:disabled) {
+  background: var(--upd-700);
+  border-color: var(--upd-700);
+  color: #fff;
+}
+
+/* ── Cron Status Banner ──────────────────────────────────── */
+.dpu-cron-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.875rem 1.25rem;
+  border-radius: var(--dpu-radius);
+  border: 1px solid;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+.dpu-cron-status--on  { background: #F0FDF4; border-color: #BBF7D0; }
+.dpu-cron-status--off { background: var(--err-bg); border-color: var(--err-border); }
+
+.dpu-cron-status__indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+.dpu-cron-status--on  .dpu-cron-status__indicator { color: #166534; }
+.dpu-cron-status--off .dpu-cron-status__indicator { color: var(--err-text); }
+
+.dpu-cron-status__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.775rem;
+  flex-wrap: wrap;
+}
+.dpu-cron-status--on  .dpu-cron-status__meta { color: #166534; }
+.dpu-cron-status--off .dpu-cron-status__meta { color: var(--err-text); }
+.dpu-cron-status__meta strong { font-family: var(--dpu-font-mono); }
+
+.dpu-cron-status__sep { opacity: 0.4; }
+
+/* Animated dot */
+.dpu-cron-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dpu-cron-dot--pulse {
+  background: #16A34A;
+  box-shadow: 0 0 0 0 rgba(22,163,74,.4);
+  animation: dpu-dot-pulse 1.8s ease-in-out infinite;
+}
+.dpu-cron-dot--off { background: var(--err-text); opacity: 0.6; }
+@keyframes dpu-dot-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(22,163,74,.4); }
+  60%  { box-shadow: 0 0 0 6px rgba(22,163,74,0); }
+  100% { box-shadow: 0 0 0 0 rgba(22,163,74,0); }
+}
+
+/* ── Cron Last Run Card ───────────────────────────────────── */
+.dpu-cron-last-run {
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+.dpu-cron-last-run__header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6875rem 1.25rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--dpu-text-3);
+  border-bottom: 1px solid var(--dpu-border);
+  background: var(--dpu-bg);
+}
+.dpu-cron-last-run__grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+}
+@media (max-width: 600px) {
+  .dpu-cron-last-run__grid { grid-template-columns: repeat(2, 1fr); }
+}
+.dpu-cron-stat {
+  padding: 0.875rem 1.25rem;
+  border-right: 1px solid var(--dpu-border);
+}
+.dpu-cron-stat:last-child { border-right: none; }
+.dpu-cron-stat__label {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--dpu-text-3);
+  margin-bottom: 0.3rem;
+}
+.dpu-cron-stat__value {
+  font-family: var(--dpu-font-mono);
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--dpu-text);
+}
+.dpu-cron-stat__value--ok   { color: #16A34A; }
+.dpu-cron-stat__value--skip { color: var(--dpu-text-3); }
+
+/* ── Cron Info Box ───────────────────────────────────────── */
+.dpu-cron-info-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.875rem 1rem;
+  background: var(--upd-50);
+  border: 1px solid var(--upd-100);
+  border-radius: var(--dpu-radius-sm);
+  font-size: 0.775rem;
+  color: var(--upd-800);
+  margin-bottom: 1rem;
+  line-height: 1.55;
+}
+.dpu-cron-info-box svg { flex-shrink: 0; margin-top: 1px; color: var(--upd-600); }
+.dpu-cron-info-box a { color: var(--upd-700); text-decoration: underline; text-underline-offset: 2px; }
+.dpu-cron-info-box a:hover { color: var(--upd-800); }
+
+/* ═══════════════════════════════════════════════════════════
+   DASHBOARD v3 — Status Bar
+   ═══════════════════════════════════════════════════════════ */
+
+.dpu-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: var(--dpu-surface);
+  border: 1px solid var(--dpu-border);
+  border-radius: var(--dpu-radius);
+  box-shadow: var(--dpu-shadow);
+  margin-bottom: 1.25rem;
+  overflow: hidden;
+  flex-wrap: wrap;
+}
+.dpu-status-bar__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.175rem;
+  padding: 0.875rem 1.25rem;
+  border-right: 1px solid var(--dpu-border);
+}
+.dpu-status-bar__label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--dpu-text-3);
+}
+.dpu-status-bar__value {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--dpu-text);
+}
+.dpu-status-bar__value--mono {
+  font-family: var(--dpu-font-mono);
+  font-size: 1rem;
+}
+.dpu-status-bar__divider { display: none; } /* reserved */
+.dpu-status-bar__actions {
+  margin-left: auto;
+  padding: 0.5rem 1rem;
+}
+@media (max-width: 640px) {
+  .dpu-status-bar { flex-wrap: wrap; }
+  .dpu-status-bar__stat { border-right: none; border-bottom: 1px solid var(--dpu-border); flex: 1 1 45%; }
+  .dpu-status-bar__actions { width: 100%; border-top: 1px solid var(--dpu-border); padding: 0.75rem 1rem; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SETTINGS PAGE v3 — Secciones unificadas
+   ═══════════════════════════════════════════════════════════ */
+
+/* Section card */
+.dpu-cfg-section {
+  background: var(--dpu-surface);
+  border: 1px solid var(--dpu-border);
+  border-radius: var(--dpu-radius);
+  box-shadow: var(--dpu-shadow);
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+
+/* Header */
+.dpu-cfg-section__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--dpu-border);
+  background: var(--dpu-bg);
+}
+.dpu-cfg-section__header--cron {
+  background: var(--upd-50);
+  border-bottom-color: var(--upd-100);
+}
+
+/* Icon */
+.dpu-cfg-section__icon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--dpu-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 0.0625rem;
+}
+.dpu-cfg-section__icon--api   { background: #EDE9FE; color: #5B21B6; }
+.dpu-cfg-section__icon--rules { background: var(--sim-100); color: var(--sim-800); }
+.dpu-cfg-section__icon--cron  { background: var(--upd-200); color: var(--upd-800); }
+
+/* Title / desc */
+.dpu-cfg-section__title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--dpu-text);
+  margin: 0 0 0.125rem;
+}
+.dpu-cfg-section__header--cron .dpu-cfg-section__title { color: var(--upd-800); }
+
+.dpu-cfg-section__desc {
+  font-size: 0.75rem;
+  color: var(--dpu-text-3);
+  margin: 0;
+  line-height: 1.5;
+}
+.dpu-cfg-section__header--cron .dpu-cfg-section__desc { color: var(--upd-700); }
+
+/* Body */
+.dpu-cfg-section__body {
+  padding: 0.25rem 1.5rem 1rem;
+}
+.dpu-cfg-section__body .form-table { margin: 0; }
+
+/* Group label (sub-heading within body) */
+.dpu-cfg-group-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--dpu-text-3);
+  margin: 0.875rem 0 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--dpu-border);
+}
+
+/* Footer */
+.dpu-cfg-footer {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding: 1rem 1.25rem;
+  background: var(--dpu-surface);
+  border: 1px solid var(--dpu-border);
+  border-radius: var(--dpu-radius);
+  box-shadow: var(--dpu-shadow);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ACORDEÓN — Reglas del cron
+   ═══════════════════════════════════════════════════════════ */
+
+.dpu-accordion {
+  margin-top: 1rem;
+  border: 1px solid var(--dpu-border);
+  border-radius: var(--dpu-radius-sm);
+  overflow: hidden;
+}
+
+.dpu-accordion__trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--dpu-bg);
+  border: none;
+  cursor: pointer;
+  font-family: var(--dpu-font-ui);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--dpu-text-2);
+  text-align: left;
+  transition: background 0.15s, color 0.15s;
+}
+.dpu-accordion__trigger:hover {
+  background: var(--dpu-border);
+  color: var(--dpu-text);
+}
+.dpu-accordion__trigger[aria-expanded="true"] {
+  border-bottom: 1px solid var(--dpu-border);
+  color: var(--dpu-text);
+}
+
+.dpu-accordion__trigger-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dpu-accordion__badge {
+  display: inline-flex;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  background: var(--dpu-border);
+  color: var(--dpu-text-3);
+}
+
+.dpu-accordion__chevron {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+  color: var(--dpu-text-3);
+}
+.dpu-accordion__trigger[aria-expanded="true"] .dpu-accordion__chevron {
+  transform: rotate(180deg);
+}
+
+.dpu-accordion__body {
+  padding: 1rem 1.25rem 0.75rem;
+  background: var(--dpu-surface);
+}
+
+.dpu-accordion__hint {
+  font-size: 0.775rem;
+  color: var(--dpu-text-3);
+  background: var(--upd-50);
+  border: 1px solid var(--upd-100);
+  border-radius: var(--dpu-radius-sm);
+  padding: 0.625rem 0.875rem;
+  margin: 0 0 0.5rem;
+  line-height: 1.5;
+}
+.dpu-accordion__hint strong { color: var(--upd-700); }
