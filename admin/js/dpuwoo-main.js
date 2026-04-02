@@ -1,24 +1,39 @@
 (function ($) {
     'use strict';
 
-    // Variables globales para el proceso
     let isProcessing = false;
     let currentProcessType = null;
-    let cumulativeResults = {
-        updated: 0,
-        skipped: 0,
-        errors: 0,
-        changes: []
-    };
+    let cumulativeResults = { updated: 0, skipped: 0, errors: 0, changes: [] };
 
     $(document).ready(function () {
-        // Ocultar todas las secciones de proceso al cargar
         $('#dpuwoo-simulation-process').addClass('hidden');
         $('#dpuwoo-simulation-results').addClass('hidden');
         $('#dpuwoo-update-process').addClass('hidden');
         $('#dpuwoo-final-results').addClass('hidden');
 
-        // Funciones de utilidad compartidas
+        // Toggle config section
+        $('#dpuwoo-toggle-config').on('click', function() {
+            const $details = $('#dpuwoo-config-details');
+            const $btn = $(this);
+            if ($details.hasClass('hidden')) {
+                $details.removeClass('hidden');
+                $btn.html('<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg>Cerrar');
+            } else {
+                $details.addClass('hidden');
+                $btn.html('<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7"/></svg>Ver detalles');
+            }
+        });
+
+        // Collapsible sections
+        $('.dpuwoo-collapsible').on('click', function() {
+            const $btn = $(this);
+            const section = $btn.data('section');
+            const $content = $('#section-' + section);
+            
+            $btn.toggleClass('dpuwoo-collapsible--expanded');
+            $content.slideToggle(200);
+        });
+
         window.DPUWOO_Utils = {
             showSection: function (sectionId) {
                 $('#' + sectionId).removeClass('hidden').addClass('block');
@@ -103,165 +118,172 @@
             },
 
             /**
-             * GENERAR RESUMEN (STATS)
+             * GENERAR RESUMEN CON FÓRMULAS
              */
-
             generateCompleteResults: function (data, isSimulation = false) {
-                const summary = data.summary || { updated: 0, skipped: 0, errors: 0, total: 0 };
+                const summary = data.summary || { updated: 0, skipped: 0, errors: 0 };
                 const changes = data.changes || [];
 
-                // Umbrales: desde la respuesta (threshold bloqueado) o desde settings localizados (threshold pasado)
-                const thresholdMin = data.threshold_min !== undefined
-                    ? parseFloat(data.threshold_min)
-                    : parseFloat(dpuwoo_ajax.threshold_min ?? 0);
-                const thresholdMax = data.threshold_max !== undefined
-                    ? parseFloat(data.threshold_max)
-                    : parseFloat(dpuwoo_ajax.threshold_max ?? 0);
+                const thresholdMin = data.threshold_min !== undefined ? parseFloat(data.threshold_min) : parseFloat(dpuwoo_ajax.threshold_min ?? 0);
+                const thresholdMax = data.threshold_max !== undefined ? parseFloat(data.threshold_max) : parseFloat(dpuwoo_ajax.threshold_max ?? 0);
                 const thresholdMet = data.threshold_met !== undefined ? data.threshold_met : true;
                 const blockMessage = data.message || '';
                 const percentageChange = Math.abs(data.percentage_change || 0);
 
-                // Para simulación, hay cambios si hay elementos en "changes" con status "simulated"
-                // En actualización real, hay cambios si summary.updated > 0
                 const hasRealChanges = isSimulation
                     ? changes.some(item => item.status === 'simulated' || item.status === 'updated')
                     : (summary.updated || 0) > 0;
 
-                const totalProcessed = (summary.updated || 0) + (summary.skipped || 0) + (summary.errors || 0);
-
                 const oldRate = data.previous_rate || 1;
                 const newRate = data.rate || 1;
-
-                // Determinar si el dólar cambió o es el mismo
-                const rateChanged = parseFloat(oldRate) !== parseFloat(newRate);
-
-                // Contar productos simulados para mostrar correctamente
-                const simulatedCount = changes.filter(item =>
-                    item.status === 'simulated' || item.status === 'updated'
-                ).length;
-
-                const mainCount = isSimulation ? simulatedCount : (summary.updated || 0);
+                const rateRatio = oldRate > 0 ? newRate / oldRate : 1;
+                const mainCount = isSimulation
+                    ? changes.filter(item => item.status === 'simulated' || item.status === 'updated').length
+                    : (summary.updated || 0);
                 const mainLabel = isSimulation ? 'A modificar' : 'Actualizados';
-                const rateBoxNewClass = isSimulation ? 'dpu-rate-box--sim' : 'dpu-rate-box--upd';
                 const shouldShowTable = hasRealChanges && thresholdMet;
 
-                let html = `
-    <div class="dpu-result-card dpu-card">
-        <div class="dpu-result-header ${isSimulation ? 'dpu-result-header--sim' : 'dpu-result-header--upd'}">
-            <div class="dpu-result-header__left">
-                <div class="dpu-result-header__icon">
-                    ${hasRealChanges
-                        ? `<svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>`
-                        : `<svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>`}
-                </div>
+                let html = `<div class="dpuwoo-results-container">`;
+
+                // Header
+                html += `
+    <div class="dpuwoo-result-card">
+        <div class="dpuwoo-result-header ${isSimulation ? 'dpuwoo-result-header--sim' : 'dpuwoo-result-header--upd'}">
+            <div class="dpuwoo-result-header__left">
+                <div class="dpuwoo-result-header__icon">${hasRealChanges ? '<svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>' : '<svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>'}</div>
                 <div>
-                    <p class="dpu-result-header__title">${isSimulation ? 'Simulación finalizada' : 'Actualización completada'}</p>
-                    <p class="dpu-result-header__sub">${changes.length} productos analizados</p>
+                    <p class="dpuwoo-result-header__title">${isSimulation ? 'Simulación completada' : 'Actualización completada'}</p>
+                    <p class="dpuwoo-result-header__sub">${changes.length} productos analizados</p>
                 </div>
             </div>
-            <span class="dpu-sync-badge">${isSimulation ? 'Vista previa' : 'Guardado'}</span>
-        </div>
+            <span class="dpuwoo-result-badge ${isSimulation ? 'dpuwoo-result-badge--sim' : 'dpuwoo-result-badge--upd'}">${isSimulation ? 'Vista previa' : 'Guardado'}</span>
+        </div>`;
 
-        <div class="dpu-result-body">
-            <div class="dpu-rate-grid">
-                <div class="dpu-rate-box dpu-rate-box--old">
-                    <span class="dpu-rate-box__label">Tasa anterior</span>
-                    <span class="dpu-rate-box__value">$${parseFloat(oldRate).toFixed(2)}</span>
-                </div>
-                <div class="dpu-rate-box ${rateBoxNewClass}">
-                    <span class="dpu-rate-box__label">${isSimulation ? 'Tasa a aplicar' : 'Tasa aplicada'}</span>
-                    <span class="dpu-rate-box__value">$${parseFloat(newRate).toFixed(2)}</span>
-                </div>
+                // Rate info
+                html += `
+        <div class="dpuwoo-result-rates">
+            <div class="dpuwoo-rate-box">
+                <span class="dpuwoo-rate-box__label">Tasa anterior</span>
+                <span class="dpuwoo-rate-box__value">$${parseFloat(oldRate).toFixed(2)}</span>
             </div>
-
-            <div class="dpu-threshold-row">
-                <span class="dpu-threshold-row__label">Variación</span>
-                <span class="dpu-threshold-row__pct">${(data.percentage_change || 0) >= 0 ? '+' : ''}${(data.percentage_change || 0).toFixed(2)}%</span>
-                <span class="dpu-threshold-row__sep">·</span>
-                <span class="dpu-threshold-row__check ${thresholdMet ? 'dpu-threshold-row__check--ok' : 'dpu-threshold-row__check--fail'}">
-                    ${thresholdMet
-                        ? (thresholdMin === 0 && thresholdMax === 0
-                            ? 'Sin umbral · Actualiza siempre'
-                            : `Umbral mín. ${thresholdMin}% · Alcanzado`)
-                        : (thresholdMax > 0 && percentageChange > thresholdMax
-                            ? `Umbral máx. ${thresholdMax}% · Superado`
-                            : `Umbral mín. ${thresholdMin}% · No alcanzado`)
-                    }
-                </span>
+            <div class="dpuwoo-rate-arrow">→</div>
+            <div class="dpuwoo-rate-box ${isSimulation ? 'dpuwoo-rate-box--sim' : 'dpuwoo-rate-box--upd'}">
+                <span class="dpuwoo-rate-box__label">${isSimulation ? 'Tasa a aplicar' : 'Tasa aplicada'}</span>
+                <span class="dpuwoo-rate-box__value">$${parseFloat(newRate).toFixed(2)}</span>
             </div>
+            <div class="dpuwoo-rate-change ${(data.percentage_change || 0) >= 0 ? 'up' : 'down'}">
+                ${(data.percentage_change || 0) >= 0 ? '+' : ''}${(data.percentage_change || 0).toFixed(2)}%
+            </div>
+        </div>`;
 
-            <div class="dpu-counters-grid">
-                <div class="dpu-counter ${mainCount > 0 ? (isSimulation ? 'dpu-counter--sim' : 'dpu-counter--upd') : ''}">
-                    <span class="dpu-counter__num">${mainCount}</span>
-                    <span class="dpu-counter__label">${mainLabel}</span>
-                </div>
-                <div class="dpu-counter">
-                    <span class="dpu-counter__num dpu-counter__num--skip">${summary.skipped || 0}</span>
-                    <span class="dpu-counter__label">Sin cambios</span>
-                </div>
-                <div class="dpu-counter ${(summary.errors || 0) > 0 ? 'dpu-counter--err' : ''}">
-                    <span class="dpu-counter__num ${(summary.errors || 0) > 0 ? 'dpu-counter__num--err' : 'dpu-counter__num--zero'}">${summary.errors || 0}</span>
-                    <span class="dpu-counter__label">Errores</span>
-                </div>
-            </div>`;
 
+
+                // Threshold status
+                const thresholdClass = thresholdMet ? 'dpuwoo-threshold--ok' : 'dpuwoo-threshold--fail';
+                const thresholdText = thresholdMet
+                    ? (thresholdMin === 0 && thresholdMax === 0 ? 'Sin umbral · Se actualiza siempre' : `Umbral mín. ${thresholdMin}% · Alcanzado`)
+                    : (thresholdMax > 0 && percentageChange > thresholdMax ? `Umbral máx. ${thresholdMax}% · Superado` : `Umbral mín. ${thresholdMin}% · No alcanzado`);
+                html += `<div class="dpuwoo-threshold ${thresholdClass}"><span class="dpuwoo-threshold__dot"></span>${thresholdText}</div>`;
+
+                // Counters
+                html += `
+        <div class="dpuwoo-result-counters">
+            <div class="dpuwoo-result-counter ${mainCount > 0 ? (isSimulation ? 'dpuwoo-result-counter--sim' : 'dpuwoo-result-counter--upd') : ''}">
+                <span class="dpuwoo-result-counter__num">${mainCount}</span>
+                <span class="dpuwoo-result-counter__label">${mainLabel}</span>
+            </div>
+            <div class="dpuwoo-result-counter">
+                <span class="dpuwoo-result-counter__num dpuwoo-result-counter__num--skip">${summary.skipped || 0}</span>
+                <span class="dpuwoo-result-counter__label">Sin cambios</span>
+            </div>
+            <div class="dpuwoo-result-counter ${(summary.errors || 0) > 0 ? 'dpuwoo-result-counter--err' : ''}">
+                <span class="dpuwoo-result-counter__num ${(summary.errors || 0) > 0 ? 'dpuwoo-result-counter__num--err' : ''}">${summary.errors || 0}</span>
+                <span class="dpuwoo-result-counter__label">Errores</span>
+            </div>
+        </div>`;
+
+                // Content based on state
                 if (!shouldShowTable && !thresholdMet) {
-                    // MODO: UMBRAL NO ALCANZADO
-                    const blockTitle = thresholdMax > 0 && percentageChange > thresholdMax
-                        ? 'Umbral máximo superado'
-                        : 'Umbral mínimo no alcanzado';
-                    const blockBody = blockMessage
-                        || (thresholdMax > 0 && percentageChange > thresholdMax
-                            ? `La variación del ${percentageChange.toFixed(2)}% supera el umbral máximo permitido del ${thresholdMax}%. No se realizaron cambios por seguridad.`
-                            : `La variación del ${percentageChange.toFixed(2)}% no alcanza el umbral mínimo configurado del ${thresholdMin}%. No se realizaron cambios.`);
+                    const blockTitle = thresholdMax > 0 && percentageChange > thresholdMax ? 'Umbral máximo superado' : 'Umbral mínimo no alcanzado';
+                    const blockBody = blockMessage || (thresholdMax > 0 && percentageChange > thresholdMax
+                        ? `La variación del ${percentageChange.toFixed(2)}% supera el umbral máximo del ${thresholdMax}%. No se realizaron cambios por seguridad.`
+                        : `La variación del ${percentageChange.toFixed(2)}% no alcanza el umbral mínimo del ${thresholdMin}%.`);
                     html += `
-            <div class="dpu-message-block dpu-message-block--warn">
-                <div class="dpu-message-block__icon">
-                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                    </svg>
-                </div>
-                <h4 class="dpu-message-block__title">${blockTitle}</h4>
-                <p class="dpu-message-block__body">${blockBody}</p>
-                <p class="dpu-message-block__meta">
-                    Tasa actual: <strong>$${parseFloat(newRate).toFixed(2)}</strong> &nbsp;·&nbsp;
-                    Variación: <strong>${(data.percentage_change || 0) >= 0 ? '+' : ''}${(data.percentage_change || 0).toFixed(2)}%</strong>
-                </p>
-                <button onclick="location.reload()" class="dpu-btn dpu-btn--ghost">Volver al inicio</button>
-            </div>`;
+        <div class="dpuwoo-result-block dpuwoo-result-block--warn">
+            <div class="dpuwoo-result-block__icon"><svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg></div>
+            <h4>${blockTitle}</h4>
+            <p>${blockBody}</p>
+            <button onclick="location.reload()" class="dpuwoo-btn dpuwoo-btn--ghost">Volver al inicio</button>
+        </div>`;
                 } else if (shouldShowTable) {
-                    // MODO: MOSTRAR TABLA (hay cambios y umbral alcanzado)
                     html += `
-            <div class="dpu-table-section">
-                <div class="dpu-table-section__header">
-                    <span class="dpu-table-section__title">Detalle de variaciones</span>
-                    <span class="dpu-table-section__meta">Ratio: ${parseFloat(data.ratio || 1).toFixed(4)}×</span>
-                </div>
-                ${this.generateResultsTable(changes, isSimulation)}
+        <div class="dpuwoo-result-table">
+            <div class="dpuwoo-result-table__header">
+                <span>Detalle de productos</span>
+                <span>${changes.filter(c => c.status === 'simulated' || c.status === 'updated').length} a modificar</span>
             </div>
-            <div class="dpu-result-footer">
-                <button onclick="location.reload()" class="dpu-btn dpu-btn--ghost">← Cancelar y volver</button>
-                ${isSimulation ? `<button id="dpuwoo-proceed-update" class="dpu-btn dpu-btn--update">
-                    <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                    Confirmar y aplicar cambios
-                </button>` : ''}
-            </div>`;
+            ${this.generateResultsTableWithFormulas(changes, isSimulation, rateRatio, oldRate, newRate)}
+        </div>
+        <div class="dpuwoo-result-actions">
+            <button onclick="location.reload()" class="dpuwoo-btn dpuwoo-btn--ghost">← Cancelar</button>
+            ${isSimulation ? `<button id="dpuwoo-proceed-update" class="dpuwoo-btn dpuwoo-btn--primary"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>Confirmar y aplicar</button>` : ''}
+        </div>`;
                 } else {
-                    // MODO: SIN CAMBIOS (umbral alcanzado pero 0 productos modificados)
                     html += `
-            <div class="dpu-no-changes">
-                <p class="dpu-no-changes__label">Sin cambios de precio detectados</p>
-                <p class="dpu-no-changes__detail">
-                    ${summary.skipped > 0
-                        ? `${summary.skipped} producto${summary.skipped !== 1 ? 's' : ''} procesado${summary.skipped !== 1 ? 's' : ''}, ninguno requirió ajuste a la tasa <strong>$${parseFloat(newRate).toFixed(2)}</strong>.`
-                        : `Ningún producto requirió ajuste a la tasa <strong>$${parseFloat(newRate).toFixed(2)}</strong>.`
-                    }
-                </p>
-                <button onclick="location.reload()" class="dpu-btn dpu-btn--ghost">Volver al inicio</button>
-            </div>`;
+        <div class="dpuwoo-result-block dpuwoo-result-block--info">
+            <div class="dpuwoo-result-block__icon"><svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+            <h4>Sin cambios detectados</h4>
+            <p>${summary.skipped > 0 ? `${summary.skipped} productos procesados, ninguno requirió ajuste a la tasa $${parseFloat(newRate).toFixed(2)}.` : `Ningún producto requirió ajuste a la tasa $${parseFloat(newRate).toFixed(2)}.`}</p>
+            <button onclick="location.reload()" class="dpuwoo-btn dpuwoo-btn--ghost">Volver al inicio</button>
+        </div>`;
                 }
 
                 html += `</div></div>`;
+                return html;
+            },
+
+            /**
+             * GENERAR TABLA SIMPLE DE RESULTADOS
+             */
+            generateResultsTableWithFormulas: function (changes, isSimulation, rateRatio, oldRate, newRate) {
+                if (!changes || changes.length === 0) return '<p class="dpuwoo-table-empty">No hay cambios para mostrar.</p>';
+
+                let html = `<div class="dpuwoo-table-wrap"><table class="dpuwoo-table">
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Precio anterior</th>
+                    <th>Precio nuevo</th>
+                    <th>Cambio</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+                changes.filter(c => c.status === 'simulated' || c.status === 'updated').forEach(item => {
+                    const oldPrice = parseFloat(item.old_regular_price) || 0;
+                    const newPrice = parseFloat(item.new_regular_price) || 0;
+                    const pct = parseFloat(item.percentage_change) || 0;
+                    const pctClass = pct >= 0 ? 'up' : 'down';
+                    const statusClass = item.status === 'simulated' ? 'dpuwoo-status--sim' : 'dpuwoo-status--upd';
+                    const statusText = isSimulation ? 'Simulado' : 'Actualizado';
+
+                    if (oldPrice > 0 && newPrice > 0) {
+                        html += `
+                <tr class="dpuwoo-table__row">
+                    <td class="dpuwoo-table__product">
+                        <span class="dpuwoo-table__name">${item.product_name}</span>
+                        <span class="dpuwoo-table__meta">ID ${item.product_id}</span>
+                    </td>
+                    <td class="dpuwoo-table__price">$${oldPrice.toFixed(2)}</td>
+                    <td class="dpuwoo-table__price dpuwoo-table__price--new ${pctClass}">$${newPrice.toFixed(2)}</td>
+                    <td class="dpuwoo-table__pct ${pctClass}">${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%</td>
+                    <td><span class="dpuwoo-status ${statusClass}">${statusText}</span></td>
+                </tr>`;
+                    }
+                });
+
+                html += `</tbody></table></div>`;
                 return html;
             },
 
