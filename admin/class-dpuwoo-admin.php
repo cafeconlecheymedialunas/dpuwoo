@@ -195,8 +195,8 @@ class Admin
 
 		add_submenu_page(
 			'dpuwoo_dashboard',
-			'Dashboard — Dollar Sync',
-			'Dashboard',
+			'Actualización Manual — Dollar Sync',
+			'Manual',
 			'manage_options',
 			'dpuwoo_dashboard',
 			[__CLASS__, 'render_dashboard']
@@ -209,6 +209,15 @@ class Admin
 			'manage_options',
 			'dpuwoo_settings_page',
 			[__CLASS__, 'render_settings']
+		);
+
+		add_submenu_page(
+			'dpuwoo_dashboard',
+			'Automatización — Dollar Sync',
+			'Automatización',
+			'manage_options',
+			'dpuwoo_automation',
+			[__CLASS__, 'render_automation']
 		);
 
 		add_submenu_page(
@@ -230,6 +239,11 @@ class Admin
 	public static function render_settings()
 	{
 		include DPUWOO_PLUGIN_DIR . 'admin/partials/dpuwoo-settings.php';
+	}
+
+	public static function render_automation()
+	{
+		include DPUWOO_PLUGIN_DIR . 'admin/partials/dpuwoo-automation.php';
 	}
 
 	public static function render_logs()
