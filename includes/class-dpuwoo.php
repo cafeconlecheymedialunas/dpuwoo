@@ -227,6 +227,8 @@ class Dpuwoo {
 		$this->loader->add_action('wp_ajax_dpuwoo_get_providers_info',$ajax, 'handle_get_providers_info');
 		$this->loader->add_action('wp_ajax_dpuwoo_test_api_connection',$ajax, 'handle_test_api_connection');
 		$this->loader->add_action('wp_ajax_dpuwoo_initialize_baseline', $ajax, 'handle_initialize_baseline');
+		$this->loader->add_action('wp_ajax_dpuwoo_test_api',            $ajax, 'handle_test_api');
+		$this->loader->add_action('wp_ajax_dpuwoo_get_rates',         $ajax, 'handle_get_rates');
 	}
 	
 

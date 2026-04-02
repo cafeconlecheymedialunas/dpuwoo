@@ -183,13 +183,27 @@ class Ajax_Controller
         $this->verify_nonce_only();
 
         $provider = sanitize_text_field($_POST['provider'] ?? 'dolarapi');
-        $data     = $this->api->get_currencies($provider);
+        
+        try {
+            $data = $this->api->get_currencies($provider);
+        } catch (\Exception $e) {
+            wp_send_json_error([
+                'message'  => 'Error al obtener monedas: ' . $e->getMessage(),
+                'provider' => $provider,
+            ]);
+            return;
+        }
 
-        if (!$data) {
+        if (empty($data)) {
             wp_send_json_error([
                 'message'  => 'No se pudieron obtener datos del proveedor',
                 'provider' => $provider,
+                'debug'    => [
+                    'store_country' => $this->api->get_store_country(),
+                    'store_currency' => function_exists('get_woocommerce_currency') ? get_woocommerce_currency() : 'unknown',
+                ]
             ]);
+            return;
         }
 
         wp_send_json_success([
@@ -260,6 +274,46 @@ class Ajax_Controller
             wp_send_json_success(array_merge($result, ['provider' => $provider]));
         } else {
             wp_send_json_error(array_merge($result, ['provider' => $provider]));
+        }
+    }
+
+    /**
+     * POST: dpuwoo_test_api
+     * Prueba la conexión con una API específica usando la API key proporcionada.
+     */
+    public function handle_test_api(): void
+    {
+        $this->verify_nonce_only();
+
+        $api_type = sanitize_text_field($_POST['api'] ?? '');
+        $api_key = sanitize_text_field($_POST['api_key'] ?? '');
+
+        $result = $this->api->test_specific_api($api_type, $api_key);
+
+        if ($result['success'] ?? false) {
+            wp_send_json_success(['message' => $result['message'] ?? 'Conexión exitosa']);
+        } else {
+            wp_send_json_error(['message' => $result['error'] ?? 'Error de conexión']);
+        }
+    }
+
+    /**
+     * POST: dpuwoo_get_rates
+     * Obtiene las tasas de cambio disponibles desde la API.
+     */
+    public function handle_get_rates(): void
+    {
+        $this->verify_nonce_only();
+
+        $currency = sanitize_text_field($_POST['currency'] ?? 'USD');
+        $api_type = sanitize_text_field($_POST['api'] ?? 'dolarapi');
+
+        $result = $this->api->get_rates($api_type, $currency);
+
+        if ($result['success'] ?? false) {
+            wp_send_json_success(['rates' => $result['rates'] ?? [], 'base' => $result['base'] ?? $currency]);
+        } else {
+            wp_send_json_error(['message' => $result['error'] ?? 'Error al obtener tasas']);
         }
     }
 

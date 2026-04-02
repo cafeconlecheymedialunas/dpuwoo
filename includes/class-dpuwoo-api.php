@@ -144,9 +144,80 @@ class API_Client
     }
     
     /**
+     * Probar conexión con API específica y API key proporcionada
+     */
+    public function test_specific_api(string $api_type, string $api_key): array
+    {
+        try {
+            // Crear provider temporal con la API key proporcionada
+            $provider = API_Provider_Factory::create($api_type, $api_key);
+            $result = $provider->test_connection();
+            
+            if ($result['success'] ?? false) {
+                return [
+                    'success' => true,
+                    'message' => 'Conexión exitosa con ' . $api_type
+                ];
+            } else {
+                return [
+                    'success' => false,
+                    'error' => $result['error'] ?? 'Error de conexión'
+                ];
+            }
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+    
+    /**
+     * Obtener tasas de cambio desde la API
+     */
+    public function get_rates(string $api_type, string $base_currency = 'USD'): array
+    {
+        try {
+            $opts = get_option('dpuwoo_settings', []);
+            
+            // Usar API key correspondiente si existe
+            $api_key = '';
+            if ($api_type === 'currencyapi') {
+                $api_key = $opts['currencyapi_api_key'] ?? '';
+            } elseif ($api_type === 'exchangerate') {
+                $api_key = $opts['exchangerate_api_key'] ?? '';
+            }
+            
+            $provider = API_Provider_Factory::create($api_type, $api_key);
+            $rates = $provider->get_currencies();
+            
+            // Convertir al formato de tasas
+            $formatted_rates = [];
+            if (is_array($rates)) {
+                foreach ($rates as $rate) {
+                    if (isset($rate['code']) && isset($rate['value'])) {
+                        $formatted_rates[$rate['code']] = $rate['value'];
+                    }
+                }
+            }
+            
+            return [
+                'success' => true,
+                'rates' => $formatted_rates,
+                'base' => $base_currency
+            ];
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+    
+    /**
      * Obtener código de país de la tienda
      */
-    private function get_store_country()
+    public function get_store_country()
     {
         $base_country = get_option('woocommerce_default_country', 'AR:AR');
         $country_parts = explode(':', $base_country);
