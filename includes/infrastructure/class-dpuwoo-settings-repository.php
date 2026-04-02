@@ -84,39 +84,33 @@ class Settings_Repository
         // Claves API que el cron puede sobreescribir
         $cron_api_overrides = [
             'api_provider'         => 'cron_api_provider',
-            'currencyapi_api_key' => 'cron_currencyapi_api_key',
-            'exchangerate_api_key'=> 'cron_exchangerate_api_key',
-            'country'             => 'cron_country',
-            'reference_currency'  => 'cron_reference_currency',
-            'origin_exchange_rate'=> 'cron_origin_exchange_rate',
+            'dollar_type'         => 'cron_dollar_type',
         ];
 
         // Claves de cálculo que el cron puede sobreescribir
         $cron_rule_overrides = [
             'margin'             => 'cron_margin',
             'threshold'          => 'cron_threshold',
-            'threshold_max'      => 'cron_threshold_max',
-            'update_direction'   => 'cron_update_direction',
+            'threshold_max'       => 'cron_threshold_max',
+            'update_direction'    => 'cron_update_direction',
             'rounding_type'      => 'cron_rounding_type',
             'nearest_to'         => 'cron_nearest_to',
-            'exclude_categories' => 'cron_exclude_categories',
+            'exclude_categories'  => 'cron_exclude_categories',
         ];
 
         $merged = $all;
 
-        // Aplicar overrides de API
+        // Aplicar overrides de API (solo si cron tiene valor)
         foreach ($cron_api_overrides as $base_key => $cron_key) {
-            $cron_val = $all[$cron_key] ?? null;
-            if ($cron_val !== null && $cron_val !== '') {
-                $merged[$base_key] = $cron_val;
+            if (isset($all[$cron_key]) && $all[$cron_key] !== '') {
+                $merged[$base_key] = $all[$cron_key];
             }
         }
 
-        // Aplicar overrides de reglas
+        // Aplicar overrides de reglas (solo si cron tiene valor)
         foreach ($cron_rule_overrides as $base_key => $cron_key) {
-            $cron_val = $all[$cron_key] ?? null;
-            if ($cron_val !== null && $cron_val !== '') {
-                $merged[$base_key] = $cron_val;
+            if (isset($all[$cron_key]) && $all[$cron_key] !== '') {
+                $merged[$base_key] = $all[$cron_key];
             }
         }
 

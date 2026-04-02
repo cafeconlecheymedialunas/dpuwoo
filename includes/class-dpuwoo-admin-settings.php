@@ -87,10 +87,10 @@ class Admin_Settings
         $out['origin_exchange_rate']   = floatval($input['origin_exchange_rate'] ?? 1.0);
         $out['rate_generation_method'] = in_array($input['rate_generation_method'] ?? '', ['api', 'manual']) ? $input['rate_generation_method'] : 'manual';
 
-        // Preservar dollar_type: no hay campo de formulario, se setea desde el dashboard.
-        // Evitar que guardar settings lo pise con el default.
-        $existing             = get_option('dpuwoo_settings', []);
-        $out['dollar_type']   = sanitize_text_field($input['dollar_type'] ?? ($existing['dollar_type'] ?? 'oficial'));
+        // Preservar dollar_type y cron_dollar_type
+        $existing           = get_option('dpuwoo_settings', []);
+        $out['dollar_type'] = sanitize_text_field($input['dollar_type'] ?? ($existing['dollar_type'] ?? 'oficial'));
+        $out['cron_dollar_type'] = sanitize_text_field($input['cron_dollar_type'] ?? ($existing['cron_dollar_type'] ?? ''));
 
         // — Cálculo manual ———————————————————————————————————————————————
         $out['margin']           = floatval($input['margin']           ?? 0);
@@ -107,25 +107,20 @@ class Admin_Settings
 
         // — Automatización / Cron ————————————————————————————————————————
         $out['cron_enabled'] = isset($input['cron_enabled']) ? 1 : 0;
-        $out['update_interval'] = sanitize_text_field($input['update_interval'] ?? 'twicedaily');
+        $out['update_interval'] = sanitize_text_field($input['update_interval'] ?? ($existing['update_interval'] ?? 'twicedaily'));
 
         // — API Cron (propia) ——————————————————————————————————————————
         $out['cron_api_provider']         = sanitize_text_field($input['cron_api_provider']         ?? '');
-        $out['cron_currencyapi_api_key']   = sanitize_text_field($input['cron_currencyapi_api_key']   ?? '');
-        $out['cron_exchangerate_api_key'] = sanitize_text_field($input['cron_exchangerate_api_key'] ?? '');
         $out['cron_country']             = sanitize_text_field($input['cron_country']             ?? '');
         $out['cron_reference_currency']  = sanitize_text_field($input['cron_reference_currency']  ?? '');
-        $out['cron_origin_exchange_rate'] = ($input['cron_origin_exchange_rate'] ?? '') !== '' 
-            ? floatval($input['cron_origin_exchange_rate']) 
-            : '';
 
         // — Reglas cron ('' = usar fallback manual) ——————————————————————
-        $out['cron_margin']           = ($input['cron_margin']        ?? '') !== '' ? floatval($input['cron_margin'])        : '';
-        $out['cron_threshold']        = ($input['cron_threshold']     ?? '') !== '' ? floatval($input['cron_threshold'])     : '';
-        $out['cron_threshold_max']    = ($input['cron_threshold_max'] ?? '') !== '' ? floatval($input['cron_threshold_max']) : '';
-        $out['cron_update_direction'] = sanitize_text_field($input['cron_update_direction'] ?? '');
-        $out['cron_rounding_type']    = sanitize_text_field($input['cron_rounding_type']    ?? '');
-        $out['cron_nearest_to']       = sanitize_text_field($input['cron_nearest_to']       ?? '');
+        $out['cron_margin']           = ($input['cron_margin']        ?? '') !== '' ? floatval($input['cron_margin'])        : ($existing['cron_margin'] ?? '');
+        $out['cron_threshold']        = ($input['cron_threshold']     ?? '') !== '' ? floatval($input['cron_threshold'])     : ($existing['cron_threshold'] ?? '');
+        $out['cron_threshold_max']    = ($input['cron_threshold_max'] ?? '') !== '' ? floatval($input['cron_threshold_max']) : ($existing['cron_threshold_max'] ?? '');
+        $out['cron_update_direction'] = sanitize_text_field($input['cron_update_direction'] ?? ($existing['cron_update_direction'] ?? ''));
+        $out['cron_rounding_type']    = sanitize_text_field($input['cron_rounding_type']    ?? ($existing['cron_rounding_type'] ?? ''));
+        $out['cron_nearest_to']       = sanitize_text_field($input['cron_nearest_to']       ?? ($existing['cron_nearest_to'] ?? ''));
 
         // Exclusiones cron: array vacío también significa "sin selección" = fallback manual
         $out['cron_exclude_categories'] = isset($input['cron_exclude_categories'])

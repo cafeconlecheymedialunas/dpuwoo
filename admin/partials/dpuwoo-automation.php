@@ -398,6 +398,12 @@ $cron_provider = $opts['cron_api_provider'] ?? '';
 
 <script>
 jQuery(document).ready(function($) {
+    // Load currencies on page load if provider is already selected
+    var initialProvider = $('#dpuwoo-api-provider').val();
+    if (initialProvider) {
+        loadCurrencies(initialProvider);
+    }
+    
     // Collapsible sections
     $('.dpuwoo-collapsible').on('click', function() {
         var $btn = $(this);
@@ -407,6 +413,108 @@ jQuery(document).ready(function($) {
         $btn.toggleClass('dpuwoo-collapsible--expanded');
         $content.slideToggle(200);
     });
+
+    // Frequency radio styling
+    $('.dpuwoo-frequency-option input').on('change', function() {
+        $('.dpuwoo-frequency-option').removeClass('selected');
+        $(this).closest('.dpuwoo-frequency-option').addClass('selected');
+    });
+
+    // Form submission feedback
+    $('#dpuwoo-automation-form').on('submit', function() {
+        var btn = $(this).find('button[type="submit"]');
+        btn.prop('disabled', true).html('<svg width="14" height="14" class="animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Guardando...');
+    });
+
+    // Dynamic API provider change - load currencies
+    $(document).on('change', '#dpuwoo-api-provider', function() {
+        var provider = $(this).val();
+        if (provider) {
+            loadCurrencies(provider);
+        }
+    });
+
+    // Function to load currencies
+    function loadCurrencies(provider) {
+        var $typeSelect = $('#dpuwoo-api-type');
+        var $hint = $('#dpuwoo-currency-hint');
+        
+        if (!provider) {
+            $typeSelect.empty().append($('<option>', { value: '', text: 'Primero seleccioná proveedor' }));
+            $hint.text('Seleccioná un proveedor');
+            return;
+        }
+        
+        $typeSelect.empty().append($('<option>', { value: '', text: 'Cargando...' }));
+        
+        $.post(dpuwoo_ajax.ajax_url, {
+            action: 'dpuwoo_get_currencies',
+            provider: provider,
+            nonce: dpuwoo_ajax.nonce
+        }, function(res) {
+            $typeSelect.empty();
+            
+            if (!res.success || !res.data.currencies || res.data.currencies.length === 0) {
+                $typeSelect.append($('<option>', { value: '', text: 'Error al cargar' }));
+                $hint.text('No se pudieron obtener las monedas');
+                return;
+            }
+            
+            var currencies = res.data.currencies;
+            
+            // Separate by category
+            var hasCategories = currencies[0] && currencies[0].category !== undefined;
+            var dollarTypes = [];
+            var otherCurrencies = [];
+            
+            if (hasCategories) {
+                dollarTypes = currencies.filter(function(c) { return c.category === 'dollar_types'; });
+                otherCurrencies = currencies.filter(function(c) { return c.category !== 'dollar_types'; });
+                
+                // Sort dollar types by predefined order
+                var dollarOrder = ['oficial', 'blue', 'bolsa', 'contadoconliqui', 'tarjeta', 'mayorista', 'cripto', 'mep', 'solidario'];
+                dollarTypes.sort(function(a, b) {
+                    var aIdx = dollarOrder.indexOf(a.key);
+                    var bIdx = dollarOrder.indexOf(b.key);
+                    return (aIdx === -1 ? 999 : aIdx) - (bIdx === -1 ? 999 : bIdx);
+                });
+            } else {
+                otherCurrencies = currencies;
+            }
+            
+            // Sort other currencies by name
+            otherCurrencies.sort(function(a, b) {
+                var nameA = a.name || a.code || '';
+                var nameB = b.name || b.code || '';
+                return nameA.localeCompare(nameB);
+            });
+            
+            // Add dollar types
+            if (dollarTypes.length > 0) {
+                $typeSelect.append($('<option>', { value: '', text: '--- Tipos de Dólar ---', disabled: true }));
+                $.each(dollarTypes, function(i, curr) {
+                    $typeSelect.append($('<option>', { value: curr.key, text: curr.name }));
+                });
+            }
+            
+            // Add other currencies
+            if (otherCurrencies.length > 0) {
+                $typeSelect.append($('<option>', { value: '', text: '--- Monedas ---', disabled: true }));
+                $.each(otherCurrencies, function(i, curr) {
+                    var key = curr.key || curr.code || '';
+                    var name = curr.name || key;
+                    $typeSelect.append($('<option>', { value: key, text: name }));
+                });
+            }
+            
+            $hint.text(res.data.count + ' monedas disponibles');
+            
+        }).fail(function() {
+            $typeSelect.empty().append($('<option>', { value: '', text: 'Error de conexión' }));
+            $hint.text('Error de conexión con el servidor');
+        });
+    }
+});
 
     // Frequency radio styling
     $('.dpuwoo-frequency-option input').on('change', function() {
