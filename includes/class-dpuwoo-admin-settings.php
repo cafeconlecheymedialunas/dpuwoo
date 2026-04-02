@@ -107,7 +107,17 @@ class Admin_Settings
 
         // — Automatización / Cron ————————————————————————————————————————
         $out['cron_enabled'] = isset($input['cron_enabled']) ? 1 : 0;
-        $out['interval']     = max(300, intval($input['interval'] ?? 3600));
+        $out['update_interval'] = sanitize_text_field($input['update_interval'] ?? 'twicedaily');
+
+        // — API Cron (propia) ——————————————————————————————————————————
+        $out['cron_api_provider']         = sanitize_text_field($input['cron_api_provider']         ?? '');
+        $out['cron_currencyapi_api_key']   = sanitize_text_field($input['cron_currencyapi_api_key']   ?? '');
+        $out['cron_exchangerate_api_key'] = sanitize_text_field($input['cron_exchangerate_api_key'] ?? '');
+        $out['cron_country']             = sanitize_text_field($input['cron_country']             ?? '');
+        $out['cron_reference_currency']  = sanitize_text_field($input['cron_reference_currency']  ?? '');
+        $out['cron_origin_exchange_rate'] = ($input['cron_origin_exchange_rate'] ?? '') !== '' 
+            ? floatval($input['cron_origin_exchange_rate']) 
+            : '';
 
         // — Reglas cron ('' = usar fallback manual) ——————————————————————
         $out['cron_margin']           = ($input['cron_margin']        ?? '') !== '' ? floatval($input['cron_margin'])        : '';
@@ -121,6 +131,13 @@ class Admin_Settings
         $out['cron_exclude_categories'] = isset($input['cron_exclude_categories'])
             ? array_map('intval', $input['cron_exclude_categories'])
             : [];
+
+        // — Notificaciones cron ——————————————————————————————————————————————
+        $valid_notify_modes = ['update_and_notify', 'simulate_only', 'disabled'];
+        $out['cron_notify_mode'] = in_array($input['cron_notify_mode'] ?? '', $valid_notify_modes)
+            ? $input['cron_notify_mode']
+            : 'update_and_notify';
+        $out['cron_notify_email'] = sanitize_email($input['cron_notify_email'] ?? get_option('admin_email'));
 
         return $out;
     }

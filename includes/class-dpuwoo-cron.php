@@ -29,7 +29,14 @@ class Cron
             return;
         }
 
-        $interval = max(300, intval($opts['interval'] ?? 3600));
+        $interval = $opts['update_interval'] ?? 'twicedaily';
+        $interval_seconds = [
+            'hourly' => 3600,
+            'twicedaily' => 43200,
+            'daily' => 86400,
+            'weekly' => 604800,
+        ];
+        $interval = $interval_seconds[$interval] ?? 43200;
 
         if (self::is_action_scheduler_available()) {
             self::schedule_with_action_scheduler($interval);
@@ -87,14 +94,25 @@ class Cron
 
         $opts    = $dpuwoo_container->get('settings')->get_all();
         $enabled = $opts['cron_enabled'] ?? 1;
+        
         if (!$enabled) {
             return;
         }
 
+        $notify_mode = $opts['cron_notify_mode'] ?? 'update_and_notify';
+
+        // Determine if we simulate or update
+        $simulate = ($notify_mode === 'simulate_only');
+
+        // Run the batch processing
         $batch  = 0;
-        $result = $bus->dispatch(new Update_Prices_Command($batch, simulate: false, context: 'cron'));
+        $result = $bus->dispatch(new Update_Prices_Command($batch, simulate: $simulate, context: 'cron'));
 
         if (isset($result['error'])) {
+            // Send error notification if enabled
+            if ($notify_mode !== 'disabled') {
+                self::send_error_notification($result['error']);
+            }
             return;
         }
 
@@ -102,8 +120,55 @@ class Cron
         $run_id = $result['run_id'] ?? 0;
 
         for ($batch = 1; $batch < $total_batches; $batch++) {
-            $bus->dispatch(new Update_Prices_Command($batch, simulate: false, context: 'cron', run_id: $run_id));
+            $bus->dispatch(new Update_Prices_Command($batch, simulate: $simulate, context: 'cron', run_id: $run_id));
         }
+
+        // Send notification if enabled
+        if ($notify_mode !== 'disabled') {
+            self::send_notification($result, $simulate);
+        }
+    }
+
+    private static function send_notification(array $result, bool $simulate): void
+    {
+        if (!class_exists('Email_Notifier')) {
+            require_once DPUWOO_PLUGIN_DIR . 'includes/class-dpuwoo-email-notifier.php';
+        }
+
+        $notifier = new Email_Notifier();
+
+        if ($simulate) {
+            $notifier->send_simulation_results($result, 'cron');
+        } else {
+            $notifier->send_update_results($result, 'cron');
+        }
+    }
+
+    private static function send_error_notification(string $error): void
+    {
+        if (!class_exists('Email_Notifier')) {
+            require_once DPUWOO_PLUGIN_DIR . 'includes/class-dpuwoo-email-notifier.php';
+        }
+
+        $opts = get_option('dpuwoo_settings', []);
+        $to = $opts['cron_notify_email'] ?? get_option('admin_email');
+
+        $subject = sprintf(
+            '[%s] Dollar Sync - Error en Cron',
+            get_bloginfo('name')
+        );
+
+        $message = sprintf(
+            '<p>Hubo un error durante la ejecución del cron de Dollar Sync:</p><p><strong>%s</strong></p>',
+            esc_html($error)
+        );
+
+        wp_mail(
+            $to,
+            $subject,
+            $message,
+            ['Content-Type: text/html; charset=UTF-8']
+        );
     }
 
     public static function get_next_scheduled_time(): ?int

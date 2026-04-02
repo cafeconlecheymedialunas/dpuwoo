@@ -67,8 +67,8 @@ class Settings_Repository
     /**
      * Retorna los settings efectivos según el contexto de ejecución.
      *
-     * Para 'cron': las claves de cálculo se reemplazan con sus variantes cron_*
-     * (si están configuradas), permitiendo reglas distintas para ejecución automática.
+     * Para 'cron': las claves de API y cálculo se reemplazan con sus variantes cron_*
+     * (si están configuradas), permitiendo configuración completamente distinta para ejecución automática.
      * Siempre cae en los valores manuales si el valor cron no está definido.
      *
      * @param string $context 'manual' | 'cron'
@@ -81,8 +81,18 @@ class Settings_Repository
             return $all;
         }
 
-        // Claves que el cron puede sobreescribir con su propia configuración
-        $cron_overrides = [
+        // Claves API que el cron puede sobreescribir
+        $cron_api_overrides = [
+            'api_provider'         => 'cron_api_provider',
+            'currencyapi_api_key' => 'cron_currencyapi_api_key',
+            'exchangerate_api_key'=> 'cron_exchangerate_api_key',
+            'country'             => 'cron_country',
+            'reference_currency'  => 'cron_reference_currency',
+            'origin_exchange_rate'=> 'cron_origin_exchange_rate',
+        ];
+
+        // Claves de cálculo que el cron puede sobreescribir
+        $cron_rule_overrides = [
             'margin'             => 'cron_margin',
             'threshold'          => 'cron_threshold',
             'threshold_max'      => 'cron_threshold_max',
@@ -93,10 +103,18 @@ class Settings_Repository
         ];
 
         $merged = $all;
-        foreach ($cron_overrides as $base_key => $cron_key) {
+
+        // Aplicar overrides de API
+        foreach ($cron_api_overrides as $base_key => $cron_key) {
             $cron_val = $all[$cron_key] ?? null;
-            // Sobreescribir solo si el valor cron está definido y no es string vacío
-            // (string vacío = "usar fallback manual", null = clave inexistente)
+            if ($cron_val !== null && $cron_val !== '') {
+                $merged[$base_key] = $cron_val;
+            }
+        }
+
+        // Aplicar overrides de reglas
+        foreach ($cron_rule_overrides as $base_key => $cron_key) {
+            $cron_val = $all[$cron_key] ?? null;
             if ($cron_val !== null && $cron_val !== '') {
                 $merged[$base_key] = $cron_val;
             }
