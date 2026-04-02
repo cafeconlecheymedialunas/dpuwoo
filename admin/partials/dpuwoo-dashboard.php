@@ -8,9 +8,9 @@ $product_count  = wp_count_posts('product');
 $total_products = $product_count->publish ?? 0;
 $store_currency = \Dpuwoo\Helpers\dpuwoo_get_store_currency();
 
-// Si Manual no tiene provider, usar el de Cron (si existe)
-$provider_key = $opts['api_provider'] ?? ($opts['cron_api_provider'] ?? '');
-$dollar_type = $opts['dollar_type'] ?? ($opts['cron_dollar_type'] ?? '');
+// Manual es independiente de Cron - cada uno tiene su propia config
+$provider_key = $opts['api_provider'] ?? 'dolarapi';
+$dollar_type = $opts['dollar_type'] ?? '';
 $providers = class_exists('API_Client') ? API_Client::get_available_providers() : [];
 $provider_name  = $providers[$provider_key]['name'] ?? ($provider_key ?: 'No configurado');
 
@@ -145,7 +145,7 @@ $excluded_cats = $opts['exclude_categories'] ?? [];
                         <label class="dpuwoo-field__label">Tipo de cambio</label>
                         <div class="dpuwoo-field__input-wrap">
                             <span class="dpuwoo-field__prefix">$</span>
-                            <input type="number" name="dpuwoo_settings[origin_exchange_rate]" value="<?php echo esc_attr($opts['origin_exchange_rate'] ?? ($opts['cron_origin_exchange_rate'] ?? '')); ?>" step="0.0001" min="0.0001" class="dpuwoo-field__input" id="dpuwoo-origin-rate" placeholder="Ej: 850.00">
+                            <input type="number" name="dpuwoo_settings[origin_exchange_rate]" value="<?php echo esc_attr($opts['origin_exchange_rate'] ?? ''); ?>" step="0.0001" min="0.0001" class="dpuwoo-field__input" id="dpuwoo-origin-rate" placeholder="Ej: 850.00">
                         </div>
                         <button type="button" id="dpuwoo-get-current-rate" class="dpuwoo-btn dpuwoo-btn--outline dpuwoo-btn--sm" style="margin-top: 0.5rem;">
                             <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
