@@ -52,7 +52,7 @@ class Ajax_Controller
 
         $batch  = intval($_POST['batch'] ?? 0);
         $run_id = intval($_POST['run_id'] ?? 0);
-        $result = $this->bus->dispatch(new Update_Prices_Command($batch, simulate: $simulate, run_id: $run_id));
+        $result = $this->bus->dispatch(new Update_Prices_Command($batch, simulate: $simulate, run_id: $run_id, context: 'manual'));
 
         if (isset($result['error'])) {
             wp_send_json_error($result);
@@ -147,8 +147,8 @@ class Ajax_Controller
     {
         $this->verify_nonce_only();
 
-        $type = $this->settings->get('dollar_type', 'oficial');
-        $rate_data = $this->api->get_rate($type);
+        $currency = $this->settings->get('currency', 'oficial');
+        $rate_data = $this->api->get_rate($currency);
 
         if (!$rate_data || empty($rate_data['value'])) {
             wp_send_json_error(['message' => 'No se pudo obtener la tasa de cambio']);
@@ -165,7 +165,7 @@ class Ajax_Controller
         wp_send_json_success([
             'formatted_value' => number_format($value, 4),
             'value'          => $value,
-            'type'           => $type,
+            'currency'      => $currency,
             'provider'       => $rate_data['provider'] ?? '',
         ]);
     }
@@ -221,18 +221,18 @@ class Ajax_Controller
     {
         $this->verify_nonce_only();
 
-        $type     = sanitize_text_field($_POST['type'] ?? $this->settings->get('dollar_type', 'oficial'));
+        $currency = sanitize_text_field($_POST['currency'] ?? $this->settings->get('currency', 'oficial'));
         $provider = sanitize_text_field($_POST['provider'] ?? '');
 
-        $rate_data = $this->api->get_rate($type, $provider ?: null);
+        $rate_data = $this->api->get_rate($currency, $provider ?: null);
 
         if (!$rate_data) {
-            wp_send_json_error(['message' => 'No se pudo obtener la tasa de cambio', 'type' => $type]);
+            wp_send_json_error(['message' => 'No se pudo obtener la tasa de cambio', 'currency' => $currency]);
         }
 
         // Persistir el tipo seleccionado para que las actualizaciones usen el mismo
-        if (!empty($_POST['type'])) {
-            $this->settings->set('dollar_type', $type);
+        if (!empty($_POST['currency'])) {
+            $this->settings->set('currency', $currency);
         }
 
         wp_send_json_success([
@@ -298,6 +298,31 @@ class Ajax_Controller
     }
 
     /**
+     * POST: dpuwoo_get_dashboard_stats
+     * Retorna todos los datos necesarios para el Dashboard Overview en un solo call.
+     */
+    public function handle_get_dashboard_stats(): void
+    {
+        $this->verify_nonce_only();
+
+        $repo       = Log_Repository::get_instance();
+        $settings   = $this->settings->get_all();
+        $last_runs  = $repo->get_runs(5);
+        $chart_runs = $repo->get_runs_for_chart(30);
+        $stats      = $repo->get_aggregate_stats();
+        $next_cron  = Cron::get_next_scheduled_time();
+
+        wp_send_json_success([
+            'last_runs'    => $last_runs,
+            'chart_runs'   => $chart_runs,
+            'stats'        => $stats,
+            'next_cron'    => $next_cron,
+            'cron_enabled' => (bool) ($settings['cron_enabled'] ?? false),
+            'api_provider' => $settings['api_provider'] ?? 'dolarapi',
+        ]);
+    }
+
+    /**
      * POST: dpuwoo_get_rates
      * Obtiene las tasas de cambio disponibles desde la API.
      */
@@ -355,11 +380,12 @@ class Ajax_Controller
     private function enrich_with_execution_config(array $result): array
     {
         $result['execution_config'] = [
+            'currency'           => $this->settings->get('currency', 'oficial'),
             'reference_currency' => $this->settings->get('reference_currency', 'USD'),
             'api_provider'       => $this->settings->get('api_provider',       'dolarapi'),
             'margin'             => floatval($this->settings->get('margin',     0)),
             'threshold'          => floatval($this->settings->get('threshold',  0.5)),
-            'update_direction'   => $this->settings->get('update_direction',   'bidirectional'),
+            'update_direction'    => $this->settings->get('update_direction',   'bidirectional'),
             'rounding_type'      => $this->settings->get('rounding_type',      'integer'),
         ];
 

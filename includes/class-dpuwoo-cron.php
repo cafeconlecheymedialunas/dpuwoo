@@ -8,7 +8,16 @@ class Cron
 
     public static function register_schedule(array $schedules): array
     {
-        $interval = max(300, intval(get_option('dpuwoo_settings', [])['interval'] ?? 3600));
+        $opts    = get_option('dpuwoo_settings', []);
+        $interval_key = $opts['update_interval'] ?? 'twicedaily';
+        $interval_seconds = [
+            'hourly' => 3600,
+            'twicedaily' => 43200,
+            'daily' => 86400,
+            'weekly' => 604800,
+        ];
+        $interval = $interval_seconds[$interval_key] ?? 43200;
+        $interval = max(300, $interval);
 
         $schedules['dpuwoo_custom'] = [
             'interval' => $interval,
@@ -76,7 +85,9 @@ class Cron
 
     public static function is_action_scheduler_available(): bool
     {
-        return class_exists('ActionScheduler') && function_exists('as_schedule_recurring_action');
+        return class_exists('ActionScheduler') 
+            && function_exists('as_schedule_recurring_action')
+            && function_exists('as_get_scheduled_action');
     }
 
     public static function run_cron(): void
@@ -182,14 +193,5 @@ class Cron
         }
 
         return wp_next_scheduled(self::HOOK);
-    }
-
-    public static function is_scheduled(): bool
-    {
-        if (self::is_action_scheduler_available()) {
-            return as_has_scheduled_action(self::HOOK, [], self::SCHEDULE_GROUP);
-        }
-
-        return wp_next_scheduled(self::HOOK) !== false;
     }
 }

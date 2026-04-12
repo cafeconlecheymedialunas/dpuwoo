@@ -4,7 +4,7 @@ global $wpdb;
 
 $opts         = get_option('dpuwoo_settings', []);
 $cron_enabled = $opts['cron_enabled'] ?? 0;
-$next_cron    = wp_next_scheduled('dpuwoo_do_update');
+$next_cron    = \Cron::get_next_scheduled_time();
 
 $is_first_time = false;
 
@@ -28,33 +28,18 @@ $intervals = [
     'weekly'      => 'Una vez por semana',
 ];
 
-$base_country = get_option('woocommerce_default_country', '');
-if (strpos($base_country, ':') !== false) {
-    $base_country = substr($base_country, 0, strpos($base_country, ':'));
-}
-$country_name = $base_country;
-if (function_exists('WC') && method_exists(WC()->countries, 'get_countries')) {
-    $countries    = WC()->countries->get_countries();
-    $country_name = $countries[$base_country] ?? $base_country;
-}
-$store_currency = function_exists('get_woocommerce_currency') ? get_woocommerce_currency() : 'ARS';
-
 $notify_mode = $opts['cron_notify_mode'] ?? 'update_and_notify';
 $notify_email = $opts['cron_notify_email'] ?? get_option('admin_email');
 $notify_email_placeholder = get_option('admin_email');
 
-$providers = class_exists('API_Client') ? API_Client::get_available_providers() : [];
 $api_providers_list = [
     'dolarapi'      => 'DolarAPI.com',
     'currencyapi'   => 'CurrencyAPI',
-    'exchangerate' => 'ExchangeRate-API',
+    'exchangerate'  => 'ExchangeRate-API',
 ];
 
-// Get connected APIs status
 $is_currencyapi_connected = !empty($opts['currencyapi_api_key']);
 $is_exchangerate_connected = !empty($opts['exchangerate_api_key']);
-
-// Get current cron provider
 $cron_provider = $opts['cron_api_provider'] ?? '';
 ?>
 
@@ -93,7 +78,14 @@ $cron_provider = $opts['cron_api_provider'] ?? '';
                 <h3><?php echo $cron_enabled ? 'Automatización activa' : 'Automatización desactivada'; ?></h3>
                 <p>
                     <?php if ($cron_enabled && $next_cron): ?>
+                        <?php
+                        $now = current_time('timestamp');
+                        $is_past = $next_cron < $now;
+                        ?>
                         Próxima ejecución: <strong><?php echo esc_html(wp_date('d/m/Y H:i', $next_cron)); ?></strong>
+                        <?php if ($is_past): ?>
+                            <span style="color: #dc2626;">(atrasado)</span>
+                        <?php endif; ?>
                     <?php elseif ($cron_enabled): ?>
                         Cron no programado — guardá la configuración para activar.
                     <?php else: ?>
@@ -156,174 +148,34 @@ $cron_provider = $opts['cron_api_provider'] ?? '';
             </div>
         </div>
 
-        <!-- API Section (Collapsible) -->
+        <!-- API for Automation (override Settings) -->
         <div class="dpuwoo-section">
-            <button type="button" class="dpuwoo-collapsible" data-section="api">
+            <button type="button" class="dpuwoo-collapsible" data-section="cron-api">
                 <span class="dpuwoo-collapsible__icon">
-                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9"/></svg>
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0 3-4.03 3-9s1.343-9 3-9"/></svg>
                 </span>
-                <span class="dpuwoo-collapsible__title">API y Conexión</span>
-                <span class="dpuwoo-collapsible__summary"><?php echo esc_html($api_providers_list[$cron_provider] ?? 'No configurado'); ?></span>
+                <span class="dpuwoo-collapsible__title">API (opcional)</span>
+                <span class="dpuwoo-collapsible__summary"><?php echo esc_html($api_providers_list[$cron_provider] ?? 'Usar configuración'); ?></span>
                 <span class="dpuwoo-collapsible__chevron"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></span>
             </button>
-            <div class="dpuwoo-collapsible__content" id="section-api">
+            <div class="dpuwoo-collapsible__content" id="section-cron-api">
                 <div class="dpuwoo-fields-grid">
-                    <!-- Provider -->
                     <div class="dpuwoo-field">
                         <label class="dpuwoo-field__label">Proveedor</label>
-                        <select name="dpuwoo_settings[cron_api_provider]" class="dpuwoo-field__select" id="dpuwoo-api-provider">
+                        <select name="dpuwoo_settings[cron_api_provider]" class="dpuwoo-field__select">
+                            <option value="" <?php selected($cron_provider, ''); ?>>Usar configuración de Configuración</option>
                             <option value="dolarapi" <?php selected($cron_provider, 'dolarapi'); ?>>DolarAPI.com (Gratuita)</option>
-                            <option value="currencyapi" <?php selected($cron_provider, 'currencyapi'); ?> <?php echo !$is_currencyapi_connected ? 'disabled' : ''; ?>>CurrencyAPI <?php echo !$is_currencyapi_connected ? '(Sin API Key)' : '(Conectada)'; ?></option>
-                            <option value="exchangerate" <?php selected($cron_provider, 'exchangerate'); ?> <?php echo !$is_exchangerate_connected ? 'disabled' : ''; ?>>ExchangeRate-API <?php echo !$is_exchangerate_connected ? '(Sin API Key)' : '(Conectada)'; ?></option>
+                            <option value="currencyapi" <?php selected($cron_provider, 'currencyapi'); ?> <?php echo !$is_currencyapi_connected ? 'disabled' : ''; ?>>CurrencyAPI</option>
+                            <option value="exchangerate" <?php selected($cron_provider, 'exchangerate'); ?> <?php echo !$is_exchangerate_connected ? 'disabled' : ''; ?>>ExchangeRate-API</option>
                         </select>
-                        <p class="dpuwoo-field__hint">Solo APIs conectadas están disponibles. <a href="<?php echo esc_url(admin_url('admin.php?page=dpuwoo_settings')); ?>">Configurar API Keys</a></p>
+                        <p class="dpuwoo-field__hint">Dejá en blanco para usar la API de Configuración</p>
                     </div>
-
-                    <!-- Currency/Type Reference -->
                     <div class="dpuwoo-field">
-                        <label class="dpuwoo-field__label">Moneda de referencia</label>
-                        <select name="dpuwoo_settings[cron_dollar_type]" class="dpuwoo-field__select" id="dpuwoo-api-type">
-                            <option value="">Primero seleccioná proveedor</option>
-                        </select>
-                        <p class="dpuwoo-field__hint" id="dpuwoo-currency-hint">Monedas disponibles para <?php echo esc_html($country_name); ?></p>
-                    </div>
-
-                    <!-- Country -->
-                    <div class="dpuwoo-field">
-                        <label class="dpuwoo-field__label">País</label>
-                        <input type="text" value="<?php echo esc_attr($country_name . ' (' . $base_country . ')'); ?>" class="dpuwoo-field__input" readonly style="background-color: var(--dpu-surface);">
-                        <input type="hidden" name="dpuwoo_settings[cron_country]" value="<?php echo esc_attr($base_country); ?>">
-                        <p class="dpuwoo-field__hint">Configurado en WooCommerce</p>
-                    </div>
-
-                </div>
-            </div>
-        </div>
-
-        <!-- Rules Section (Collapsible) -->
-        <div class="dpuwoo-section">
-            <button type="button" class="dpuwoo-collapsible dpuwoo-collapsible--expanded" data-section="rules">
-                <span class="dpuwoo-collapsible__icon">
-                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                </span>
-                <span class="dpuwoo-collapsible__title">Reglas de Precio</span>
-                <span class="dpuwoo-collapsible__summary">
-                    <?php 
-                    $cron_margin = $opts['cron_margin'] ?? '';
-                    echo ($cron_margin !== '' ? number_format(floatval($cron_margin), 1) . '% margen' : '0% margen');
-                    ?>
-                </span>
-                <span class="dpuwoo-collapsible__chevron"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></span>
-            </button>
-            <div class="dpuwoo-collapsible__content" id="section-rules">
-                <div class="dpuwoo-fields-grid">
-                    <!-- Margin -->
-                    <div class="dpuwoo-field">
-                        <label class="dpuwoo-field__label">Margen de corrección</label>
-                        <div class="dpuwoo-field__input-wrap">
-                            <input type="number" name="dpuwoo_settings[cron_margin]" value="<?php echo esc_attr($cron_margin); ?>" step="0.01" class="dpuwoo-field__input" placeholder="0">
-                            <span class="dpuwoo-field__suffix">%</span>
-                        </div>
-                        <p class="dpuwoo-field__hint">+% absorbe menos suba · -% absorbe parte de la suba · Default: 0%</p>
-                    </div>
-
-                    <!-- Threshold Min -->
-                    <div class="dpuwoo-field">
-                        <label class="dpuwoo-field__label">Variación mínima</label>
-                        <div class="dpuwoo-field__input-wrap">
-                            <input type="number" name="dpuwoo_settings[cron_threshold]" value="<?php echo esc_attr($opts['cron_threshold'] ?? ''); ?>" step="0.01" class="dpuwoo-field__input" placeholder="0.5">
-                            <span class="dpuwoo-field__suffix">%</span>
-                        </div>
-                        <p class="dpuwoo-field__hint">Protege contra fluctuaciones pequeñas · Default: 0.5%</p>
-                    </div>
-
-                    <!-- Threshold Max -->
-                    <div class="dpuwoo-field">
-                        <label class="dpuwoo-field__label">Variación máxima</label>
-                        <div class="dpuwoo-field__input-wrap">
-                            <input type="number" name="dpuwoo_settings[cron_threshold_max]" value="<?php echo esc_attr($opts['cron_threshold_max'] ?? ''); ?>" step="0.01" class="dpuwoo-field__input" placeholder="Sin límite">
-                            <span class="dpuwoo-field__suffix">%</span>
-                        </div>
-                        <p class="dpuwoo-field__hint">Frenó de seguridad · Dejar vacío para sin límite</p>
-                    </div>
-
-                    <!-- Direction -->
-                    <div class="dpuwoo-field">
-                        <label class="dpuwoo-field__label">Sentido de actualización</label>
-                        <select name="dpuwoo_settings[cron_update_direction]" class="dpuwoo-field__select">
-                            <option value="bidirectional" <?php selected($opts['cron_update_direction'] ?? '', 'bidirectional'); ?>>Bidireccional</option>
-                            <option value="up_only" <?php selected($opts['cron_update_direction'] ?? '', 'up_only'); ?>>Solo cuando sube</option>
-                            <option value="down_only" <?php selected($opts['cron_update_direction'] ?? '', 'down_only'); ?>>Solo cuando baja</option>
+                        <label class="dpuwoo-field__label">Moneda</label>
+                        <select name="dpuwoo_settings[cron_dollar_type]" class="dpuwoo-field__select" id="dpuwoo-cron-dollar-type">
+                            <option value="">Seleccionar...</option>
                         </select>
                     </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Rounding Section (Collapsible) -->
-        <div class="dpuwoo-section">
-            <button type="button" class="dpuwoo-collapsible" data-section="rounding">
-                <span class="dpuwoo-collapsible__icon">
-                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                </span>
-                <span class="dpuwoo-collapsible__title">Redondeo</span>
-                <span class="dpuwoo-collapsible__summary"><?php echo esc_html($opts['cron_rounding_type'] ?? 'Sin redondeo'); ?></span>
-                <span class="dpuwoo-collapsible__chevron"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></span>
-            </button>
-            <div class="dpuwoo-collapsible__content" id="section-rounding">
-                <div class="dpuwoo-fields-grid">
-                    <div class="dpuwoo-field">
-                        <label class="dpuwoo-field__label">Tipo de redondeo</label>
-                        <select name="dpuwoo_settings[cron_rounding_type]" class="dpuwoo-field__select">
-                            <option value="none" <?php selected($opts['cron_rounding_type'] ?? '', 'none'); ?>>Sin redondeo</option>
-                            <option value="integer" <?php selected($opts['cron_rounding_type'] ?? '', 'integer'); ?>>Enteros</option>
-                            <option value="ceil" <?php selected($opts['cron_rounding_type'] ?? '', 'ceil'); ?>>Hacia arriba</option>
-                            <option value="floor" <?php selected($opts['cron_rounding_type'] ?? '', 'floor'); ?>>Hacia abajo</option>
-                            <option value="nearest" <?php selected($opts['cron_rounding_type'] ?? '', 'nearest'); ?>>Al más cercano</option>
-                        </select>
-                    </div>
-                    <div class="dpuwoo-field">
-                        <label class="dpuwoo-field__label">Redondear a</label>
-                        <div class="dpuwoo-field__input-wrap">
-                            <span class="dpuwoo-field__prefix">$</span>
-                            <input type="number" name="dpuwoo_settings[cron_nearest_to]" value="<?php echo esc_attr($opts['cron_nearest_to'] ?? '1'); ?>" step="1" min="1" class="dpuwoo-field__input">
-                        </div>
-                        <p class="dpuwoo-field__hint">Ej: 1 para redondear a enteros, 5 para redondear a múltiplos de 5</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Exclusions Section (Collapsible) -->
-        <div class="dpuwoo-section">
-            <button type="button" class="dpuwoo-collapsible" data-section="exclusions">
-                <span class="dpuwoo-collapsible__icon">
-                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
-                </span>
-                <span class="dpuwoo-collapsible__title">Exclusiones</span>
-                <span class="dpuwoo-collapsible__summary">
-                    <?php 
-                    $excluded = $opts['cron_exclude_categories'] ?? [];
-                    $count = count($excluded);
-                    echo $count > 0 ? "$count categorías" : 'Ninguna';
-                    ?>
-                </span>
-                <span class="dpuwoo-collapsible__chevron"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></span>
-            </button>
-            <div class="dpuwoo-collapsible__content" id="section-exclusions">
-                <?php
-                $all_cats = get_terms(['taxonomy' => 'product_cat', 'hide_empty' => false]);
-                ?>
-                <div class="dpuwoo-field">
-                    <label class="dpuwoo-field__label">Categorías excluidas</label>
-                    <select name="dpuwoo_settings[cron_exclude_categories][]" multiple class="dpuwoo-field__select" style="min-height: 150px;">
-                        <?php foreach ($all_cats as $cat): ?>
-                        <option value="<?php echo esc_attr($cat->term_id); ?>" <?php echo in_array($cat->term_id, $excluded) ? 'selected' : ''; ?>>
-                            <?php echo esc_html($cat->name); ?>
-                        </option>
-                        <?php endforeach; ?>
-                    </select>
-                    <p class="dpuwoo-field__hint">Productos de estas categorías no se actualizarán. Mantener ctrl/cmd para seleccionar varias.</p>
                 </div>
             </div>
         </div>

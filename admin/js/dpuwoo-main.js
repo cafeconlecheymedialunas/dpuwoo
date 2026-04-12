@@ -10,6 +10,7 @@
         $('#dpuwoo-simulation-results').addClass('hidden');
         $('#dpuwoo-update-process').addClass('hidden');
         $('#dpuwoo-final-results').addClass('hidden');
+        $('#dpuwoo-simulate').show();
 
         // Toggle config section
         $('#dpuwoo-toggle-config').on('click', function() {
@@ -52,15 +53,21 @@
                 $('#dpuwoo-sim-results-table').empty();
                 $('#dpuwoo-final-results').empty();
                 cumulativeResults = { updated: 0, skipped: 0, errors: 0, changes: [] };
+                // Show simulate button when resetting
+                $('#dpuwoo-simulate').show();
             },
 
             enableButtons: function () {
-                $('#dpuwoo-simulate, #dpuwoo-update-now, #dpuwoo-initialize-baseline').prop('disabled', false);
+                $('#dpuwoo-simulate, #dpuwoo-update-now, #dpuwoo-initialize-baseline')
+                    .prop('disabled', false)
+                    .removeClass('dpuwoo-btn--loading');
                 isProcessing = false;
             },
 
             disableButtons: function () {
-                $('#dpuwoo-simulate, #dpuwoo-update-now, #dpuwoo-initialize-baseline').prop('disabled', true);
+                $('#dpuwoo-simulate, #dpuwoo-update-now, #dpuwoo-initialize-baseline')
+                    .prop('disabled', true)
+                    .addClass('dpuwoo-btn--loading');
                 isProcessing = true;
             },
 
@@ -415,6 +422,15 @@
             },
 
             showCompleteResults: function (data, isSimulation) {
+                // If showing update results, hide simulation results and hide simulate button
+                if (!isSimulation) {
+                    this.hideSection('dpuwoo-simulation-results');
+                    $('#dpuwoo-simulate').hide();
+                } else {
+                    // If showing simulation results, hide simulate button until update completes
+                    $('#dpuwoo-simulate').hide();
+                }
+                
                 const resultsHtml = this.generateCompleteResults(data, isSimulation);
                 const target = isSimulation ? '#dpuwoo-simulation-results' : '#dpuwoo-final-results';
                 // Ocultar la barra de progreso antes de mostrar resultados
@@ -423,6 +439,11 @@
                 this.showSection(target.replace('#', ''));
                 this.setupVariationAccordion();
                 this.enableButtons();
+                
+                // Show simulate button again after update completes
+                if (!isSimulation) {
+                    $('#dpuwoo-simulate').show();
+                }
             },
 
             setupVariationAccordion: function () {
@@ -441,6 +462,22 @@
                     return '-';
                 }
                 return '$' + parseFloat(price).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            },
+
+            btnLoading: function (el, text) {
+                const $el = $(el);
+                $el.data('dpuwoo-orig-html', $el.html());
+                $el.prop('disabled', true).html(
+                    '<svg class="dpu-btn-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>' +
+                    (text || 'Procesando…')
+                );
+            },
+
+            btnReset: function (el) {
+                const $el = $(el);
+                const orig = $el.data('dpuwoo-orig-html');
+                if (orig) $el.html(orig);
+                $el.prop('disabled', false).removeData('dpuwoo-orig-html');
             },
 
             formatPriceChange: function (oldPrice, newPrice) {

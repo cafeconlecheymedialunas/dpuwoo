@@ -177,6 +177,33 @@ class Admin
 
 		// CSS
 		wp_enqueue_style($this->plugin_name, plugin_dir_url(__FILE__) . 'css/dpuwoo-main.css');
+
+		// ── Dashboard Overview: Chart.js + dedicated script ────────────────────────
+		if ($hook === 'toplevel_page_dpuwoo_settings') {
+			wp_enqueue_script(
+				'chartjs',
+				'https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js',
+				[],
+				'4',
+				true
+			);
+			wp_enqueue_script(
+				$this->plugin_name . '-dashboard-overview',
+				plugin_dir_url(__FILE__) . 'js/dpuwoo-dashboard-overview.js',
+				['jquery', 'chartjs', $this->plugin_name . '-main'],
+				$this->version,
+				true
+			);
+			wp_localize_script($this->plugin_name . '-dashboard-overview', 'dpuwoo_dashboard', [
+				'ajax_url'      => admin_url('admin-ajax.php'),
+				'nonce'         => wp_create_nonce('dpuwoo_ajax_nonce'),
+				'product_count' => Log_Repository::get_instance()->count_all_products(),
+				'logs_url'      => admin_url('admin.php?page=dpuwoo_logs'),
+				'settings_url'  => admin_url('admin.php?page=dpuwoo_configuration'),
+				'auto_url'      => admin_url('admin.php?page=dpuwoo_automation'),
+				'manual_url'    => admin_url('admin.php?page=dpuwoo_dashboard'),
+			]);
+		}
 	}
 
 
@@ -184,36 +211,37 @@ class Admin
 	public static function register_menu()
 	{
 		add_menu_page(
-			'Dollar Sync',
+			'Dollar Sync - Dashboard',
 			'Dollar Sync',
 			'manage_options',
-			'dpuwoo_dashboard',
-			[__CLASS__, 'render_dashboard'],
+			'dpuwoo_settings',
+			[__CLASS__, 'render_overview'],
 			'dashicons-admin-site',
 			60
 		);
 
+		// Primer submenú (mismo slug que el padre) = Dashboard Overview
 		add_submenu_page(
-			'dpuwoo_dashboard',
-			'Actualización Manual — Dollar Sync',
-			'Manual',
+			'dpuwoo_settings',
+			'Dollar Sync - Dashboard',
+			'Dashboard',
 			'manage_options',
-			'dpuwoo_dashboard',
-			[__CLASS__, 'render_dashboard']
+			'dpuwoo_settings',
+			[__CLASS__, 'render_overview']
 		);
 
 		add_submenu_page(
-			'dpuwoo_dashboard',
-			'Configuración — Dollar Sync',
+			'dpuwoo_settings',
+			'Dollar Sync - Configuración',
 			'Configuración',
 			'manage_options',
-			'dpuwoo_settings_page',
+			'dpuwoo_configuration',
 			[__CLASS__, 'render_settings']
 		);
 
 		add_submenu_page(
-			'dpuwoo_dashboard',
-			'Automatización — Dollar Sync',
+			'dpuwoo_settings',
+			'Dollar Sync - Automatización',
 			'Automatización',
 			'manage_options',
 			'dpuwoo_automation',
@@ -221,8 +249,17 @@ class Admin
 		);
 
 		add_submenu_page(
+			'dpuwoo_settings',
+			'Dollar Sync - Actualización Manual',
+			'Actualización Manual',
+			'manage_options',
 			'dpuwoo_dashboard',
-			'Historial — Dollar Sync',
+			[__CLASS__, 'render_dashboard']
+		);
+
+		add_submenu_page(
+			'dpuwoo_settings',
+			'Dollar Sync - Historial',
 			'Historial',
 			'manage_options',
 			'dpuwoo_logs',
@@ -230,6 +267,11 @@ class Admin
 		);
 	}
 
+
+	public static function render_overview()
+	{
+		include DPUWOO_PLUGIN_DIR . 'admin/partials/dpuwoo-main-dashboard.php';
+	}
 
 	public static function render_dashboard()
 	{

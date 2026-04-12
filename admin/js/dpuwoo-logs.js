@@ -139,8 +139,10 @@
 
         viewRunDetails: function(e) {
             e.preventDefault();
-            const runId = $(e.currentTarget).data('run');
+            const $btn = $(e.currentTarget);
+            const runId = $btn.data('run');
 
+            DPUWOO_Utils.btnLoading($btn, 'Cargando…');
             $('#dpuwoo-run-details-modal').removeClass('hidden');
             $('#dpuwoo-run-details-content').html(`
                 <div class="dpu-log-state dpu-log-state--modal">
@@ -155,6 +157,7 @@
                 data:     { action: 'dpuwoo_get_run_items', run_id: runId, nonce: dpuwoo_ajax.nonce },
                 dataType: 'json',
                 success: function (res) {
+                    DPUWOO_Utils.btnReset($btn);
                     if (!res.success) {
                         $('#dpuwoo-run-details-content').html(`
                             <div class="dpu-log-state dpu-log-state--modal">
@@ -171,6 +174,7 @@
                     this.displayRunDetails(res.data, runId);
                 }.bind(this),
                 error: function (xhr, status, error) {
+                    DPUWOO_Utils.btnReset($btn);
                     $('#dpuwoo-run-details-content').html(`
                         <div class="dpu-log-state dpu-log-state--modal">
                             <p class="dpu-log-state__msg">Error de conexión: ${error}</p>

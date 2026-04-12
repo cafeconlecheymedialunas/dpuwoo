@@ -28,20 +28,20 @@ class Update_Prices_Handler
     {
         $opts = $this->settings->get_for_context($cmd->context);
 
-        $type    = $opts['dollar_type'] ?? 'oficial';
-        $api_res = $this->api->get_rate($type);
+        $currency = $opts['currency'] ?? 'oficial';
+        $api_res = $this->api->get_rate($currency);
 
         if ($api_res === false) {
             return [
                 'error'   => 'no_rate_available',
-                'message' => 'No se pudo obtener el valor actual del dólar',
+                'message' => 'No se pudo obtener el valor actual de la moneda',
             ];
         }
 
         $current_rate = floatval($api_res['value']);
 
         $reference_currency = $opts['reference_currency'] ?? 'USD';
-        [$previous_rate, $is_first_run] = $this->get_previous_rate($opts, $type, $reference_currency);
+        [$previous_rate, $is_first_run] = $this->get_previous_rate($opts, $currency, $reference_currency);
 
         $exchange_rate = ($previous_rate > 0)
             ? new Exchange_Rate($current_rate, $previous_rate)
@@ -85,13 +85,13 @@ class Update_Prices_Handler
 
         if ($total_products === 0 || $cmd->batch >= $total_batches) {
             return array_merge($exchange_rate->to_array(), [
-                'dollar_type'    => $type,
-                'previous_rate'  => $previous_rate,
-                'is_first_run'  => $is_first_run,
-                'threshold_met'  => true,
-                'total_batches' => $total_batches,
-                'changes'       => [],
-                'summary'        => ['updated' => 0, 'errors' => 0, 'skipped' => 0, 'simulated' => $cmd->simulate],
+                'currency'         => $currency,
+                'previous_rate'    => $previous_rate,
+                'is_first_run'     => $is_first_run,
+                'threshold_met'    => true,
+                'total_batches'    => $total_batches,
+                'changes'         => [],
+                'summary'         => ['updated' => 0, 'errors' => 0, 'skipped' => 0, 'simulated' => $cmd->simulate],
             ]);
         }
 
@@ -101,7 +101,7 @@ class Update_Prices_Handler
         $run_id = null;
         if (!$cmd->simulate) {
             if ($cmd->batch === 0) {
-                $run_id = $this->persist_run($type, $current_rate, $exchange_rate, $batch_result, $opts, $total_products, $cmd->context);
+                $run_id = $this->persist_run($currency, $current_rate, $exchange_rate, $batch_result, $opts, $total_products, $cmd->context);
             } else {
                 $run_id = $this->add_items_to_run($cmd->run_id ?? 0, $batch_result, $opts);
             }
@@ -111,7 +111,7 @@ class Update_Prices_Handler
             'rate'           => $current_rate,
             'previous_rate'  => $previous_rate,
             'is_first_run'   => $is_first_run,
-            'dollar_type'    => $type,
+            'currency'       => $currency,
             'threshold_met'  => true,
             'direction'      => $direction,
             'changes'        => $batch_result->get_changes(),
@@ -122,9 +122,33 @@ class Update_Prices_Handler
                 'processed_in_batch' => count($batch_ids),
                 'total_products'    => $total_products,
             ],
-            'summary'    => $batch_result->to_summary($cmd->simulate),
-            'errors_map' => $batch_result->get_errors_map(),
+            'batch_results'  => $this->format_batch_results_for_ui($batch_result),
+            'summary'        => $batch_result->to_summary($cmd->simulate),
+            'errors_map'      => $batch_result->get_errors_map(),
         ]);
+    }
+
+    /**
+     * Formatea los resultados del batch para la UI.
+     */
+    private function format_batch_results_for_ui(Batch_Result $batch_result): array
+    {
+        $changes = $batch_result->get_changes();
+        $results = [];
+        
+        foreach ($changes as $change) {
+            $results[] = [
+                'product_id'   => $change['product_id'] ?? 0,
+                'product_name' => $change['product_name'] ?? '',
+                'status'       => $change['status'] ?? 'unknown',
+                'old_price'   => $change['old_regular_price'] ?? 0,
+                'new_price'   => $change['new_regular_price'] ?? 0,
+                'error'        => $change['reason'] ?? '',
+                'variation_id' => $change['variation_id'] ?? 0,
+            ];
+        }
+        
+        return $results;
     }
 
     /*==========================================================
@@ -135,7 +159,7 @@ class Update_Prices_Handler
      * Obtiene [tasa_anterior, es_primera_ejecucion].
      *
      * Prioridad:
-     *  1. Último run guardado en BD para el MISMO tipo de cambio Y moneda de referencia
+     *  1. Último run guardado en BD para la MISMA currency
      *     (compara solo la misma combinación para evitar inconsistencias cruzadas).
      *  2. origin_exchange_rate: la tasa a la que se cargaron los precios originalmente.
      *     Permite que la primera ejecución calcule el ratio correcto respecto al origen.
@@ -143,9 +167,9 @@ class Update_Prices_Handler
      *
      * @return array{float, bool}  [tasa_anterior, es_primera_ejecucion]
      */
-    private function get_previous_rate(array $opts, string $dollar_type, string $reference_currency): array
+    private function get_previous_rate(array $opts, string $currency, string $reference_currency): array
     {
-        $last = $this->log_repo->get_last_applied_rate($dollar_type, $reference_currency);
+        $last = $this->log_repo->get_last_applied_rate($currency, $reference_currency);
         if ($last > 0) {
             return [$last, false];
         }
@@ -162,7 +186,7 @@ class Update_Prices_Handler
      * Persiste la ejecución en la BD y actualiza la configuración con la última tasa.
      */
     private function persist_run(
-        string        $type,
+        string        $currency,
         float         $current_rate,
         Exchange_Rate $exchange_rate,
         Batch_Result  $result,
@@ -174,14 +198,14 @@ class Update_Prices_Handler
         $reference_currency = $opts['reference_currency'] ?? 'USD';
 
         $run_data = [
-            'dollar_type'          => $type,
-            'reference_currency'    => $reference_currency,
-            'dollar_value'         => $current_rate,
-            'rules'                => $opts,
-            'total_products'        => $total_products,
-            'user_id'              => get_current_user_id(),
-            'note'                 => $context === 'cron' ? 'Actualización automática (cron)' : 'Actualización manual',
-            'percentage_change'    => $exchange_rate->percentage_change,
+            'currency'            => $currency,
+            'reference_currency'  => $reference_currency,
+            'dollar_value'       => $current_rate,
+            'rules'              => $opts,
+            'total_products'     => $total_products,
+            'user_id'            => get_current_user_id(),
+            'note'               => $context === 'cron' ? 'Actualización automática (cron)' : 'Actualización manual',
+            'percentage_change'  => $exchange_rate->percentage_change,
         ];
 
         $run_id = $this->logger->begin_run_transaction($run_data);

@@ -21,6 +21,9 @@ $api_providers_list = [
     'currencyapi'   => 'CurrencyAPI',
     'exchangerate' => 'ExchangeRate-API',
 ];
+
+$all_cats = get_terms(['taxonomy' => 'product_cat', 'hide_empty' => false]);
+$excluded_cats = $opts['exclude_categories'] ?? [];
 ?>
 
 <div class="wrap dpuwoo-admin">
@@ -35,16 +38,20 @@ $api_providers_list = [
                 </svg>
                 Configuración
             </h1>
-            <p class="dpuwoo-header__subtitle">API Keys y tasa de referencia inicial</p>
+            <p class="dpuwoo-header__subtitle">Configuración inicial del plugin</p>
         </div>
         <div class="dpuwoo-header__actions">
+            <a href="<?php echo esc_url(admin_url('admin.php?page=dpuwoo_automation')); ?>" class="dpuwoo-btn dpuwoo-btn--ghost">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Automatización
+            </a>
             <a href="<?php echo esc_url(admin_url('admin.php?page=dpuwoo_dashboard')); ?>" class="dpuwoo-btn dpuwoo-btn--ghost">
                 <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l9-9 9 9M5 10v10h14V10"/></svg>
                 Manual
             </a>
-            <a href="<?php echo esc_url(admin_url('admin.php?page=dpuwoo_automation')); ?>" class="dpuwoo-btn dpuwoo-btn--ghost">
-                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                Automatización
+            <a href="<?php echo esc_url(admin_url('admin.php?page=dpuwoo_logs')); ?>" class="dpuwoo-btn dpuwoo-btn--ghost">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                Dashboard
             </a>
         </div>
     </div>
@@ -192,6 +199,113 @@ $api_providers_list = [
                     <div id="dpuwoo-api-rates-result" class="dpuwoo-api-rates-result"></div>
                 </div>
                 <?php endif; ?>
+            </div>
+        </div>
+
+        <!-- Rules Section -->
+        <div class="dpuwoo-section">
+            <button type="button" class="dpuwoo-collapsible" data-section="rules">
+                <span class="dpuwoo-collapsible__icon">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                </span>
+                <span class="dpuwoo-collapsible__title">Reglas de Precio</span>
+                <span class="dpuwoo-collapsible__summary"><?php echo number_format(floatval($opts['margin'] ?? 0), 1); ?>% margen · <?php echo number_format(floatval($opts['threshold'] ?? 0.5), 1); ?>% umbral</span>
+                <span class="dpuwoo-collapsible__chevron"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></span>
+            </button>
+            <div class="dpuwoo-collapsible__content" id="section-rules">
+                <div class="dpuwoo-fields-grid">
+                    <div class="dpuwoo-field">
+                        <label class="dpuwoo-field__label">Margen de corrección</label>
+                        <div class="dpuwoo-field__input-wrap">
+                            <input type="number" name="dpuwoo_settings[margin]" value="<?php echo esc_attr($opts['margin'] ?? ''); ?>" step="0.01" class="dpuwoo-field__input" placeholder="0">
+                            <span class="dpuwoo-field__suffix">%</span>
+                        </div>
+                        <p class="dpuwoo-field__hint">+% absorbe menos suba · -% absorbe parte de la suba · Default: 0%</p>
+                    </div>
+                    <div class="dpuwoo-field">
+                        <label class="dpuwoo-field__label">Variación mínima</label>
+                        <div class="dpuwoo-field__input-wrap">
+                            <input type="number" name="dpuwoo_settings[threshold]" value="<?php echo esc_attr($opts['threshold'] ?? ''); ?>" step="0.01" min="0" class="dpuwoo-field__input" placeholder="0.5">
+                            <span class="dpuwoo-field__suffix">%</span>
+                        </div>
+                        <p class="dpuwoo-field__hint">Protege contra fluctuaciones pequeñas · Default: 0.5%</p>
+                    </div>
+                    <div class="dpuwoo-field">
+                        <label class="dpuwoo-field__label">Variación máxima</label>
+                        <div class="dpuwoo-field__input-wrap">
+                            <input type="number" name="dpuwoo_settings[threshold_max]" value="<?php echo esc_attr($opts['threshold_max'] ?? ''); ?>" step="0.01" min="0" class="dpuwoo-field__input" placeholder="Sin límite">
+                            <span class="dpuwoo-field__suffix">%</span>
+                        </div>
+                        <p class="dpuwoo-field__hint">Frenó de seguridad · Dejar vacío para sin límite</p>
+                    </div>
+                    <div class="dpuwoo-field">
+                        <label class="dpuwoo-field__label">Sentido de actualización</label>
+                        <select name="dpuwoo_settings[update_direction]" class="dpuwoo-field__select">
+                            <option value="bidirectional" <?php selected($opts['update_direction'] ?? '', 'bidirectional'); ?>>Bidireccional</option>
+                            <option value="up_only" <?php selected($opts['update_direction'] ?? '', 'up_only'); ?>>Solo cuando sube</option>
+                            <option value="down_only" <?php selected($opts['update_direction'] ?? '', 'down_only'); ?>>Solo cuando baja</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rounding Section -->
+        <div class="dpuwoo-section">
+            <button type="button" class="dpuwoo-collapsible" data-section="rounding">
+                <span class="dpuwoo-collapsible__icon">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                </span>
+                <span class="dpuwoo-collapsible__title">Redondeo</span>
+                <span class="dpuwoo-collapsible__summary"><?php echo esc_html(ucfirst($opts['rounding_type'] ?? 'Enteros')); ?></span>
+                <span class="dpuwoo-collapsible__chevron"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></span>
+            </button>
+            <div class="dpuwoo-collapsible__content" id="section-rounding">
+                <div class="dpuwoo-fields-grid">
+                    <div class="dpuwoo-field">
+                        <label class="dpuwoo-field__label">Tipo de redondeo</label>
+                        <select name="dpuwoo_settings[rounding_type]" class="dpuwoo-field__select">
+                            <option value="integer" <?php selected($opts['rounding_type'] ?? '', 'integer'); ?>>Enteros</option>
+                            <option value="none" <?php selected($opts['rounding_type'] ?? '', 'none'); ?>>Sin redondeo</option>
+                            <option value="ceil" <?php selected($opts['rounding_type'] ?? '', 'ceil'); ?>>Hacia arriba</option>
+                            <option value="floor" <?php selected($opts['rounding_type'] ?? '', 'floor'); ?>>Hacia abajo</option>
+                            <option value="nearest" <?php selected($opts['rounding_type'] ?? '', 'nearest'); ?>>Al más cercano</option>
+                        </select>
+                    </div>
+                    <div class="dpuwoo-field">
+                        <label class="dpuwoo-field__label">Redondear a</label>
+                        <div class="dpuwoo-field__input-wrap">
+                            <span class="dpuwoo-field__prefix">$</span>
+                            <input type="number" name="dpuwoo_settings[nearest_to]" value="<?php echo esc_attr($opts['nearest_to'] ?? '1'); ?>" step="1" min="1" class="dpuwoo-field__input">
+                        </div>
+                        <p class="dpuwoo-field__hint">Ej: 1 para enteros, 5 para múltiplos de 5</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Exclusions Section -->
+        <div class="dpuwoo-section">
+            <button type="button" class="dpuwoo-collapsible" data-section="exclusions">
+                <span class="dpuwoo-collapsible__icon">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                </span>
+                <span class="dpuwoo-collapsible__title">Exclusiones</span>
+                <span class="dpuwoo-collapsible__summary"><?php echo count($excluded_cats) > 0 ? count($excluded_cats) . ' categorías' : 'Ninguna'; ?></span>
+                <span class="dpuwoo-collapsible__chevron"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></span>
+            </button>
+            <div class="dpuwoo-collapsible__content" id="section-exclusions">
+                <div class="dpuwoo-field">
+                    <label class="dpuwoo-field__label">Categorías excluidas</label>
+                    <select name="dpuwoo_settings[exclude_categories][]" multiple class="dpuwoo-field__select" style="min-height: 150px;">
+                        <?php foreach ($all_cats as $cat): ?>
+                        <option value="<?php echo esc_attr($cat->term_id); ?>" <?php echo in_array($cat->term_id, $excluded_cats) ? 'selected' : ''; ?>>
+                            <?php echo esc_html($cat->name); ?>
+                        </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <p class="dpuwoo-field__hint">Productos de estas categorías no se actualizarán. Mantener ctrl/cmd para seleccionar varias.</p>
+                </div>
             </div>
         </div>
 

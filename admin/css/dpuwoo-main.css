@@ -303,8 +303,57 @@
   text-decoration: none;
 }
 .dpu-btn:disabled {
-  opacity: 0.45;
+  opacity: 0.6;
   cursor: not-allowed;
+}
+.dpu-btn.dpu-btn--loading {
+  position: relative;
+  color: transparent !important;
+}
+.dpu-btn.dpu-btn--loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border: 2px solid #000;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: dpu-spin 0.6s linear infinite;
+}
+.dpu-btn--primary.dpu-btn--loading::after {
+  border-color: #fff transparent #fff #fff;
+}
+@keyframes dpu-spin {
+  to { transform: rotate(360deg); }
+}
+.dpuwoo-btn:disabled,
+.dpuwoo-btn.dpuwoo-btn--loading {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.dpuwoo-btn.dpuwoo-btn--loading {
+  position: relative;
+  color: transparent !important;
+}
+.dpuwoo-btn.dpuwoo-btn--loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border: 2px solid #fff;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: dpuwoo-spin 0.6s linear infinite;
+  z-index: 1;
+}
+@keyframes dpuwoo-spin {
+  to { transform: rotate(360deg); }
 }
 
 .dpu-btn--sim {
@@ -2085,6 +2134,32 @@
   border: 1.5px solid #fca5a5;
 }
 .dpuwoo-btn--danger-outline:hover { background: #fef2f2; }
+.dpuwoo-btn:disabled,
+.dpuwoo-btn.dpuwoo-btn--loading {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.dpuwoo-btn.dpuwoo-btn--loading {
+  position: relative;
+  color: transparent;
+}
+.dpuwoo-btn.dpuwoo-btn--loading::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: dpuwoo-spin 0.6s linear infinite;
+}
+.dpuwoo-btn--primary.dpuwoo-btn--loading::after {
+  border-color: #fff transparent #fff #fff;
+}
+@keyframes dpuwoo-spin {
+  to { transform: rotate(360deg); }
+}
 
 /* ── Stats Bar ──────────────────────────────────────────── */
 .dpuwoo-stats-bar {

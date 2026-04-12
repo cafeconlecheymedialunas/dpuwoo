@@ -51,9 +51,11 @@
                     if (totalBatches > 1) {
                         this.processBatch('dpuwoo_simulate_batch', 1, totalBatches, 'simulation', function(finalData) {
                             DPUWOO_Utils.showCompleteResults(finalData, true);
+                            localStorage.setItem('dpuwoo_simulation_timestamp', Date.now());
                         }.bind(this));
                     } else {
                         DPUWOO_Utils.showCompleteResults(data, true);
+                        localStorage.setItem('dpuwoo_simulation_timestamp', Date.now());
                     }
                 }.bind(this),
                 error: function (xhr, status, error) {
@@ -94,6 +96,10 @@
                         this.processBatch(action, batch + 1, totalBatches, type, onComplete);
                     } else {
                         onComplete(data);
+                        // Guardar timestamp cuando la simulación termina
+                        if (type === 'simulation') {
+                            localStorage.setItem('dpuwoo_simulation_timestamp', Date.now());
+                        }
                     }
                 }.bind(this),
                 error: function (xhr, status, error) {

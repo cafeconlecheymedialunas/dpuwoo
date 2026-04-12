@@ -12,6 +12,9 @@ class Admin_Settings
             ['sanitize_callback' => [__CLASS__, 'sanitize']]
         );
 
+        // Reprogramar cron cuando se guardan los settings
+        add_action('update_option_dpuwoo_settings', [__CLASS__, 'on_settings_updated'], 10, 3);
+
         // ════════════════════════════════════════════════════════════════════
         //  PAGE: dpuwoo_settings_page — página unificada de configuración
         // ════════════════════════════════════════════════════════════════════
@@ -87,10 +90,10 @@ class Admin_Settings
         $out['origin_exchange_rate']   = floatval($input['origin_exchange_rate'] ?? 1.0);
         $out['rate_generation_method'] = in_array($input['rate_generation_method'] ?? '', ['api', 'manual']) ? $input['rate_generation_method'] : 'manual';
 
-        // Preservar dollar_type y cron_dollar_type
+        // Preservar currency y cron_currency
         $existing           = get_option('dpuwoo_settings', []);
-        $out['dollar_type'] = sanitize_text_field($input['dollar_type'] ?? ($existing['dollar_type'] ?? 'oficial'));
-        $out['cron_dollar_type'] = sanitize_text_field($input['cron_dollar_type'] ?? ($existing['cron_dollar_type'] ?? ''));
+        $out['currency'] = sanitize_text_field($input['currency'] ?? ($existing['currency'] ?? 'oficial'));
+        $out['cron_currency'] = sanitize_text_field($input['cron_currency'] ?? ($existing['cron_currency'] ?? ''));
 
         // — Cálculo manual ———————————————————————————————————————————————
         $out['margin']           = floatval($input['margin']           ?? 0);
@@ -481,5 +484,16 @@ class Admin_Settings
         } else {
             echo '<p>No hay categorías creadas.</p>';
         }
+    }
+
+    /**
+     * Reprograma el cron cuando se guardan los settings.
+     */
+    public static function on_settings_updated($old_value, $new_value, $option)
+    {
+        if (!class_exists('Cron')) {
+            require_once DPUWOO_PLUGIN_DIR . 'includes/class-dpuwoo-cron.php';
+        }
+        Cron::schedule();
     }
 }

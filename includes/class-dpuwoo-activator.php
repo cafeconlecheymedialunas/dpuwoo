@@ -15,14 +15,16 @@ class Activator
             return;
         }
         
-        self::auto_configure_dollar_reference();
+        // Fetchear dólar oficial automáticamente y guardar como origin_exchange_rate
+        $initial_rate = self::fetch_initial_dollar_value();
         
         $settings = get_option('dpuwoo_settings', []);
         $settings['interval']             = $settings['interval']             ?? 3600;
-        $settings['threshold']            = $settings['threshold']            ?? 1.0;
-        $settings['threshold_max']        = $settings['threshold_max']        ?? 0;
-        $settings['reference_currency']   = $settings['reference_currency']   ?? 'USD';
-        $settings['origin_exchange_rate'] = $settings['origin_exchange_rate'] ?? 0;
+        $settings['threshold']           = $settings['threshold']           ?? 1.0;
+        $settings['threshold_max']       = $settings['threshold_max']       ?? 0;
+        $settings['reference_currency']  = $settings['reference_currency'] ?? 'USD';
+        // Usar el valor fetcheado - es en dólar oficial
+        $settings['origin_exchange_rate'] = $settings['origin_exchange_rate'] ?? $initial_rate;
         
         update_option('dpuwoo_settings', $settings);
         

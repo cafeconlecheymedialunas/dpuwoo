@@ -43,7 +43,7 @@ class Log_Repository implements Log_Repository_Interface
 
         $insert_data = [
             'date'                => $now,
-            'dollar_type'         => $data['dollar_type'] ?? '',
+            'dollar_type'         => $data['currency'] ?? $data['dollar_type'] ?? '',
             'dollar_value'        => floatval($data['dollar_value'] ?? 0),
             'rules'               => maybe_serialize($data['rules'] ?? []),
             'total_products'       => intval($data['total_products'] ?? 0),
@@ -81,13 +81,13 @@ class Log_Repository implements Log_Repository_Interface
         return $this->wpdb->get_results($this->wpdb->prepare("SELECT * FROM {$this->table_runs} ORDER BY date DESC LIMIT %d", intval($limit)));
     }
 
-    public function get_last_applied_rate(string $dollar_type, string $reference_currency): float
+    public function get_last_applied_rate(string $currency, string $reference_currency): float
     {
         $value = $this->wpdb->get_var($this->wpdb->prepare(
             "SELECT dollar_value FROM {$this->table_runs} 
              WHERE dollar_type = %s AND reference_currency = %s
              ORDER BY id DESC LIMIT 1",
-            $dollar_type,
+            $currency,
             $reference_currency
         ));
         return $value !== null ? floatval($value) : 0.0;
@@ -245,5 +245,41 @@ class Log_Repository implements Log_Repository_Interface
             WHERE post_type = 'product'
             AND post_status = 'publish'
         ");
+    }
+
+    public function get_aggregate_stats(): array
+    {
+        $total_runs = (int) $this->wpdb->get_var(
+            "SELECT COUNT(id) FROM {$this->table_runs}"
+        );
+        $total_products = (int) $this->wpdb->get_var(
+            "SELECT COALESCE(SUM(total_products), 0) FROM {$this->table_runs}"
+        );
+        $avg_pct = (float) $this->wpdb->get_var(
+            "SELECT AVG(percentage_change) FROM {$this->table_runs}
+             WHERE percentage_change IS NOT NULL"
+        );
+        $error_count = (int) $this->wpdb->get_var(
+            "SELECT COUNT(id) FROM {$this->table_items} WHERE status = 'error'"
+        );
+        $updated_count = (int) $this->wpdb->get_var(
+            "SELECT COUNT(id) FROM {$this->table_items} WHERE status = 'updated'"
+        );
+        return compact('total_runs', 'total_products', 'avg_pct', 'error_count', 'updated_count');
+    }
+
+    public function get_runs_for_chart(int $limit = 30): array
+    {
+        return $this->wpdb->get_results(
+            $this->wpdb->prepare(
+                "SELECT id, date, dollar_value, dollar_type, total_products,
+                        percentage_change, context
+                 FROM {$this->table_runs}
+                 ORDER BY date ASC
+                 LIMIT %d",
+                $limit
+            ),
+            ARRAY_A
+        ) ?: [];
     }
 }

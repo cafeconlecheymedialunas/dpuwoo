@@ -148,8 +148,8 @@ jQuery(document).ready(function($) {
     
     // Handle button click to trigger form submission
     $('#dpuwoo-save-settings').on('click', function(e) {
-        // Let the form submit naturally - no AJAX
-        // This will cause page reload and proper WordPress settings handling
+        DPUWOO_Utils.btnLoading(this, 'Guardando…');
+        // Form submits naturally — page will reload, no need to reset
     });
     
     // Test button removed - using traditional form submission

@@ -21,119 +21,146 @@
         showConfirmUpdateModal: function(e) {
             e.preventDefault();
             
-            // Check if simulation has expired
             if (this.isSimulationExpired()) {
                 this.showExpiredNotice();
                 return;
             }
             
             $('#dpuwoo-confirm-update-modal').removeClass('hidden');
+            $('#dpuwoo-update-progress-inline').addClass('hidden');
         },
 
         startUpdateFromSimulation: function(e) {
             e.preventDefault();
-            $('#dpuwoo-confirm-update-modal').addClass('hidden');
-            this.startDirectUpdate();
-        },
-
-        cancelConfirmModal: function(e) {
-            e.preventDefault();
-            $('#dpuwoo-confirm-update-modal').addClass('hidden');
-        },
-
-        startDirectUpdate: function() {
-            DPUWOO_Utils.disableButtons();
-            DPUWOO_Utils.resetAllSections();
-            DPUWOO_Utils.showSection('dpuwoo-update-process');
+            
+            $('#dpuwoo-update-progress-inline').removeClass('hidden');
+            DPUWOO_Utils.btnLoading('#dpuwoo-confirm-proceed', 'Aplicando…');
+            $('#dpuwoo-confirm-cancel').prop('disabled', true);
             
             DPUWOO_Globals.cumulativeResults = { updated: 0, skipped: 0, errors: 0, changes: [] };
+            $('#dpuwoo-update-log').empty();
+            
+            this.addLogEntry('info', 'Iniciando actualización de precios...');
+            this.startUpdateBatch(0, null);
+        },
 
+        startUpdateBatch: function(batch, runId) {
+            const _this = this;
+            
             $.ajax({
                 url: dpuwoo_ajax.ajax_url,
                 type: 'POST',
                 data: {
                     action: 'dpuwoo_update_batch',
-                    batch: 0,
+                    batch: batch,
+                    run_id: runId || 0,
                     nonce: dpuwoo_ajax.nonce
                 },
                 dataType: 'json',
                 success: function (res) {
                     if (!res.success) {
-                        DPUWOO_Utils.handleProcessError(res.data?.message || 'Error desconocido', 'update');
+                        _this.addLogEntry('error', 'ERROR: ' + (res.data?.message || 'Error desconocido'));
+                        _this.showUpdateError(res.data?.message || 'Error desconocido');
                         return;
                     }
 
                     const data = res.data;
                     const totalBatches = data.batch_info?.total_batches || 1;
+                    const currentBatch = batch + 1;
                     
-                    DPUWOO_Utils.updateProgressBar('update', 1, totalBatches, 'Actualizando...');
-                    
-                    if (data.batch_info) {
-                        $('#dpuwoo-update-total-products').text(data.batch_info.total_products);
+                    // Update product details if available
+                    if (data.batch_results && data.batch_results.length > 0) {
+                        const firstItem = data.batch_results[0];
+                        const lastItem = data.batch_results[data.batch_results.length - 1];
+                        
+                        $('#dpuwoo-current-product').text(firstItem.product_name || 'Producto #' + firstItem.product_id);
+                        
+                        if (totalBatches > currentBatch) {
+                            $('#dpuwoo-next-product').text('Lote ' + (currentBatch + 1));
+                        } else {
+                            $('#dpuwoo-next-product').text('—');
+                        }
+                        
+                        // Add log entries for each product in batch
+                        data.batch_results.forEach(function(item) {
+                            if (item.status === 'updated') {
+                                _this.addLogEntry('updated', '✓ ' + (item.product_name || '#' + item.product_id));
+                            } else if (item.status === 'error') {
+                                _this.addLogEntry('error', '✗ ' + (item.product_name || '#' + item.product_id) + ': ' + (item.error || 'Error'));
+                            } else {
+                                _this.addLogEntry('skipped', '— ' + (item.product_name || '#' + item.product_id));
+                            }
+                        });
                     }
                     
+                    _this.updateInlineProgress(currentBatch, totalBatches, data);
+                    
+                    const newRunId = data.run_id || runId;
                     DPUWOO_Utils.updateCumulativeResults(data, 'update');
 
-                    if (totalBatches > 1) {
-                        this.processBatch('dpuwoo_update_batch', 1, totalBatches, 'update', data.run_id, function(finalData) {
-                            DPUWOO_Utils.showCompleteResults(finalData, false);
-                            if (window.DPUWOO_Logs) DPUWOO_Logs.refresh();
-                        }.bind(this));
+                    if (currentBatch < totalBatches) {
+                        _this.addLogEntry('info', `Lote ${currentBatch} completado, continuando...`);
+                        _this.startUpdateBatch(currentBatch, newRunId);
                     } else {
-                        DPUWOO_Utils.showCompleteResults(data, false);
-                        if (window.DPUWOO_Logs) DPUWOO_Logs.refresh();
+                        _this.addLogEntry('info', '✓ Actualización completada');
+                        _this.completeUpdate(data);
                     }
-                }.bind(this),
+                },
                 error: function (xhr, status, error) {
-                    DPUWOO_Utils.handleProcessError('Error comunicándose con el servidor: ' + error, 'update');
+                    _this.addLogEntry('error', 'ERROR de conexión: ' + error);
+                    _this.showUpdateError('Error de conexión: ' + error);
                 }
             });
         },
 
-        processBatch: function(action, batch, totalBatches, type, runId, onComplete) {
-            $.ajax({
-                url: dpuwoo_ajax.ajax_url,
-                type: 'POST',
-                data: {
-                    action: action,
-                    batch: batch,
-                    run_id: runId,
-                    nonce: dpuwoo_ajax.nonce
-                },
-                dataType: 'json',
-                success: function (res) {
-                    if (!res.success) {
-                        DPUWOO_Utils.handleProcessError(res.data?.message || 'Error desconocido', type);
-                        return;
-                    }
+        addLogEntry: function(type, message) {
+            const now = new Date();
+            const time = now.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const $log = $('#dpuwoo-update-log');
+            
+            $log.append('<div class="dpuwoo-update-log-entry dpuwoo-update-log-entry--' + type + '"><span class="dpuwoo-update-log-time">' + time + '</span><span>' + message + '</span></div>');
+            $log.scrollTop($log[0].scrollHeight);
+        },
 
-                    const data = res.data;
-                    const actionText = type === 'simulation' ? 'Simulando...' : 'Actualizando...';
-                    
-                    DPUWOO_Utils.updateProgressBar(type, batch + 1, totalBatches, actionText);
-                    
-                    if (data.batch_info) {
-                        const totalProductsId = type === 'simulation' ? 'dpuwoo-sim-total-products' : 'dpuwoo-update-total-products';
-                        $('#' + totalProductsId).text(data.batch_info.total_products);
-                    }
+        updateInlineProgress: function(currentBatch, totalBatches, data) {
+            const percent = totalBatches > 0 ? Math.round((currentBatch / totalBatches) * 100) : 100;
+            
+            $('#dpuwoo-update-progress-fill').css('width', percent + '%');
+            $('#dpuwoo-update-progress-percent').text(percent + '%');
+            $('#dpuwoo-update-progress-text').text('Lote ' + currentBatch + ' de ' + totalBatches);
+            
+            const processed = DPUWOO_Globals.cumulativeResults.updated + DPUWOO_Globals.cumulativeResults.skipped + DPUWOO_Globals.cumulativeResults.errors;
+            const total = data.batch_info?.total_products || 0;
+            
+            $('#dpuwoo-update-products-processed').text(processed);
+            $('#dpuwoo-update-products-total').text(total);
+            $('#dpuwoo-updated-count').text(DPUWOO_Globals.cumulativeResults.updated);
+            $('#dpuwoo-skipped-count').text(DPUWOO_Globals.cumulativeResults.skipped);
+            $('#dpuwoo-errors-count').text(DPUWOO_Globals.cumulativeResults.errors);
+        },
 
-                    DPUWOO_Utils.updateCumulativeResults(data, type);
+        completeUpdate: function(data) {
+            $('#dpuwoo-confirm-update-modal').addClass('hidden');
+            $('#dpuwoo-update-progress-inline').addClass('hidden');
+            DPUWOO_Utils.btnReset('#dpuwoo-confirm-proceed');
+            $('#dpuwoo-confirm-cancel').prop('disabled', false);
+            
+            // Clear simulation timestamp after successful update
+            localStorage.removeItem('dpuwoo_simulation_timestamp');
+            
+            DPUWOO_Utils.showCompleteResults(data, false);
+            if (window.DPUWOO_Logs) DPUWOO_Logs.refresh();
+        },
 
-                    if (batch < totalBatches - 1) {
-                        this.processBatch(action, batch + 1, totalBatches, type, runId, onComplete);
-                    } else {
-                        // Store simulation timestamp when simulation completes
-                        if (type === 'simulation') {
-                            simulationTimestamp = Date.now();
-                            localStorage.setItem('dpuwoo_simulation_timestamp', simulationTimestamp);
-                        }
-                        onComplete(data);
-                    }
-                }.bind(this),
-                error: function (xhr, status, error) {
-                    DPUWOO_Utils.handleProcessError('Error de conexión: ' + error, type);
-                }
-            });
+        showUpdateError: function(message) {
+            DPUWOO_Utils.btnReset('#dpuwoo-confirm-proceed');
+            $('#dpuwoo-confirm-cancel').prop('disabled', false);
+            alert('Error: ' + message);
+        },
+
+        cancelConfirmModal: function(e) {
+            e.preventDefault();
+            $('#dpuwoo-confirm-update-modal').addClass('hidden');
         },
 
         isSimulationExpired: function() {
@@ -161,12 +188,10 @@
             
             $('#dpuwoo-confirm-update-modal').before(noticeHtml);
             
-            // Remove notice after 5 seconds
             setTimeout(function() {
                 $('.dpuwoo-notice--warn').fadeOut(300, function() { $(this).remove(); });
             }, 5000);
             
-            // Disable the confirm button
             $('#dpuwoo-proceed-update').prop('disabled', true).addClass('disabled');
         },
 
