@@ -115,18 +115,19 @@ class DolarAPI_Provider extends Base_API_Provider {
         // Consolidar todo en un solo array
         $all_currencies = [];
         
-        // Procesar dólares
+        // Procesar dólares (dollar types)
         if ($dolares_data && $dolares_data['http_code'] === 200 && is_array($dolares_data['data'])) {
             foreach ($dolares_data['data'] as $dolar) {
                 if (!is_array($dolar) || !isset($dolar['casa'])) continue;
                 
-                // Usar formateador estandarizado para dólares
-                // Código: TIENDA_DOLAR_TIPO (ej: CLP_DOLAR_OFICIAL)
+                // Código simple: DOLAR_OFICIAL, DOLAR_BLUE, etc. (coincide con master array)
                 $dollar_type = strtoupper($dolar['casa']);
+                $code = 'DOLAR_' . $dollar_type;
+                
                 $formatted_data = [
                     'type' => 'dolar',
-                    'code' => $store_currency . '_DOLAR_' . $dollar_type,
-                    'key' => $dolar['casa'],
+                    'code' => $code,  // Ej: DOLAR_OFICIAL
+                    'key' => strtolower($code),
                     'name' => $dolar['nombre'] ?? ucfirst($dolar['casa']),
                     'value' => isset($dolar['venta']) ? $this->parse_numeric_value($dolar['venta']) : 0,
                     'buy' => isset($dolar['compra']) ? $this->parse_numeric_value($dolar['compra']) : 0,
@@ -137,34 +138,33 @@ class DolarAPI_Provider extends Base_API_Provider {
                     'base_currency' => $store_currency,
                     'target_currency' => 'USD',
                     'category' => 'dollar_types',
-                    'api_code' => $dolar['casa'], // Código que devuelve la API
-                    'dollar_type' => $dollar_type  // Tipo de dólar específico
+                    'api_code' => $dolar['casa'],
+                    'dollar_type' => $dollar_type
                 ];
                 
                 $all_currencies[] = API_Response_Formatter::create_currency_response($formatted_data);
             }
         }
         
-        // Procesar cotizaciones
+        // Procesar cotizaciones (fiat LatAm)
         if ($cotizaciones_data && $cotizaciones_data['http_code'] === 200 && is_array($cotizaciones_data['data'])) {
             foreach ($cotizaciones_data['data'] as $moneda) {
                 if (!is_array($moneda) || !isset($moneda['moneda'])) continue;
                 
-                // Filtrar solo monedas (no dólares)
+                // Código simple: EUR, BRL, CLP, UYU (coincide con master array)
                 $moneda_code = strtoupper($moneda['moneda']);
                 $moneda_nombre = strtolower($moneda['nombre'] ?? '');
                 
-                // Excluir dólares
+                // Excluir dólares (ya están endolares)
                 if ($moneda_code === 'USD' || 
                     strpos($moneda_nombre, 'dólar') !== false || 
                     strpos($moneda_nombre, 'dolar') !== false) {
                     continue;
                 }
                 
-                // Usar formateador estandarizado para otras monedas
                 $formatted_data = [
                     'type' => 'moneda',
-                    'code' => $store_currency . '_' . $moneda_code,
+                    'code' => $moneda_code,  // Ej: EUR, BRL, CLP
                     'key' => strtolower($moneda_code),
                     'name' => $moneda['nombre'] ?? $moneda_code,
                     'value' => isset($moneda['venta']) ? $this->parse_numeric_value($moneda['venta']) : 0,

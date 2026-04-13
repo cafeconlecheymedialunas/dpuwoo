@@ -272,73 +272,25 @@ function loadCurrenciesForProvider(provider) {
             var currencies = response.data.currencies;
             currencySelect.innerHTML = '';
             
-            // Group by category (crypto vs fiat)
-            var cryptoCurrencies = [];
-            var fiatCurrencies = [];
-            
+            // Add all currencies in a flat list (no grouping)
             currencies.forEach(function(c) {
                 var code = c.code || c.key || '';
                 var name = c.name || code;
-                var symbol = c.symbol || getCurrencySymbol(code);
+                var symbol = c.symbol || '';
                 
-                // Format: "$ - Dólar Oficial" or "₿ - Bitcoin"
-                var displayText = symbol ? symbol + ' - ' + name : name;
+                // Format: "Dólar Oficial ($)" or "Bitcoin (₿)"
+                var displayText = symbol ? name + ' (' + symbol + ')' : name;
                 
                 var option = document.createElement('option');
                 option.value = code;
                 option.textContent = displayText;
-                option.dataset.name = name;
-                option.dataset.code = code;
-                
-                if (c.category === 'crypto' || c.type === 'crypto') {
-                    option.dataset.category = 'crypto';
-                } else {
-                    option.dataset.category = 'fiat';
-                }
                 
                 if (code === currencySelect.dataset.selected) {
                     option.selected = true;
                 }
                 
-                if (option.dataset.category === 'crypto') {
-                    cryptoCurrencies.push(option);
-                } else {
-                    fiatCurrencies.push(option);
-                }
+                currencySelect.appendChild(option);
             });
-            
-            // Add fiat currencies first (if any)
-            if (fiatCurrencies.length > 0) {
-                var fiatGroup = document.createElement('optgroup');
-                fiatGroup.label = 'Fiat';
-                fiatCurrencies.forEach(function(opt) { fiatGroup.appendChild(opt); });
-                currencySelect.appendChild(fiatGroup);
-            }
-            
-            // Add crypto currencies
-            if (cryptoCurrencies.length > 0) {
-                var cryptoGroup = document.createElement('optgroup');
-                cryptoGroup.label = 'Criptomonedas';
-                cryptoCurrencies.forEach(function(opt) { cryptoGroup.appendChild(opt); });
-                currencySelect.appendChild(cryptoGroup);
-            }
-            
-            // If no groups, add directly
-            if (fiatCurrencies.length === 0 && cryptoCurrencies.length === 0) {
-                currencies.forEach(function(c) {
-                    var code = c.code || c.key || '';
-                    var name = c.name || code;
-                    var symbol = c.symbol || getCurrencySymbol(code);
-                    var displayText = symbol ? symbol + ' - ' + name : name;
-                    var option = document.createElement('option');
-                    option.value = code;
-                    option.textContent = displayText;
-                    if (code === currencySelect.dataset.selected) {
-                        option.selected = true;
-                    }
-                    currencySelect.appendChild(option);
-                });
-            }
         } else {
             currencySelect.innerHTML = '<option value="">No disponible</option>';
         }

@@ -145,20 +145,12 @@ class API_Client
         $provider = $this->get_provider($provider_key);
         $currencies = $provider->get_currencies();
         
-        // Normalizar formato de todas las monedas
+        // Normalizar formato usando array maestro
         if (is_array($currencies)) {
+            $currencies = $this->resolve_all_currencies($currencies);
+            
+            // Agregar información común
             foreach ($currencies as &$currency) {
-                // Normalizar código (quitar prefijos como "ARS_DOLAR_")
-                $raw_code = strtoupper($currency['code'] ?? $currency['key'] ?? '');
-                $code = $this->normalize_currency_code($raw_code);
-                
-                $currency['code'] = $code;
-                $currency['key'] = strtolower($code);
-                $currency['name'] = $this->get_currency_name($code, $currency['name'] ?? '');
-                $currency['symbol'] = $this->get_currency_symbol($code);
-                $currency['category'] = $this->detect_category($code, $currency['category'] ?? $currency['type'] ?? 'fiat');
-                
-                // Agregar información común
                 $currency['store_currency'] = strtoupper(\Dpuwoo\Helpers\dpuwoo_get_store_currency());
                 $currency['store_country'] = $this->get_store_country();
                 $currency['timestamp'] = current_time('mysql');
@@ -392,5 +384,193 @@ return $symbols[$code] ?? '';
         $base_country = get_option('woocommerce_default_country', 'AR:AR');
         $country_parts = explode(':', $base_country);
         return strtolower($country_parts[0]);
+    }
+    
+    /**
+     * Array maestro de todas las monedas soportadas
+     * Fuente: DolarAPI, Jsdelivr, CoinGecko
+     */
+    public function get_master_currencies(): array {
+        return [
+            // === DOLLAR TYPES ===
+            'DOLAR_OFICIAL' => ['name' => 'Dólar Oficial', 'symbol' => '$'],
+            'DOLAR_BLUE' => ['name' => 'Dólar Blue', 'symbol' => '$'],
+            'DOLAR_BOLSA' => ['name' => 'Dólar Bolsa', 'symbol' => '$'],
+            'DOLAR_CONTADOCONLIQUI' => ['name' => 'Contado con Liquidación', 'symbol' => '$'],
+            'DOLAR_MAYORISTA' => ['name' => 'Dólar Mayorista', 'symbol' => '$'],
+            'DOLAR_CRIPTO' => ['name' => 'Dólar Cripto', 'symbol' => '$'],
+            'DOLAR_TARJETA' => ['name' => 'Dólar Tarjeta', 'symbol' => '$'],
+            
+            // === FIAT ===
+            'USD' => ['name' => 'US Dollar', 'symbol' => '$'],
+            'EUR' => ['name' => 'Euro', 'symbol' => '€'],
+            'BRL' => ['name' => 'Real Brasileño', 'symbol' => 'R$'],
+            'CLP' => ['name' => 'Peso Chileno', 'symbol' => '$'],
+            'UYU' => ['name' => 'Peso Uruguayo', 'symbol' => '$U'],
+            'ARS' => ['name' => 'Peso Argentino', 'symbol' => '$'],
+            'GBP' => ['name' => 'British Pound', 'symbol' => '£'],
+            'JPY' => ['name' => 'Japanese Yen', 'symbol' => '¥'],
+            'MXN' => ['name' => 'Mexican Peso', 'symbol' => '$'],
+            'COP' => ['name' => 'Colombian Peso', 'symbol' => '$'],
+            'PEN' => ['name' => 'Peruvian Sol', 'symbol' => 'S/'],
+            'VES' => ['name' => 'Venezuelan Bolívar', 'symbol' => 'Bs'],
+            'BOB' => ['name' => 'Bolivian Boliviano', 'symbol' => 'Bs.'],
+            'CRC' => ['name' => 'Costa Rican Colón', 'symbol' => '₡'],
+            'GTQ' => ['name' => 'Guatemalan Quetzal', 'symbol' => 'Q'],
+            'HNL' => ['name' => 'Honduran Lempira', 'symbol' => 'L'],
+            'NIO' => ['name' => 'Nicaraguan Córdoba', 'symbol' => 'C$'],
+            'PAB' => ['name' => 'Panamanian Balboa', 'symbol' => 'B/.'],
+            'DOP' => ['name' => 'Dominican Peso', 'symbol' => 'RD$'],
+            'CUP' => ['name' => 'Cuban Peso', 'symbol' => '₱'],
+            'CAD' => ['name' => 'Canadian Dollar', 'symbol' => 'C$'],
+            'AUD' => ['name' => 'Australian Dollar', 'symbol' => 'A$'],
+            'NZD' => ['name' => 'New Zealand Dollar', 'symbol' => 'NZ$'],
+            'CHF' => ['name' => 'Swiss Franc', 'symbol' => 'Fr'],
+            'CNY' => ['name' => 'Chinese Yuan', 'symbol' => '¥'],
+            'INR' => ['name' => 'Indian Rupee', 'symbol' => '₹'],
+            'RUB' => ['name' => 'Russian Ruble', 'symbol' => '₽'],
+            'KRW' => ['name' => 'South Korean Won', 'symbol' => '₩'],
+            'SGD' => ['name' => 'Singapore Dollar', 'symbol' => 'S$'],
+            'HKD' => ['name' => 'Hong Kong Dollar', 'symbol' => 'HK$'],
+            'SEK' => ['name' => 'Swedish Krona', 'symbol' => 'kr'],
+            'NOK' => ['name' => 'Norwegian Krone', 'symbol' => 'kr'],
+            'DKK' => ['name' => 'Danish Krone', 'symbol' => 'kr'],
+            'PLN' => ['name' => 'Polish Zloty', 'symbol' => 'zł'],
+            'TRY' => ['name' => 'Turkish Lira', 'symbol' => '₺'],
+            'ZAR' => ['name' => 'South African Rand', 'symbol' => 'R'],
+            'AED' => ['name' => 'UAE Dirham', 'symbol' => 'د.إ'],
+            'SAR' => ['name' => 'Saudi Riyal', 'symbol' => '﷼'],
+            'ILS' => ['name' => 'Israeli Shekel', 'symbol' => '₪'],
+            'THB' => ['name' => 'Thai Baht', 'symbol' => '฿'],
+            'MYR' => ['name' => 'Malaysian Ringgit', 'symbol' => 'RM'],
+            'IDR' => ['name' => 'Indonesian Rupiah', 'symbol' => 'Rp'],
+            'PHP' => ['name' => 'Philippine Peso', 'symbol' => '₱'],
+            'VND' => ['name' => 'Vietnamese Dong', 'symbol' => '₫'],
+            'TWD' => ['name' => 'Taiwan Dollar', 'symbol' => 'NT$'],
+            'KWD' => ['name' => 'Kuwaiti Dinar', 'symbol' => 'د.ك'],
+            'BHD' => ['name' => 'Bahraini Dinar', 'symbol' => '.د.ب'],
+            'OMR' => ['name' => 'Omani Rial', 'symbol' => 'ر.ع.'],
+            'QAR' => ['name' => 'Qatari Riyal', 'symbol' => 'ر.ق'],
+            
+            // === CRYPTO ===
+            'BTC' => ['name' => 'Bitcoin', 'symbol' => '₿'],
+            'ETH' => ['name' => 'Ethereum', 'symbol' => 'Ξ'],
+            'USDT' => ['name' => 'Tether', 'symbol' => '₮'],
+            'XRP' => ['name' => 'XRP', 'symbol' => '✕'],
+            'BNB' => ['name' => 'BNB', 'symbol' => '◎'],
+            'USDC' => ['name' => 'USD Coin', 'symbol' => '$'],
+            'SOL' => ['name' => 'Solana', 'symbol' => '◎'],
+            'TRX' => ['name' => 'TRON', 'symbol' => '✳'],
+            'DOGE' => ['name' => 'Dogecoin', 'symbol' => 'Ð'],
+            'ADA' => ['name' => 'Cardano', 'symbol' => '₳'],
+            'BCH' => ['name' => 'Bitcoin Cash', 'symbol' => '₿'],
+            'LINK' => ['name' => 'Chainlink', 'symbol' => '⬡'],
+            'XMR' => ['name' => 'Monero', 'symbol' => 'ɱ'],
+            'ZEC' => ['name' => 'Zcash', 'symbol' => 'Z'],
+            'XLM' => ['name' => 'Stellar', 'symbol' => '✦'],
+            'DAI' => ['name' => 'Dai', 'symbol' => '◈'],
+            'LTC' => ['name' => 'Litecoin', 'symbol' => 'Ł'],
+            'AVAX' => ['name' => 'Avalanche', 'symbol' => '▲'],
+            'HBAR' => ['name' => 'Hedera', 'symbol' => 'ħ'],
+            'TON' => ['name' => 'Toncoin', 'symbol' => '◆'],
+            'SUI' => ['name' => 'Sui', 'symbol' => 'SUI'],
+            'SHIB' => ['name' => 'Shiba Inu', 'symbol' => 'Shib'],
+            'CRO' => ['name' => 'Cronos', 'symbol' => 'CRO'],
+            'DOT' => ['name' => 'Polkadot', 'symbol' => '●'],
+            'UNI' => ['name' => 'Uniswap', 'symbol' => '🦄'],
+            'NEAR' => ['name' => 'NEAR Protocol', 'symbol' => 'NEAR'],
+            'OKB' => ['name' => 'OKB', 'symbol' => 'OKB'],
+            'PI' => ['name' => 'Pi Network', 'symbol' => 'PI'],
+            'FIL' => ['name' => 'Filecoin', 'symbol' => '⨎'],
+            'APT' => ['name' => 'Aptos', 'symbol' => 'APT'],
+            'AR' => ['name' => 'Arweave', 'symbol' => 'AR'],
+            'ALGO' => ['name' => 'Algorand', 'symbol' => 'Algo'],
+            'VET' => ['name' => 'VeChain', 'symbol' => 'V'],
+            'ICP' => ['name' => 'Internet Computer', 'symbol' => 'ICP'],
+            'THETA' => ['name' => 'Theta', 'symbol' => 'Θ'],
+            'AAVE' => ['name' => 'Aave', 'symbol' => 'AAVE'],
+            'GRT' => ['name' => 'The Graph', 'symbol' => 'GRT'],
+            'MKR' => ['name' => 'Maker', 'symbol' => 'MKR'],
+            'SNX' => ['name' => 'Synthetix', 'symbol' => 'SNX'],
+            'IMX' => ['name' => 'Immutable', 'symbol' => 'IMX'],
+            'STX' => ['name' => 'Stacks', 'symbol' => 'STX'],
+            'RUNE' => ['name' => 'THORchain', 'symbol' => 'RUNE'],
+            'KAVA' => ['name' => 'Kava', 'symbol' => 'KAVA'],
+            'FTM' => ['name' => 'Fantom', 'symbol' => 'FTM'],
+            'SAND' => ['name' => 'The Sandbox', 'symbol' => 'SAND'],
+            'GALA' => ['name' => 'Gala', 'symbol' => 'GALA'],
+            'MANA' => ['name' => 'Decentraland', 'symbol' => 'MANA'],
+            'AXS' => ['name' => 'Axie Infinity', 'symbol' => 'AXS'],
+            'APE' => ['name' => 'ApeCoin', 'symbol' => 'APE'],
+            'PEPE' => ['name' => 'Pepe', 'symbol' => 'Pepe'],
+            'WIF' => ['name' => 'WIF', 'symbol' => 'WIF'],
+            'BONK' => ['name' => 'Bonk', 'symbol' => 'BONK'],
+            'FET' => ['name' => 'Fetch.ai', 'symbol' => 'FET'],
+            'RNDR' => ['name' => 'Render', 'symbol' => 'RNDR'],
+            'INJ' => ['name' => 'Injective', 'symbol' => 'INJ'],
+            'SEI' => ['name' => 'Sei', 'symbol' => 'SEI'],
+        ];
+    }
+    
+    /**
+     * Resolver moneda por código
+     */
+    public function resolve_currency(string $code): ?array {
+        $master = $this->get_master_currencies();
+        $code_upper = strtoupper($code);
+        
+        if (isset($master[$code_upper])) {
+            $data = $master[$code_upper];
+            $data['code'] = $code_upper;
+            $data['display'] = !empty($data['symbol']) 
+                ? $data['name'] . ' (' . $data['symbol'] . ')' 
+                : $data['name'];
+            return $data;
+        }
+        
+        if (strpos($code_upper, 'DOLAR_') !== false) {
+            $dollar_type = strtoupper(str_replace(['ARS_', 'CLP_', 'UYU_', 'BRL_', 'MXN_', 'COP_', 'PEN_', 'BOB_'], '', $code_upper));
+            $lookup = 'DOLAR_' . $dollar_type;
+            if (isset($master[$lookup])) {
+                $data = $master[$lookup];
+                $data['code'] = $lookup;
+                $data['variant'] = strtolower($dollar_type);
+                $data['display'] = !empty($data['symbol']) 
+                    ? $data['name'] . ' (' . $data['symbol'] . ')' 
+                    : $data['name'];
+                return $data;
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Resolver todas las monedas de un provider
+     */
+    public function resolve_all_currencies(array $currencies): array {
+        $resolved = [];
+        
+        foreach ($currencies as $currency) {
+            $raw_code = $currency['code'] ?? $currency['key'] ?? '';
+            if (empty($raw_code)) continue;
+            
+            $master_data = $this->resolve_currency($raw_code);
+            
+            if ($master_data) {
+                $resolved[] = array_merge($currency, [
+                    'code' => $master_data['code'],
+                    'name' => $master_data['name'],
+                    'symbol' => $master_data['symbol'],
+                    'display' => $master_data['display'],
+                ]);
+            } else {
+                $currency['code'] = strtoupper($raw_code);
+                $currency['name'] = $currency['name'] ?? $raw_code;
+                $resolved[] = $currency;
+            }
+        }
+        
+        return $resolved;
     }
 }
