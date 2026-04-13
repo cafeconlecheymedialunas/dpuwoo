@@ -1,6 +1,10 @@
 jQuery(document).ready(function($) {
     'use strict';
     
+    // Load currencies on page load
+    var currentProvider = $('#dpuwoo-api-provider-input').val() || 'dolarapi';
+    loadCurrenciesForProvider(currentProvider);
+    
     // Elementos del DOM
     const $apiProviderSelect = $('#dpuwoo_api_provider');
     const $currencyApiContainer = $('#dpuwoo_currencyapi_key_container');
@@ -165,3 +169,252 @@ jQuery(document).ready(function($) {
         }
     });
 });
+
+// Providers that don't require API key
+var noKeyProviders = ['dolarapi', 'jsdelivr', 'cryptoprice'];
+
+// Global functions for provider selection
+function selectProvider(provider) {
+    // Update hidden input
+    document.getElementById('dpuwoo-api-provider-input').value = provider;
+    
+    // Update card styles
+    document.querySelectorAll('.dpuwoo-provider-card').forEach(function(card) {
+        card.classList.remove('dpuwoo-provider-card--selected');
+        card.querySelector('.dpuwoo-provider-card__radio-inner').classList.remove('dpuwoo-provider-card__radio-inner--checked');
+        if (card.dataset.provider === provider) {
+            card.classList.add('dpuwoo-provider-card--selected');
+            card.querySelector('.dpuwoo-provider-card__radio-inner').classList.add('dpuwoo-provider-card__radio-inner--checked');
+        }
+    });
+    
+    // Hide all API key panels first
+    document.querySelectorAll('.dpuwoo-api-key-panel').forEach(function(panel) {
+        panel.style.display = 'none';
+    });
+    
+    // Show panel only for providers that require API key
+    if (!noKeyProviders.includes(provider)) {
+        var panel = document.getElementById('panel-' + provider);
+        if (panel) {
+            panel.style.display = 'block';
+        }
+    }
+    
+    // Reload currencies for reference currency select
+    loadCurrenciesForProvider(provider);
+}
+
+function getCurrencySymbol(code) {
+    var symbols = {
+        // Crypto
+        'BTC': '₿', 'ETH': 'Ξ', 'BNB': '◎', 'XRP': '✕', 'USDT': '₮',
+        'SOL': '◎', 'ADA': '₳', 'DOGE': 'Ð', 'DOT': '●', 'MATIC': '⬡',
+        'LTC': 'Ł', 'AVAX': '▲', 'LINK': '⬡', 'UNI': '🦄', 'ATOM': '⚛',
+        'XLM': '✦', 'ALGO': 'Algo', 'FIL': '⨎', 'TRX': '✳', 'ETC': 'Ξ',
+        'XMR': 'ɱ', 'NEAR': 'Near', 'AR': 'Ar', 'LDO': 'LDO', 'QNT': 'QNT',
+        'GRT': 'GRT', 'RNDR': 'RNDR', 'OP': 'OP', 'ARB': 'ARB', 'INJ': 'INJ',
+        'SUI': 'SUI', 'SEI': 'SEI', 'TIA': 'TIA', 'PEPE': 'Pepe', 'SHIB': 'Shib',
+        'WIF': 'WIF', 'BONK': 'Bonk', 'FET': 'FET', 'GALA': 'GALA', 'IMX': 'IMX',
+        'APT': 'APT', 'STX': 'STX', 'RUNE': 'RUNE', 'KAVA': 'KAVA', 'FTM': 'FTM',
+        'CAKE': 'CAKE', 'MINA': 'MINA', 'ROSE': 'ROSE', 'ZIL': 'ZIL', 'ONE': 'ONE',
+        'CELO': 'CELO', 'QTUM': 'QTUM', 'NEO': 'NEO', 'EOS': 'EOS', 'XTZ': 'XTZ',
+        'FLOW': 'FLOW', 'HBAR': 'ħ', 'THETA': 'Θ', 'SHIB': 'Shib',
+        
+        // Fiat
+        'USD': '$', 'EUR': '€', 'GBP': '£', 'JPY': '¥', 'ARS': '$',
+        'BRL': 'R$', 'CLP': '$', 'MXN': '$', 'COP': '$', 'UYU': '$U',
+        'PEN': 'S/', 'VES': 'Bs', 'BOB': 'Bs.', 'CRC': '₡', 'GTQ': 'Q',
+        'HNL': 'L', 'NIO': 'C$', 'PAB': 'B/.', 'DOP': 'RD$', 'CUP': '₱',
+        'CAD': 'C$', 'AUD': 'A$', 'NZD': 'NZ$', 'CHF': 'Fr', 'CNY': '¥',
+        'INR': '₹', 'RUB': '₽', 'KRW': '₩', 'SGD': 'S$', 'HKD': 'HK$',
+        'SEK': 'kr', 'NOK': 'kr', 'DKK': 'kr', 'PLN': 'zł', 'TRY': '₺',
+        'ZAR': 'R', 'AED': 'د.إ', 'SAR': '﷼', 'ILS': '₪', 'THB': '฿',
+        'MYR': 'RM', 'IDR': 'Rp', 'PHP': '₱', 'VND': '₫', 'TWD': 'NT$',
+        'KWD': 'د.ك', 'BHD': '.د.ب', 'OMR': 'ر.ع.', 'QAR': 'ر.ق'
+    };
+    return symbols[code.toUpperCase()] || code;
+}
+
+function initSelect2() {
+    var currencySelect = document.getElementById('dpuwoo-ref-currency');
+    if (currencySelect && typeof jQuery.fn.select2 !== 'undefined') {
+        jQuery(currencySelect).select2({
+            theme: 'default',
+            width: '100%',
+            placeholder: 'Buscar moneda...',
+            allowClear: true,
+            language: {
+                noResults: function() { return 'No se encontraron resultados'; },
+                searching: function() { return 'Buscando...'; }
+            }
+        });
+    }
+}
+
+function loadCurrenciesForProvider(provider) {
+    var currencySelect = document.getElementById('dpuwoo-ref-currency');
+    if (!currencySelect) return;
+    
+    currencySelect.innerHTML = '<option value="">Cargando...</option>';
+    
+    // Destroy select2 if exists before repopulating
+    if (typeof jQuery.fn.select2 !== 'undefined') {
+        try { jQuery(currencySelect).select2('destroy'); } catch(e) {}
+    }
+    
+    jQuery.post(dpuwoo_ajax.ajax_url, {
+        action: 'dpuwoo_get_currencies',
+        provider: provider,
+        nonce: dpuwoo_ajax.nonce
+    }, function(response) {
+        if (response.success && response.data && response.data.currencies) {
+            var currencies = response.data.currencies;
+            currencySelect.innerHTML = '';
+            
+            // Group by category (crypto vs fiat)
+            var cryptoCurrencies = [];
+            var fiatCurrencies = [];
+            
+            currencies.forEach(function(c) {
+                var code = c.code || c.key || '';
+                var name = c.name || code;
+                var symbol = c.symbol || getCurrencySymbol(code);
+                
+                // Format: "$ - Dólar Oficial" or "₿ - Bitcoin"
+                var displayText = symbol ? symbol + ' - ' + name : name;
+                
+                var option = document.createElement('option');
+                option.value = code;
+                option.textContent = displayText;
+                option.dataset.name = name;
+                option.dataset.code = code;
+                
+                if (c.category === 'crypto' || c.type === 'crypto') {
+                    option.dataset.category = 'crypto';
+                } else {
+                    option.dataset.category = 'fiat';
+                }
+                
+                if (code === currencySelect.dataset.selected) {
+                    option.selected = true;
+                }
+                
+                if (option.dataset.category === 'crypto') {
+                    cryptoCurrencies.push(option);
+                } else {
+                    fiatCurrencies.push(option);
+                }
+            });
+            
+            // Add fiat currencies first (if any)
+            if (fiatCurrencies.length > 0) {
+                var fiatGroup = document.createElement('optgroup');
+                fiatGroup.label = 'Fiat';
+                fiatCurrencies.forEach(function(opt) { fiatGroup.appendChild(opt); });
+                currencySelect.appendChild(fiatGroup);
+            }
+            
+            // Add crypto currencies
+            if (cryptoCurrencies.length > 0) {
+                var cryptoGroup = document.createElement('optgroup');
+                cryptoGroup.label = 'Criptomonedas';
+                cryptoCurrencies.forEach(function(opt) { cryptoGroup.appendChild(opt); });
+                currencySelect.appendChild(cryptoGroup);
+            }
+            
+            // If no groups, add directly
+            if (fiatCurrencies.length === 0 && cryptoCurrencies.length === 0) {
+                currencies.forEach(function(c) {
+                    var code = c.code || c.key || '';
+                    var name = c.name || code;
+                    var symbol = c.symbol || getCurrencySymbol(code);
+                    var displayText = symbol ? symbol + ' - ' + name : name;
+                    var option = document.createElement('option');
+                    option.value = code;
+                    option.textContent = displayText;
+                    if (code === currencySelect.dataset.selected) {
+                        option.selected = true;
+                    }
+                    currencySelect.appendChild(option);
+                });
+            }
+        } else {
+            currencySelect.innerHTML = '<option value="">No disponible</option>';
+        }
+    }).fail(function() {
+        currencySelect.innerHTML = '<option value="">Error</option>';
+    }).always(function() {
+        initSelect2();
+    });
+}
+
+function togglePassword(inputId) {
+    var input = document.getElementById(inputId);
+    if (input.type === 'password') {
+        input.type = 'text';
+    } else {
+        input.type = 'password';
+    }
+}
+
+function testApiConnection(api) {
+    var resultDiv = document.getElementById('dpuwoo-api-test-result');
+    var apiKeyInput;
+    
+    if (api === 'currencyapi') {
+        apiKeyInput = document.getElementById('input-currencyapi');
+    } else if (api === 'exchangerate') {
+        apiKeyInput = document.getElementById('input-exchangerate');
+    }
+    
+    var apiKey = apiKeyInput ? apiKeyInput.value : '';
+    
+    if (!apiKey) {
+        resultDiv.className = 'dpuwoo-api-test-result show dpuwoo-api-test-result--error';
+        resultDiv.innerHTML = '<strong>Error:</strong> Por favor ingresá tu API Key primero.';
+        return;
+    }
+    
+    resultDiv.className = 'dpuwoo-api-test-result show';
+    resultDiv.innerHTML = '<span style="color: #6b7280;">Probando conexión...</span>';
+    
+    // Map API names to provider names
+    var providerMap = {
+        'currencyapi': 'currencyapi',
+        'exchangerate': 'exchangerate'
+    };
+    var provider = providerMap[api] || api;
+    
+    // Make AJAX request
+    var data = {
+        action: 'dpuwoo_test_api',
+        api: provider,
+        api_key: apiKey,
+        nonce: dpuwoo_ajax.nonce
+    };
+    
+    jQuery.post(dpuwoo_ajax.ajax_url, data, function(response) {
+        if (response.success) {
+            resultDiv.className = 'dpuwoo-api-test-result show dpuwoo-api-test-result--success';
+            resultDiv.innerHTML = '<strong>✓ Conexión exitosa!</strong> ' + (response.data.message || 'API Key válida.');
+        } else {
+            resultDiv.className = 'dpuwoo-api-test-result show dpuwoo-api-test-result--error';
+            resultDiv.innerHTML = '<strong>✗ Error de conexión:</strong> ' + (response.data.message || 'Verificá tu API Key.');
+        }
+    }).fail(function() {
+        resultDiv.className = 'dpuwoo-api-test-result show dpuwoo-api-test-result--error';
+        resultDiv.innerHTML = '<strong>✗ Error:</strong> No se pudo conectar al servidor.';
+    });
+}
+
+function toggleApiKey(prefix) {
+    var input = document.querySelector('input[name="dpuwoo_settings[' + prefix + '_api_key]"]');
+    if (input) {
+        if (input.type === 'password') {
+            input.type = 'text';
+        } else {
+            input.type = 'password';
+        }
+    }
+}

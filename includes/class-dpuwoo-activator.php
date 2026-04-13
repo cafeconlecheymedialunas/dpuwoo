@@ -15,24 +15,27 @@ class Activator
             return;
         }
         
-        // Fetchear dólar oficial automáticamente y guardar como origin_exchange_rate
         $initial_rate = self::fetch_initial_dollar_value();
+        $auto_provider = self::get_auto_provider();
         
         $settings = get_option('dpuwoo_settings', []);
         $settings['interval']             = $settings['interval']             ?? 3600;
         $settings['threshold']           = $settings['threshold']           ?? 1.0;
         $settings['threshold_max']       = $settings['threshold_max']       ?? 0;
         $settings['reference_currency']  = $settings['reference_currency'] ?? 'USD';
-        // Usar el valor fetcheado - es en dólar oficial
-        $settings['origin_exchange_rate'] = $settings['origin_exchange_rate'] ?? $initial_rate;
-        
+        $settings['api_provider']        = $settings['api_provider']        ?? $auto_provider;
+        if (empty($settings['origin_exchange_rate'])) {
+            $settings['origin_exchange_rate'] = $initial_rate > 0 ? $initial_rate : 0;
+        }
+
         update_option('dpuwoo_settings', $settings);
-        
+
         self::create_usd_price_fields_for_products();
         Cron::schedule();
         update_option('dpuwoo_initial_setup_done', true);
-        
-        self::add_activation_notice();
+
+        set_transient('dpuwoo_activation_redirect', true, 60);
+        self::add_activation_notice($initial_rate > 0);
     }
 
     private static function create_usd_price_fields_for_products()
@@ -64,38 +67,62 @@ class Activator
         return;
     }
     
-    private static function fetch_initial_dollar_value()
+    private static function fetch_initial_dollar_value(): float
     {
         if (!function_exists('wp_remote_get')) {
-            return 1;
+            return 0;
         }
 
-        $url = "https://dolarapi.com/v1/dolares/oficial";
+        $currency = function_exists('get_woocommerce_currency')
+            ? get_woocommerce_currency()
+            : 'ARS';
+
+        if ($currency === 'USD') {
+            return 1.0;
+        }
+
+        // cdn.jsdelivr.net/@fawazahmed0/currency-api — gratuita, sin key, 170+ monedas
+        $currency_lower = strtolower($currency);
+        $url  = 'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json';
         $args = ['timeout' => 15, 'sslverify' => false];
 
         $res = wp_remote_get($url, $args);
         if (is_wp_error($res)) {
-            return 1;
+            return 0;
         }
 
         $body = json_decode(wp_remote_retrieve_body($res), true);
-        
-        if (!isset($body['venta'])) {
-            return 1;
+
+        if (empty($body['usd'][$currency_lower])) {
+            return 0;
         }
 
-        $rate = floatval($body['venta']);
-        return ($rate > 0) ? $rate : 1;
+$rate = floatval($body['usd'][$currency_lower]);
+        return $rate > 0 ? $rate : 0;
     }
-
-    private static function add_activation_notice()
+    
+    public static function get_auto_provider(): string
     {
-        $message = 'DPU WooCommerce activado. Configura la tasa de cambio en los ajustes.';
-
+        $dolarapi_countries = ['ar', 'cl', 'uy', 'br', 'mx', 'co', 'pe', 've', 'bo'];
+        
+        $base_country = get_option('woocommerce_default_country', 'AR:AR');
+        $country_code = strtolower(explode(':', $base_country)[0]);
+        
+        if (in_array($country_code, $dolarapi_countries)) {
+            return 'dolarapi';
+        }
+        
+        return 'jsdelivr';
+    }
+    
+    private static function add_activation_notice(bool $rate_ok = false): void
+    {
         update_option('dpuwoo_admin_notice', [
-            'message' => $message,
-            'type' => 'info',
-            'dismissible' => true
+            'message'     => $rate_ok
+                ? 'Dollar Sync activado. Tasa de referencia inicializada automáticamente. Revisá la Configuración.'
+                : 'Dollar Sync activado. No se pudo obtener la tasa automáticamente — ingresala manualmente en Configuración.',
+            'type'        => $rate_ok ? 'success' : 'warning',
+            'dismissible' => true,
         ]);
     }
 

@@ -57,6 +57,38 @@ class API_Client
     public static function get_available_providers()
     {
         return [
+            'dolarapi' => [
+                'name' => 'DolarAPI.com',
+                'description' => 'API de cotizaciones fiat para Latam (AR, CL, UY, BR, MX, CO, PE)',
+                'domain' => 'dolarapi.com',
+                'url' => 'https://dolarapi.com/v1',
+                'requires_key' => false,
+                'types' => ['oficial', 'blue', 'bolsa', 'contadoconliqui', 'tarjeta', 'mayorista', 'cripto', 'mep', 'solidario'],
+                'supports_currencies' => false,
+                'currency_endpoint' => null,
+                'countries' => ['ar', 'cl', 'uy', 'br', 'mx', 'co', 'pe']
+            ],
+            'jsdelivr' => [
+                'name' => 'Jsdelivr Currency API',
+                'description' => 'API gratuita - 170+ monedas fiat mundiales (sin API Key)',
+                'url' => 'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api',
+                'requires_key' => false,
+                'types' => ['usd', 'eur', 'gbp', 'jpy', 'ars', 'brl', 'clp', 'mxn', 'cop', 'uyu', 'bob', 'ves', 'pen'],
+                'supports_currencies' => true,
+                'currency_endpoint' => 'currencies',
+                'countries' => 'all'
+            ],
+            'cryptoprice' => [
+                'name' => 'Crypto Price API',
+                'description' => 'API gratuita de criptomonedas - 150+ cryptos (sin API Key)',
+                'url' => 'https://crypto-price-api-three.vercel.app/api',
+                'requires_key' => false,
+                'types' => ['BTC', 'ETH', 'BNB', 'SOL', 'ADA', 'DOGE', 'XRP', 'DOT', 'MATIC', 'AVAX', 'LINK', 'UNI', 'ATOM', 'LTC', 'TRX', 'NEAR', 'FIL', 'ALGO', 'XLM', 'ETC', 'XMR', 'SHIB', 'WIF', 'BONK', 'PEPE', 'FET', 'GALA', 'IMX', 'APT', 'STX', 'KAVA', 'FTM', 'CAKE', 'ZIL', 'ONE', 'EOS', 'XTZ'],
+                'supports_currencies' => true,
+                'currency_endpoint' => 'prices',
+                'categories' => ['crypto'],
+                'countries' => 'all'
+            ],
             'currencyapi' => [
                 'name' => 'CurrencyAPI.com',
                 'description' => 'API con soporte para 170+ monedas globales (requiere API Key)',
@@ -65,16 +97,6 @@ class API_Client
                 'types' => ['latest', 'historical'],
                 'supports_currencies' => true,
                 'currency_endpoint' => 'currencies'
-            ],
-            'dolarapi' => [
-                'name' => 'DolarAPI.com',
-                'description' => 'API pública de cotizaciones del dólar en Argentina',
-                'domain' => 'dolarapi.com',
-                'url' => 'https://dolarapi.com/v1',
-                'requires_key' => false,
-                'types' => ['oficial', 'blue', 'bolsa', 'contadoconliqui', 'tarjeta', 'mayorista', 'cripto', 'mep', 'solidario'],
-                'supports_currencies' => false,
-                'currency_endpoint' => null
             ],
             'exchangerate-api' => [
                 'name' => 'ExchangeRate-API.com',
@@ -111,19 +133,167 @@ class API_Client
      */
     public function get_currencies($provider_key = null)
     {
+        $provider_key = $provider_key ?? 'dolarapi';
+        $transient_key = 'dpuwoo_currencies_' . $provider_key;
+        
+        // Verificar cache
+        $cached = get_transient($transient_key);
+        if (false !== $cached) {
+            return $cached;
+        }
+        
         $provider = $this->get_provider($provider_key);
         $currencies = $provider->get_currencies();
         
-        // Agregar información común a cada moneda
+        // Normalizar formato de todas las monedas
         if (is_array($currencies)) {
             foreach ($currencies as &$currency) {
+                // Normalizar código (quitar prefijos como "ARS_DOLAR_")
+                $raw_code = strtoupper($currency['code'] ?? $currency['key'] ?? '');
+                $code = $this->normalize_currency_code($raw_code);
+                
+                $currency['code'] = $code;
+                $currency['key'] = strtolower($code);
+                $currency['name'] = $this->get_currency_name($code, $currency['name'] ?? '');
+                $currency['symbol'] = $this->get_currency_symbol($code);
+                $currency['category'] = $this->detect_category($code, $currency['category'] ?? $currency['type'] ?? 'fiat');
+                
+                // Agregar información común
                 $currency['store_currency'] = strtoupper(\Dpuwoo\Helpers\dpuwoo_get_store_currency());
                 $currency['store_country'] = $this->get_store_country();
                 $currency['timestamp'] = current_time('mysql');
             }
+            
+            // Guardar en cache por 1 hora
+            set_transient($transient_key, $currencies, HOUR_IN_SECONDS);
         }
         
         return $currencies;
+    }
+    
+    /**
+     * Limpiar cache de monedas
+     */
+    public function clear_currencies_cache($provider_key = null)
+    {
+        if ($provider_key) {
+            delete_transient('dpuwoo_currencies_' . $provider_key);
+        } else {
+            // Limpiar todos los caches de currencies
+            global $wpdb;
+            $wpdb->query("DELETE FROM $wpdb->options WHERE option_name LIKE '_transient_dpuwoo_currencies_%'");
+            $wpdb->query("DELETE FROM $wpdb->options WHERE option_name LIKE '_transient_timeout_dpuwoo_currencies_%'");
+        }
+    }
+    
+    /**
+     * Normalizar código de moneda (quitar prefijos como ARS_DOLAR_)
+     */
+    private function normalize_currency_code($code) {
+        // DolarAPI usa formatos como "ARS_DOLAR_OFICIAL", "ARS_DOLAR_BLUE"
+        if (strpos($code, '_DOLAR_') !== false) {
+            $parts = explode('_DOLAR_', $code);
+            return strtolower($parts[1]); // oficial, blue, bolsa, etc.
+        }
+        
+        // Si tiene guión bajo, tomar la última parte o limpiar
+        if (strpos($code, '_') !== false) {
+            return strtolower(end(explode('_', $code)));
+        }
+        
+        return $code;
+    }
+    
+    /**
+     * Detectar categoría de la moneda
+     */
+    private function detect_category($code, $existing_category) {
+        if (!empty($existing_category) && $existing_category !== 'fiat') {
+            return $existing_category;
+        }
+        
+        // Detectar crypto por el código
+        $cryptos = ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'USDT', 'ADA', 'DOGE', 'DOT', 'MATIC', 'LTC', 'AVAX', 'LINK', 'UNI', 'ATOM', 'XLM', 'TRX', 'NEAR', 'FIL', 'ALGO', 'SHIB', 'PEPE'];
+        
+        if (in_array(strtoupper($code), $cryptos)) {
+            return 'crypto';
+        }
+        
+        // DolarAPI tipos de dólar
+        $dollar_types = ['oficial', 'blue', 'bolsa', 'contadoconliqui', 'tarjeta', 'mayorista', 'cripto', 'mep', 'solidario'];
+        if (in_array(strtolower($code), $dollar_types)) {
+            return 'dollar_types';
+        }
+        
+        return 'fiat';
+    }
+    
+/**
+     * Obtener nombre legible de la moneda
+     */
+    private function get_currency_name($code, $existing_name = '') {
+        if (!empty($existing_name)) return $existing_name;
+        
+        $names = [
+            // Dollar types (DolarAPI)
+            'OFICIAL' => 'Dólar Oficial', 'BLUE' => 'Dólar Blue', 'BOLSA' => 'Dólar Bolsa',
+            'CONTADOCONLIQUI' => 'Contado con Liquidación', 'MAYORISTA' => 'Dólar Mayorista',
+            'CRIPTO' => 'Dólar Cripto', 'TARJETA' => 'Dólar Tarjeta', 'MEP' => 'Dólar MEP',
+            'SOLIDARIO' => 'Dólar Solidario',
+            // Fiat
+            'USD' => 'US Dollar', 'EUR' => 'Euro', 'GBP' => 'British Pound',
+            'JPY' => 'Japanese Yen', 'ARS' => 'Peso Argentino', 'BRL' => 'Real Brasileño',
+            'CLP' => 'Peso Chileno', 'MXN' => 'Peso Mexicano', 'COP' => 'Peso Colombiano',
+            'UYU' => 'Peso Uruguayo', 'PEN' => 'Sol Peruano', 'VES' => 'Bolívar Venezolano',
+            'BOB' => 'Boliviano Boliviano', 'BTC' => 'Bitcoin', 'ETH' => 'Ethereum',
+            'SOL' => 'Solana', 'BNB' => 'Binance Coin', 'XRP' => 'XRP', 'ADA' => 'Cardano',
+            'DOGE' => 'Dogecoin', 'DOT' => 'Polkadot', 'MATIC' => 'Polygon',
+            'AVAX' => 'Avalanche', 'LINK' => 'Chainlink', 'UNI' => 'Uniswap',
+            'ATOM' => 'Cosmos', 'LTC' => 'Litecoin', 'TRX' => 'TRON',
+            'NEAR' => 'NEAR Protocol', 'FIL' => 'Filecoin', 'ALGO' => 'Algorand',
+            'XLM' => 'Stellar', 'ETC' => 'Ethereum Classic', 'XMR' => 'Monero',
+            'SHIB' => 'Shiba Inu', 'PEPE' => 'Pepe', 'FET' => 'Fetch AI',
+            'GALA' => 'Gala', 'APT' => 'Aptos', 'STX' => 'Stacks',
+            'KAVA' => 'Kava', 'FTM' => 'Fantom', 'CAKE' => 'PancakeSwap',
+            'ZIL' => 'Zilliqa', 'ONE' => 'Harmony', 'EOS' => 'EOS',
+            'XTZ' => 'Tezos', 'FLOW' => 'Flow', 'HBAR' => 'Hedera',
+            'THETA' => 'Theta', 'CAD' => 'Canadian Dollar', 'AUD' => 'Australian Dollar',
+            'NZD' => 'New Zealand Dollar', 'CHF' => 'Swiss Franc', 'CNY' => 'Chinese Yuan',
+            'INR' => 'Indian Rupee', 'KRW' => 'South Korean Won', 'SGD' => 'Singapore Dollar',
+            'HKD' => 'Hong Kong Dollar', 'SEK' => 'Swedish Krona', 'NOK' => 'Norwegian Krone',
+            'DKK' => 'Danish Krone', 'PLN' => 'Polish Zloty', 'TRY' => 'Turkish Lira',
+            'ZAR' => 'South African Rand', 'RUB' => 'Russian Ruble'
+        ];
+        
+        return $names[$code] ?? $code;
+    }
+    
+    /**
+     * Obtener símbolo de la moneda (vacío si no existe)
+     */
+    private function get_currency_symbol($code) {
+        $symbols = [
+            // Dollar types (DolarAPI) - todos usan $
+            'OFICIAL' => '$', 'BLUE' => '$', 'BOLSA' => '$', 'CONTADOCONLIQUI' => '$',
+            'MAYORISTA' => '$', 'CRIPTO' => '$', 'TARJETA' => '$', 'MEP' => '$', 'SOLIDARIO' => '$',
+            // Fiat
+            'USD' => '$', 'EUR' => '€', 'GBP' => '£', 'JPY' => '¥', 'ARS' => '$',
+            'BRL' => 'R$', 'CLP' => '$', 'MXN' => '$', 'COP' => '$', 'UYU' => '$U',
+            'PEN' => 'S/', 'VES' => 'Bs', 'BOB' => 'Bs.', 'BTC' => '₿', 'ETH' => 'Ξ',
+            'SOL' => '◎', 'BNB' => '◎', 'XRP' => '✕', 'ADA' => '₳', 'DOGE' => 'Ð',
+            'DOT' => '●', 'MATIC' => '⬡', 'AVAX' => '▲', 'LINK' => '⬡', 'UNI' => '🦄',
+            'ATOM' => '⚛', 'LTC' => 'Ł', 'TRX' => '✳', 'NEAR' => 'Near', 'FIL' => '⨎',
+            'ALGO' => 'Algo', 'XLM' => '✦', 'ETC' => 'Ξ', 'XMR' => 'ɱ', 'SHIB' => 'Shib',
+            'PEPE' => 'Pepe', 'FET' => 'FET', 'GALA' => 'GALA', 'APT' => 'APT', 'STX' => 'STX',
+            'KAVA' => 'KAVA', 'FTM' => 'FTM', 'CAKE' => 'CAKE', 'ZIL' => 'ZIL', 'ONE' => 'ONE',
+            'EOS' => 'EOS', 'XTZ' => 'XTZ', 'FLOW' => 'FLOW', 'HBAR' => 'ħ', 'THETA' => 'Θ',
+            'CAD' => 'C$', 'AUD' => 'A$', 'NZD' => 'NZ$', 'CHF' => 'Fr', 'CNY' => '¥',
+            'INR' => '₹', 'KRW' => '₩', 'SGD' => 'S$', 'HKD' => 'HK$', 'SEK' => 'kr',
+            'NOK' => 'kr', 'DKK' => 'kr', 'PLN' => 'zł', 'TRY' => '₺', 'ZAR' => 'R',
+            'RUB' => '₽'
+        ];
+        
+return $symbols[$code] ?? '';
     }
     
     /**

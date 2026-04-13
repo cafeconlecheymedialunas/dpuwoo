@@ -164,7 +164,7 @@ class Admin
 		wp_enqueue_script(
 			$this->plugin_name . '-api-keys',
 			plugin_dir_url(__FILE__) . 'js/dpuwoo-api-keys.js',
-			array('jquery', $this->plugin_name . '-main'),
+			array('jquery', 'select2', $this->plugin_name . '-main'),
 			$this->version . '-' . time(), // Cache busting
 			false
 		);
@@ -202,6 +202,7 @@ class Admin
 				'settings_url'  => admin_url('admin.php?page=dpuwoo_configuration'),
 				'auto_url'      => admin_url('admin.php?page=dpuwoo_automation'),
 				'manual_url'    => admin_url('admin.php?page=dpuwoo_dashboard'),
+				'setup_complete' => self::is_setup_complete(),
 			]);
 		}
 	}
@@ -291,5 +292,62 @@ class Admin
 	public static function render_logs()
 	{
 		include DPUWOO_PLUGIN_DIR . 'admin/partials/dpuwoo-logs.php';
+	}
+
+	/**
+	 * Muestra el aviso de activación (one-shot) y lo elimina de la BD.
+	 */
+	public function display_admin_notices(): void
+	{
+		$notice = get_option('dpuwoo_admin_notice');
+		if (empty($notice['message'])) return;
+		printf(
+			'<div class="notice notice-%s%s"><p>%s</p></div>',
+			esc_attr($notice['type'] ?? 'info'),
+			!empty($notice['dismissible']) ? ' is-dismissible' : '',
+			esc_html($notice['message'])
+		);
+		delete_option('dpuwoo_admin_notice');
+	}
+
+	/**
+	 * Redirige al Dashboard la primera vez que admin_init corre post-activación.
+	 */
+	public function handle_activation_redirect(): void
+	{
+		if (!get_transient('dpuwoo_activation_redirect')) return;
+		delete_transient('dpuwoo_activation_redirect');
+		if (isset($_GET['activate-multi'])) return;
+		wp_safe_redirect(admin_url('admin.php?page=dpuwoo_settings'));
+		exit;
+	}
+
+	/**
+	 * Retorna el estado de los 2 pasos de configuración inicial.
+	 * Paso 1: origin_exchange_rate > 0 (tasa oficial capturada).
+	 * Paso 2: al menos un run grabado en la BD.
+	 */
+	public static function get_setup_progress(): array
+	{
+		global $wpdb;
+		$opts = get_option('dpuwoo_settings', []);
+		$rate = floatval($opts['origin_exchange_rate'] ?? 0);
+
+		return [
+			'rate_initialized' => $rate > 0,
+			'first_run_done'   => (int) $wpdb->get_var("SELECT COUNT(id) FROM {$wpdb->prefix}dpuwoo_runs") > 0,
+			'origin_rate'      => $rate,
+		];
+	}
+
+	/**
+	 * El onboarding está completo cuando el usuario confirmó (guardó) la tasa
+	 * de referencia explícitamente desde la pantalla de onboarding.
+	 * Un valor auto-fetcheado NO es suficiente — el usuario debe revisarlo y guardar.
+	 */
+	public static function is_setup_complete(): bool
+	{
+		$opts = get_option('dpuwoo_settings', []);
+		return !empty($opts['origin_rate_locked']);
 	}
 }

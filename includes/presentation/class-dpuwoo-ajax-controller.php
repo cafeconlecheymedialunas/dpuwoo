@@ -323,6 +323,35 @@ class Ajax_Controller
     }
 
     /**
+     * POST: dpuwoo_get_setup_progress
+     * Retorna el estado de los 2 pasos de onboarding.
+     */
+    public function handle_get_setup_progress(): void
+    {
+        $this->verify_nonce_only();
+        wp_send_json_success(Admin::get_setup_progress());
+    }
+
+    /**
+     * POST: dpuwoo_save_origin_rate
+     * Guarda la tasa de referencia inicial y la bloquea para edición posterior.
+     */
+    public function handle_save_origin_rate(): void
+    {
+        $this->verify_request();
+
+        $value = floatval($_POST['value'] ?? 0);
+        if ($value <= 0) {
+            wp_send_json_error(['message' => 'La tasa debe ser mayor a 0']);
+        }
+
+        $this->settings->set('origin_exchange_rate', $value);
+        $this->settings->set('origin_rate_locked', true);
+
+        wp_send_json_success(['value' => $value]);
+    }
+
+    /**
      * POST: dpuwoo_get_rates
      * Obtiene las tasas de cambio disponibles desde la API.
      */

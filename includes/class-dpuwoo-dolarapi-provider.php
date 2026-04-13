@@ -37,7 +37,6 @@ class DolarAPI_Provider extends Base_API_Provider {
     private function map_to_iso_country($country_code) {
         $country_lower = strtolower($country_code);
         
-        // Mapeo específico para DolarAPI (ISO 3166-1 alpha-3)
         $country_mapping = [
             'ar' => 'ARG',
             'cl' => 'CHL',
@@ -45,7 +44,9 @@ class DolarAPI_Provider extends Base_API_Provider {
             'br' => 'BRA',
             'mx' => 'MEX',
             'co' => 'COL',
-            'pe' => 'PER'
+            'pe' => 'PER',
+            've' => 'VEN',
+            'bo' => 'BOL'
         ];
         
         return $country_mapping[$country_lower] ?? strtoupper($country_code);
@@ -62,7 +63,9 @@ class DolarAPI_Provider extends Base_API_Provider {
             'BRA' => 'br',
             'MEX' => 'mx',
             'COL' => 'co',
-            'PER' => 'pe'
+            'PER' => 'pe',
+            'VEN' => 've',
+            'BOL' => 'bo'
         ];
         
         $country_upper = strtoupper($country_code);

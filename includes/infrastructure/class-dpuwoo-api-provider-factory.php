@@ -1,6 +1,17 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
+// Load base classes first
+require_once dirname(__FILE__, 2) . '/class-dpuwoo-trait-request.php';
+require_once dirname(__FILE__, 2) . '/class-dpuwoo-api-response-formatter.php';
+
+// Load provider classes
+require_once dirname(__FILE__, 2) . '/class-dpuwoo-dolarapi-provider.php';
+require_once dirname(__FILE__, 2) . '/class-dpuwoo-jsdelivr-provider.php';
+require_once dirname(__FILE__, 2) . '/class-dpuwoo-cryptoprice-provider.php';
+require_once dirname(__FILE__, 2) . '/class-dpuwoo-currencyapi-provider.php';
+require_once dirname(__FILE__, 2) . '/class-dpuwoo-exhangerateapi-provider.php';
+
 /**
  * Factory Pattern para instanciar proveedores de API de tasa de cambio.
  * Elimina el if/switch en API_Client::get_provider() y permite registrar
@@ -15,7 +26,9 @@ class API_Provider_Factory
     /** @var array<string, string> Mapa de clave => clase del provider. */
     private static array $registry = [
         'dolarapi'         => DolarAPI_Provider::class,
-        'currencyapi'      => CurrencyAPI_Provider::class,
+        'jsdelivr'        => Jsdelivr_Provider::class,
+        'cryptoprice'     => CryptoPrice_Provider::class,
+        'currencyapi'    => CurrencyAPI_Provider::class,
         'exchangerate-api' => ExchangeRateAPI_Provider::class,
     ];
 

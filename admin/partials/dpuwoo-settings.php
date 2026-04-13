@@ -4,23 +4,28 @@ global $wpdb;
 
 $opts = get_option('dpuwoo_settings', []);
 
-// Check if reference rate is already set
+// Reference rate (from selected API - uses origin_exchange_rate)
 $has_reference_rate = isset($opts['origin_exchange_rate']) && $opts['origin_exchange_rate'] > 0;
+$reference_exchange_rate = $opts['origin_exchange_rate'] ?? '';
 
 // Get connected APIs
 $connected_apis = $opts['connected_apis'] ?? [];
 $is_currencyapi_connected = !empty($opts['currencyapi_api_key']);
 $is_exchangerate_connected = !empty($opts['exchangerate_api_key']);
 
-// Reference currency and rate
+// Reference currency
 $reference_currency = $opts['reference_currency'] ?? 'USD';
-$origin_exchange_rate = $opts['origin_exchange_rate'] ?? '';
 
 $api_providers_list = [
     'dolarapi'      => 'DolarAPI.com',
-    'currencyapi'   => 'CurrencyAPI',
+    'jsdelivr'     => 'Jsdelivr Currency',
+    'cryptoprice'  => 'Crypto Price API',
+    'currencyapi'  => 'CurrencyAPI',
     'exchangerate' => 'ExchangeRate-API',
 ];
+
+// Get currencies from API for reference currency select (lazy load via JS)
+$provider = $opts['api_provider'] ?? 'dolarapi';
 
 $all_cats = get_terms(['taxonomy' => 'product_cat', 'hide_empty' => false]);
 $excluded_cats = $opts['exclude_categories'] ?? [];
@@ -71,134 +76,207 @@ $excluded_cats = $opts['exclude_categories'] ?? [];
 
         <?php settings_fields('dpuwoo_settings_group'); ?>
 
-        <!-- API Keys Section -->
+        <!-- API Provider Section -->
+        <?php
+        $current_provider = $opts['api_provider'] ?? 'dolarapi';
+        $providers = [
+            'dolarapi' => [
+                'label'    => 'DolarAPI.com',
+                'desc'   => 'Fiat Latam (AR, CL, VE, UY, MX, BO, BR, CO)',
+                'tag'    => '✓ Listo',
+                'tag_ok' => true,
+                'key_field' => null,
+                'icon_bg' => '#e0f2fe',
+                'icon_color' => '#0284c7',
+                'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 2a2 2 0 00-2 2v1H4a1 1 0 00-1 1v3a1 1 0 001 1h1v7a2 2 0 002 2h6a2 2 0 002-2v-7h1a1 1 0 001-1V4a1 1 0 00-1-1h-1V4a2 2 0 00-2-2h-2z"/>',
+            ],
+            'jsdelivr' => [
+                'label'  => 'Jsdelivr Currency',
+                'desc'  => 'Fiat mundial (170+ monedas)',
+                'tag'   => '✓ Listo',
+                'tag_ok' => true,
+                'key_field' => null,
+                'icon_bg' => '#e0e7ff',
+                'icon_color' => '#4f46e5',
+                'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 2a2 2 0 00-2 2v1H4a1 1 0 00-1 1v3a1 1 0 001 1h1v7a2 2 0 002 2h6a2 2 0 002-2v-7h1a1 1 0 001-1V4a1 1 0 00-1-1h-1V4a2 2 0 00-2-2h-2z"/>',
+            ],
+            'cryptoprice' => [
+                'label'  => 'Crypto Price API',
+                'desc'  => 'Criptomonedas (150+ coins)',
+                'tag'   => '✓ Listo',
+                'tag_ok' => true,
+                'key_field' => null,
+                'icon_bg' => '#fef3c7',
+                'icon_color' => '#f59e0b',
+                'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+            ],
+            'currencyapi' => [
+                'label'     => 'CurrencyAPI',
+                'desc'      => '170+ monedas · Internacional',
+                'tag'       => $is_currencyapi_connected ? '✓ Conectada' : 'Requiere API Key',
+                'tag_ok'    => $is_currencyapi_connected,
+                'key_field' => 'currencyapi_api_key',
+                'key_label' => 'API Key',
+                'key_link'  => 'https://currencyapi.com',
+                'icon_bg'   => '#fef3c7',
+                'icon_color' => '#d97706',
+                'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+            ],
+            'exchangerate' => [
+                'label'     => 'ExchangeRate-API',
+                'desc'      => '160+ monedas · Internacional',
+                'tag'       => $is_exchangerate_connected ? '✓ Conectada' : 'Requiere API Key',
+                'tag_ok'   => $is_exchangerate_connected,
+                'key_field' => 'exchangerate_api_key',
+                'key_label' => 'API Key',
+                'key_link'  => 'https://www.exchangerate-api.com',
+                'icon_bg'   => '#f0fdf4',
+                'icon_color' => '#16a34a',
+                'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>',
+            ],
+        ];
+        ?>
         <div class="dpuwoo-section">
             <button type="button" class="dpuwoo-collapsible dpuwoo-collapsible--expanded" data-section="apikeys">
                 <span class="dpuwoo-collapsible__icon">
                     <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
                 </span>
-                <span class="dpuwoo-collapsible__title">API Keys</span>
+                <span class="dpuwoo-collapsible__title">Conexión API</span>
                 <span class="dpuwoo-collapsible__summary">
                     <?php 
-                    $connected_count = ($is_currencyapi_connected ? 1 : 0) + ($is_exchangerate_connected ? 1 : 0);
-                    echo $connected_count > 0 ? "$connected_count conectada(s)" : 'Ninguna';
+                    $provider_labels = [
+                        'dolarapi' => 'DolarAPI',
+                        'jsdelivr' => 'Jsdelivr',
+                        'cryptoprice' => 'Crypto Price',
+                        'currencyapi' => 'CurrencyAPI',
+                        'exchangerate' => 'ExchangeRate'
+                    ];
+                    echo esc_html($provider_labels[$current_provider] ?? $current_provider);
                     ?>
                 </span>
                 <span class="dpuwoo-collapsible__chevron"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></span>
             </button>
             <div class="dpuwoo-collapsible__content" id="section-apikeys">
-                <div class="dpuwoo-fields-grid">
-                    <!-- DolarAPI (always available) -->
-                    <div class="dpuwoo-field">
-                        <label class="dpuwoo-field__label">DolarAPI.com</label>
-                        <div class="dpuwoo-field__input-wrap">
-                            <span class="dpuwoo-field__status dpuwoo-field__status--connected">✓ Conectada</span>
-                            <span class="dpuwoo-field__hint">No requiere API Key</span>
+                <!-- Provider Cards Grid -->
+                <div class="dpuwoo-provider-grid">
+                    <?php foreach ($providers as $slug => $p): 
+                        $selected = ($slug === $current_provider);
+                        $has_key = !empty($opts[$p['key_field']] ?? '');
+                    ?>
+                    <div class="dpuwoo-provider-card <?php echo $selected ? 'dpuwoo-provider-card--selected' : ''; ?>" 
+                         data-provider="<?php echo esc_attr($slug); ?>"
+                         onclick="selectProvider('<?php echo esc_attr($slug); ?>')">
+                        <div class="dpuwoo-provider-card__radio">
+                            <div class="dpuwoo-provider-card__radio-inner <?php echo $selected ? 'dpuwoo-provider-card__radio-inner--checked' : ''; ?>"></div>
                         </div>
-                        <input type="hidden" name="dpuwoo_settings[exchangerate_api_key]" value="<?php echo esc_attr($opts['exchangerate_api_key'] ?? ''); ?>">
+                        <div class="dpuwoo-provider-card__icon" style="background: <?php echo esc_attr($p['icon_bg']); ?>">
+                            <svg width="20" height="20" fill="none" stroke="<?php echo esc_attr($p['icon_color']); ?>" viewBox="0 0 24 24" stroke-width="2"><?php echo $p['icon']; ?></svg>
+                        </div>
+                        <div class="dpuwoo-provider-card__content">
+                            <div class="dpuwoo-provider-card__name"><?php echo esc_html($p['label']); ?></div>
+                            <div class="dpuwoo-provider-card__desc"><?php echo esc_html($p['desc']); ?></div>
+                        </div>
+                        <div class="dpuwoo-provider-card__status">
+                            <?php if (in_array($slug, ['dolarapi', 'jsdelivr', 'cryptoprice'])): ?>
+                                <span class="dpuwoo-provider-card__badge dpuwoo-provider-card__badge--success"><?php echo $p['tag']; ?></span>
+                            <?php elseif ($has_key): ?>
+                                <span class="dpuwoo-provider-card__badge dpuwoo-provider-card__badge--success"><?php echo $p['tag']; ?></span>
+                            <?php else: ?>
+                                <span class="dpuwoo-provider-card__badge">API Key</span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+                <input type="hidden" name="dpuwoo_settings[api_provider]" id="dpuwoo-api-provider-input" value="<?php echo esc_attr($current_provider); ?>">
+
+                <!-- API Key Input Panels (show only for selected provider that requires key) -->
+                <div class="dpuwoo-api-key-panels">
+                    <div class="dpuwoo-api-key-panel" id="panel-currencyapi" style="display: <?php echo $current_provider === 'currencyapi' ? 'block' : 'none'; ?>;">
+                        <div class="dpuwoo-api-key-panel__header">
+                            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                            <span>CurrencyAPI</span>
+                        </div>
+                        <div class="dpuwoo-api-key-panel__body">
+                            <label class="dpuwoo-api-key-panel__label">
+                                <?php echo esc_html($p['key_label']); ?>
+                                <a href="https://currencyapi.com" target="_blank" rel="noopener">Obtener key →</a>
+                            </label>
+                            <div class="dpuwoo-api-key-panel__input-wrap">
+                                <input type="password" name="dpuwoo_settings[currencyapi_api_key]" value="<?php echo esc_attr($opts['currencyapi_api_key'] ?? ''); ?>" class="dpuwoo-field__input" placeholder="Tu API Key">
+                                <button type="button" class="dpuwoo-toggle-pass" onclick="toggleApiKey('currencyapi')">
+                                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                </button>
+                            </div>
+                            <button type="button" class="dpuwoo-btn dpuwoo-btn--outline dpuwoo-btn--sm dpuwoo-test-api" data-api="currencyapi">
+                                <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                Test
+                            </button>
+                        </div>
                     </div>
 
-                    <!-- CurrencyAPI -->
-                    <div class="dpuwoo-field">
-                        <label class="dpuwoo-field__label">CurrencyAPI</label>
-                        <input type="text" name="dpuwoo_settings[currencyapi_api_key]" value="<?php echo esc_attr($opts['currencyapi_api_key'] ?? ''); ?>" class="dpuwoo-field__input" placeholder="Tu API Key">
-                        <?php if ($is_currencyapi_connected): ?>
-                        <span class="dpuwoo-field__status dpuwoo-field__status--connected">✓ Conectada</span>
-                        <?php endif; ?>
-                        <button type="button" class="dpuwoo-btn dpuwoo-btn--outline dpuwoo-btn--sm dpuwoo-test-api" data-api="currencyapi">
-                            <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                            Test
-                        </button>
-                    </div>
-
-                    <!-- ExchangeRate -->
-                    <div class="dpuwoo-field">
-                        <label class="dpuwoo-field__label">ExchangeRate-API</label>
-                        <input type="text" name="dpuwoo_settings[exchangerate_api_key]" value="<?php echo esc_attr($opts['exchangerate_api_key'] ?? ''); ?>" class="dpuwoo-field__input" placeholder="Tu API Key">
-                        <?php if ($is_exchangerate_connected): ?>
-                        <span class="dpuwoo-field__status dpuwoo-field__status--connected">✓ Conectada</span>
-                        <?php endif; ?>
-                        <button type="button" class="dpuwoo-btn dpuwoo-btn--outline dpuwoo-btn--sm dpuwoo-test-api" data-api="exchangerate">
-                            <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                            Test
-                        </button>
+                    <div class="dpuwoo-api-key-panel" id="panel-exchangerate" style="display: <?php echo $current_provider === 'exchangerate' ? 'block' : 'none'; ?>;">
+                        <div class="dpuwoo-api-key-panel__header">
+                            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                            <span>ExchangeRate-API</span>
+                        </div>
+                        <div class="dpuwoo-api-key-panel__body">
+                            <label class="dpuwoo-api-key-panel__label">
+                                API Key
+                                <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener">Obtener key →</a>
+                            </label>
+                            <div class="dpuwoo-api-key-panel__input-wrap">
+                                <input type="password" name="dpuwoo_settings[exchangerate_api_key]" value="<?php echo esc_attr($opts['exchangerate_api_key'] ?? ''); ?>" class="dpuwoo-field__input" placeholder="Tu API Key">
+                                <button type="button" class="dpuwoo-toggle-pass" onclick="toggleApiKey('exchangerate')">
+                                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                </button>
+                            </div>
+                            <button type="button" class="dpuwoo-btn dpuwoo-btn--outline dpuwoo-btn--sm dpuwoo-test-api" data-api="exchangerate">
+                                <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                Test
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <div id="dpuwoo-api-test-result" class="dpuwoo-api-test-result"></div>
             </div>
         </div>
 
-        <!-- Reference Rate Section -->
+        <!-- Reference Currency Section -->
         <div class="dpuwoo-section">
-            <button type="button" class="dpuwoo-collapsible <?php echo $has_reference_rate ? '' : 'dpuwoo-collapsible--expanded'; ?>" data-section="reference">
+            <button type="button" class="dpuwoo-collapsible <?php echo !empty($reference_currency) ? '' : 'dpuwoo-collapsible--expanded'; ?>" data-section="reference">
                 <span class="dpuwoo-collapsible__icon">
-                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 </span>
-                <span class="dpuwoo-collapsible__title">Tasa de Referencia</span>
+                <span class="dpuwoo-collapsible__title">Moneda de Referencia</span>
                 <span class="dpuwoo-collapsible__summary">
-                    <?php if ($has_reference_rate): ?>
-                        <?php echo esc_html($reference_currency); ?> - $<?php echo number_format($origin_exchange_rate, 2); ?>
+                    <?php if (!empty($reference_currency)): ?>
+                        <?php echo esc_html($reference_currency); ?>
                     <?php else: ?>
-                        No configurada
+                        Seleccioná
                     <?php endif; ?>
                 </span>
                 <span class="dpuwoo-collapsible__chevron"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></span>
             </button>
             <div class="dpuwoo-collapsible__content" id="section-reference">
-                <?php if ($has_reference_rate): ?>
                 <div class="dpuwoo-reference-set">
                     <div class="dpuwoo-reference-set__info">
-                        <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         <div>
-                            <strong>Tipo de cambio configurado</strong>
-                            <p><?php echo esc_html($reference_currency); ?>: <strong>$<?php echo number_format($origin_exchange_rate, 2); ?></strong></p>
-                            <p class="dpuwoo-reference-set__hint">Este valor se usa como base cuando no hay historial.</p>
+                            <strong>Seleccioná la moneda de referencia</strong>
+                            <p class="dpuwoo-reference-set__hint">Elegí la moneda que usás para tus precios en la tienda.</p>
+                        </div>
+                    </div>
+                    <div class="dpuwoo-fields-grid" style="margin-top: 16px;">
+                        <div class="dpuwoo-field">
+                            <label class="dpuwoo-field__label">Moneda</label>
+                            <select name="dpuwoo_settings[reference_currency]" id="dpuwoo-ref-currency" class="dpuwoo-field__select" data-selected="<?php echo esc_attr($reference_currency); ?>">
+                                <option value="">Cargando...</option>
+                            </select>
+                            <p class="dpuwoo-field__hint">Las monedas se cargan desde la API seleccionada.</p>
                         </div>
                     </div>
                 </div>
-                <?php else: ?>
-                <div class="dpuwoo-fields-grid">
-                    <!-- Reference Currency -->
-                    <div class="dpuwoo-field">
-                        <label class="dpuwoo-field__label">Moneda de referencia</label>
-                        <select name="dpuwoo_settings[reference_currency]" class="dpuwoo-field__select" id="dpuwoo-ref-currency">
-                            <?php
-                            $currencies = [
-                                'USD' => 'Dólar USD',
-                                'EUR' => 'Euro EUR',
-                                'GBP' => 'Libra GBP',
-                                'ARS' => 'Peso ARS',
-                                'BRL' => 'Real BRL',
-                                'CLP' => 'Peso CLP',
-                                'MXN' => 'Peso MXN',
-                            ];
-                            foreach ($currencies as $code => $name): ?>
-                            <option value="<?php echo esc_attr($code); ?>" <?php selected($reference_currency, $code); ?>><?php echo esc_html($name); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                        <p class="dpuwoo-field__hint">Moneda para la tasa de referencia.</p>
-                    </div>
-
-                    <!-- Origin Exchange Rate -->
-                    <div class="dpuwoo-field">
-                        <label class="dpuwoo-field__label">Valor de la tasa</label>
-                        <div class="dpuwoo-field__input-wrap">
-                            <span class="dpuwoo-field__prefix">$</span>
-                            <input type="number" name="dpuwoo_settings[origin_exchange_rate]" value="<?php echo esc_attr($origin_exchange_rate); ?>" step="0.0001" min="0.0001" class="dpuwoo-field__input" id="dpuwoo-ref-rate" placeholder="Ej: 850.00">
-                        </div>
-                        <p class="dpuwoo-field__hint">Ingresá el valor manualmente o usá "Obtener de API".</p>
-                    </div>
-                </div>
-
-                <!-- Get from API -->
-                <div class="dpuwoo-get-from-api">
-                    <button type="button" id="dpuwoo-get-from-api" class="dpuwoo-btn dpuwoo-btn--primary">
-                        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                        Obtener de API
-                    </button>
-                    <div id="dpuwoo-api-rates-result" class="dpuwoo-api-rates-result"></div>
-                </div>
-                <?php endif; ?>
             </div>
         </div>
 

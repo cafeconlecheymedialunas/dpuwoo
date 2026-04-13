@@ -3226,3 +3226,225 @@
 /* Utility */
 .hidden { display: none !important; }
 .block { display: block !important; }
+
+/* ── Provider Cards Grid ───────────────────────────────────── */
+.dpuwoo-provider-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.dpuwoo-provider-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #fff;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.dpuwoo-provider-card:hover {
+  border-color: #6366f1;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.1);
+}
+
+.dpuwoo-provider-card--selected {
+  border-color: #6366f1;
+  background: #fafafe;
+}
+
+.dpuwoo-provider-card__radio {
+  flex-shrink: 0;
+}
+
+.dpuwoo-provider-card__radio-inner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #d1d5db;
+  border-radius: 50%;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.dpuwoo-provider-card__radio-inner--checked {
+  border-color: #6366f1;
+  background: #6366f1;
+  box-shadow: inset 0 0 0 3px #fff;
+}
+
+.dpuwoo-provider-card__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dpuwoo-provider-card__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.dpuwoo-provider-card__name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 2px;
+}
+
+.dpuwoo-provider-card__desc {
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+.dpuwoo-provider-card__status {
+  flex-shrink: 0;
+}
+
+.dpuwoo-provider-card__badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 20px;
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.dpuwoo-provider-card__badge--success {
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+/* ── API Key Panel ────────────────────────────────────────── */
+.dpuwoo-api-key-section {
+  margin-top: 16px;
+}
+
+.dpuwoo-api-key-panel {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.dpuwoo-api-key-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.dpuwoo-api-key-panel__header--success {
+  background: #f0fdf4;
+  color: #166534;
+  border-bottom-color: #bbf7d0;
+}
+
+.dpuwoo-api-key-panel__body {
+  padding: 16px;
+}
+
+.dpuwoo-api-key-panel__label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+.dpuwoo-api-key-panel__label a {
+  font-size: 12px;
+  font-weight: 500;
+  color: #6366f1;
+  text-decoration: none;
+}
+
+.dpuwoo-api-key-panel__label a:hover {
+  text-decoration: underline;
+}
+
+.dpuwoo-api-key-panel__input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.dpuwoo-api-key-panel__input {
+  width: 100%;
+  padding: 10px 40px 10px 12px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: monospace;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.dpuwoo-api-key-panel__input:focus {
+  border-color: #6366f1;
+}
+
+.dpuwoo-api-key-panel__toggle {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 4px;
+}
+
+.dpuwoo-api-key-panel__toggle:hover {
+  color: #374151;
+}
+
+.dpuwoo-api-key-panel__text {
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.6;
+  margin: 0 0 12px;
+}
+
+.dpuwoo-api-key-panel--ready .dpuwoo-api-key-panel__body {
+  padding: 16px;
+}
+
+/* ── API Test Result ───────────────────────────────────────── */
+.dpuwoo-api-test-result {
+  margin-top: 12px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  display: none;
+}
+
+.dpuwoo-api-test-result.show {
+  display: block;
+}
+
+.dpuwoo-api-test-result--success {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+}
+
+.dpuwoo-api-test-result--error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+}

@@ -199,7 +199,9 @@ class Dpuwoo {
 
 		$this->loader->add_action('admin_enqueue_scripts', $plugin_admin, 'enqueue_styles');
 		$this->loader->add_action('admin_enqueue_scripts', $plugin_admin, 'enqueue_scripts');
-		$this->loader->add_action('admin_menu', $plugin_admin, 'register_menu');
+		$this->loader->add_action('admin_menu',     $plugin_admin, 'register_menu');
+		$this->loader->add_action('admin_init',     $plugin_admin, 'handle_activation_redirect');
+		$this->loader->add_action('admin_notices',  $plugin_admin, 'display_admin_notices');
 
 		$plugin_setting = new Admin_Settings();
 		$this->loader->add_action('admin_init', $plugin_setting, 'register_settings');
@@ -229,7 +231,9 @@ class Dpuwoo {
 		$this->loader->add_action('wp_ajax_dpuwoo_initialize_baseline', $ajax, 'handle_initialize_baseline');
 		$this->loader->add_action('wp_ajax_dpuwoo_test_api',            $ajax, 'handle_test_api');
 		$this->loader->add_action('wp_ajax_dpuwoo_get_rates',         $ajax, 'handle_get_rates');
-		$this->loader->add_action('wp_ajax_dpuwoo_get_dashboard_stats', $ajax, 'handle_get_dashboard_stats');
+		$this->loader->add_action('wp_ajax_dpuwoo_get_dashboard_stats',  $ajax, 'handle_get_dashboard_stats');
+		$this->loader->add_action('wp_ajax_dpuwoo_get_setup_progress',   $ajax, 'handle_get_setup_progress');
+		$this->loader->add_action('wp_ajax_dpuwoo_save_origin_rate',      $ajax, 'handle_save_origin_rate');
 	}
 	
 

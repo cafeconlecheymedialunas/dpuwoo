@@ -418,13 +418,63 @@
         .fail(function () { $('#dpuwoo-activity-loading').text('Error al cargar datos.'); });
     }
 
+    // ── Onboarding ────────────────────────────────────────────────────────────
+
+    function reloadIfComplete() {
+        $.post(dpuwoo_dashboard.ajax_url,
+            { action: 'dpuwoo_get_setup_progress', nonce: dpuwoo_dashboard.nonce },
+            function (res) {
+                if (res.success && res.data.rate_initialized && res.data.first_run_done) {
+                    location.reload();
+                }
+            }
+        );
+    }
+
     // ── Bootstrap ─────────────────────────────────────────────────────────────
 
     $(function () {
-        $('#dpuwoo-btn-simulate').on('click', startSimulation);
-        $('#dpuwoo-btn-apply').on('click', startApply);
-        $('#dpuwoo-sim-close').on('click', function () { $('#dpuwoo-sim-result').hide(); });
-        loadDashboardData(false);
+        // Normal dashboard events (only run if dashboard elements exist)
+        if (document.getElementById('dpuwoo-btn-simulate')) {
+            $('#dpuwoo-btn-simulate').on('click', startSimulation);
+            $('#dpuwoo-btn-apply').on('click', startApply);
+            $('#dpuwoo-sim-close').on('click', function () { $('#dpuwoo-sim-result').hide(); });
+            loadDashboardData(false);
+        }
+
+        // ── Onboarding: guardar tasa de referencia ────────────────────────────
+
+        $(document).on('click', '#dpuwoo-rate-save-btn', function () {
+            var $btn  = $(this);
+            var value = parseFloat($('#dpuwoo-rate-input').val());
+            var $msg  = $('#dpuwoo-rate-save-msg');
+
+            if (!value || value <= 0) {
+                $msg.css('color', '#ef4444').text('Ingresá un valor válido mayor a 0.');
+                $('#dpuwoo-rate-input').css('border-color', '#ef4444').focus();
+                return;
+            }
+
+            DPUWOO_Utils.btnLoading($btn, 'Guardando...');
+            $msg.text('');
+
+            $.post(dpuwoo_ajax.ajax_url,
+                { action: 'dpuwoo_save_origin_rate', nonce: dpuwoo_ajax.nonce, value: value },
+                function (res) {
+                    DPUWOO_Utils.btnReset($btn);
+                    if (res.success) {
+                        $msg.css('color', '#16a34a').text('¡Guardado! Redirigiendo a Configuración...');
+                        setTimeout(function () { window.location.href = dpuwoo_dashboard.settings_url; }, 700);
+                    } else {
+                        $msg.css('color', '#ef4444').text((res.data && res.data.message) || 'Error al guardar.');
+                    }
+                }
+            ).fail(function () {
+                DPUWOO_Utils.btnReset($btn);
+                $msg.css('color', '#ef4444').text('Error de conexión.');
+            });
+        });
+
     });
 
 }(jQuery));

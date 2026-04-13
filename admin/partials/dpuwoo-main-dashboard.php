@@ -1,6 +1,129 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
+/* ══════════════════════════════════════════════════════════════════
+ *  ONBOARDING — pantalla completa hasta que el setup esté completo
+ * ══════════════════════════════════════════════════════════════════ */
+$_setup      = Admin::get_setup_progress();
+$origin_rate = $_setup['origin_rate'];
+$rate_auto   = $origin_rate > 0; // La API lo fetcheó automáticamente
+
+if (!Admin::is_setup_complete()):
+?>
+<div class="wrap">
+<div style="max-width:600px; margin:40px auto; padding:0 16px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+
+    <!-- Header -->
+    <div style="text-align:center; margin-bottom:32px;">
+        <div style="display:inline-flex; align-items:center; justify-content:center; width:60px; height:60px; background:linear-gradient(135deg,#6366f1,#8b5cf6); border-radius:18px; margin-bottom:16px; box-shadow:0 4px 14px rgba(99,102,241,.35);">
+            <svg width="30" height="30" fill="none" stroke="#fff" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <h1 style="font-size:24px; font-weight:700; color:#111827; margin:0 0 6px;">Bienvenido a Dollar Sync</h1>
+        <p style="font-size:15px; color:#6b7280; margin:0;">Necesitamos un dato clave antes de empezar</p>
+    </div>
+
+    <!-- Explicación conceptual -->
+    <div style="background:#f5f3ff; border:1px solid #ddd6fe; border-radius:12px; padding:18px 20px; margin-bottom:20px; display:flex; gap:14px; align-items:flex-start;">
+        <svg width="22" height="22" fill="none" stroke="#7c3aed" viewBox="0 0 24 24" stroke-width="2" style="flex-shrink:0; margin-top:1px;"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <div>
+            <div style="font-size:14px; font-weight:600; color:#5b21b6; margin-bottom:4px;">¿Qué es la tasa de referencia inicial?</div>
+            <div style="font-size:13px; color:#6b7280; line-height:1.6;">
+                Es el valor del dólar que estaba vigente <strong style="color:#374151;">cuando cargaste los precios de tus productos</strong> por última vez.<br>
+                Dollar Sync la usa como punto de partida para calcular cuánto cambiaron los precios respecto al dólar actual.
+            </div>
+        </div>
+    </div>
+
+    <!-- Card de acción -->
+    <div style="background:#fff; border:1px solid #e5e7eb; border-radius:16px; box-shadow:0 1px 6px rgba(0,0,0,.07); overflow:hidden;">
+
+        <!-- Card header -->
+        <div style="padding:20px 24px 0;">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:4px;">
+                <div style="width:28px; height:28px; background:#ede9fe; border-radius:50%; display:flex; align-items:center; justify-content:center;">
+                    <svg width="14" height="14" fill="none" stroke="#7c3aed" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                </div>
+                <span style="font-size:15px; font-weight:700; color:#111827;">
+                    <?php echo $rate_auto ? 'Confirmá la tasa obtenida automáticamente' : 'Ingresá la tasa de referencia inicial'; ?>
+                </span>
+            </div>
+            <p style="font-size:13px; color:#6b7280; margin:6px 0 0 38px;">
+                <?php if ($rate_auto): ?>
+                    Obtuvimos este valor automáticamente. Verificá que sea correcto y hacé click en <strong>Confirmar y continuar</strong>.
+                <?php else: ?>
+                    No pudimos obtenerla automáticamente. Buscá en Google <em>"dólar oficial hoy"</em> o en el historial de tu banco y escribí el valor.
+                <?php endif; ?>
+            </p>
+        </div>
+
+        <!-- Input area -->
+        <div style="padding:20px 24px 24px;">
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+
+                <!-- Input con prefijo $ -->
+                <div style="position:relative; flex-shrink:0;">
+                    <span style="position:absolute; left:13px; top:50%; transform:translateY(-50%); color:#6b7280; font-size:14px; font-weight:600; pointer-events:none;">$</span>
+                    <input
+                        type="number"
+                        id="dpuwoo-rate-input"
+                        value="<?php echo $rate_auto ? esc_attr(number_format($origin_rate, 2, '.', '')) : ''; ?>"
+                        step="0.01"
+                        min="0.01"
+                        placeholder="ej: 1395.00"
+                        style="padding:10px 14px 10px 28px; border:2px solid <?php echo $rate_auto ? '#a5b4fc' : '#d1d5db'; ?>; border-radius:10px; font-size:16px; font-weight:700; width:160px; outline:none; color:#111827; transition:border-color .15s;"
+                        onfocus="this.style.borderColor='#6366f1'"
+                        onblur="this.style.borderColor='<?php echo $rate_auto ? '#a5b4fc' : '#d1d5db'; ?>'"
+                    >
+                </div>
+
+                <span style="font-size:13px; color:#9ca3af; font-weight:500;">
+                    <?php echo function_exists('get_woocommerce_currency') ? get_woocommerce_currency() : 'ARS'; ?> / USD
+                </span>
+
+                <?php if ($rate_auto): ?>
+                <span style="font-size:11px; color:#22c55e; font-weight:600; background:#f0fdf4; border:1px solid #bbf7d0; padding:3px 10px; border-radius:20px;">
+                    Obtenida automáticamente
+                </span>
+                <?php endif; ?>
+            </div>
+
+            <!-- CTA Button -->
+            <button id="dpuwoo-rate-save-btn" style="display:inline-flex; align-items:center; gap:8px; background:linear-gradient(135deg,#6366f1,#7c3aed); color:#fff; border:none; border-radius:10px; padding:11px 24px; font-size:14px; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(99,102,241,.35); transition:opacity .15s;">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                <?php echo $rate_auto ? 'Confirmar y continuar' : 'Guardar y continuar'; ?>
+            </button>
+
+            <div id="dpuwoo-rate-save-msg" style="font-size:12px; margin-top:10px; min-height:16px;"></div>
+        </div>
+
+        <!-- Footer hint -->
+        <div style="background:#f9fafb; border-top:1px solid #f3f4f6; padding:12px 24px; display:flex; align-items:center; gap:8px;">
+            <svg width="13" height="13" fill="none" stroke="#9ca3af" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+            <span style="font-size:12px; color:#9ca3af;">Una vez confirmada, esta tasa no se puede cambiar desde Configuración. Si cometés un error, contactá al soporte.</span>
+        </div>
+
+    </div><!-- /card -->
+
+    <!-- ¿No sabés el valor? -->
+    <?php if (!$rate_auto): ?>
+    <div style="margin-top:16px; background:#fffbeb; border:1px solid #fde68a; border-radius:10px; padding:14px 18px; display:flex; gap:12px; align-items:flex-start;">
+        <svg width="16" height="16" fill="none" stroke="#d97706" viewBox="0 0 24 24" stroke-width="2" style="flex-shrink:0; margin-top:1px;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        <div style="font-size:12px; color:#92400e; line-height:1.6;">
+            <strong>¿No sabés qué valor poner?</strong><br>
+            Buscá en Google "dólar oficial Argentina" y tomá el valor de venta del día en que cargaste tus últimos precios. Si no recordás la fecha exacta, usá el valor de hoy: los ajustes serán mínimos.
+        </div>
+    </div>
+    <?php endif; ?>
+
+</div><!-- /max-width wrapper -->
+</div><!-- /wrap -->
+<?php
+return; // No renderizar el dashboard normal
+endif;
+
+/* ══════════════════════════════════════════════════════════════════
+ *  DASHBOARD NORMAL — solo cuando el setup está completo
+ * ══════════════════════════════════════════════════════════════════ */
 $opts          = get_option('dpuwoo_settings', []);
 $cron_enabled  = !empty($opts['cron_enabled']);
 $api_provider  = $opts['api_provider'] ?? 'dolarapi';
@@ -37,6 +160,14 @@ $product_count  = Log_Repository::get_instance()->count_all_products();
             </span>
         </div>
     </div>
+
+    <!-- ── Aviso: primera actualización pendiente ───────────────────────────── -->
+    <?php if (!$_setup['first_run_done']): ?>
+    <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:12px 18px; margin-bottom:18px; display:flex; align-items:center; gap:12px; font-size:13px; color:#1d4ed8;">
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" style="flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span>Sistema listo. Podés <a href="<?php echo esc_url(admin_url('admin.php?page=dpuwoo_dashboard')); ?>" style="color:#2563eb; font-weight:600; text-decoration:none;">ejecutar la primera actualización</a> cuando quieras, o activar el cron para que corra automáticamente.</span>
+    </div>
+    <?php endif; ?>
 
     <!-- ── Hero: Simulate + KPI strip ────────────────────────────────────────── -->
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;">

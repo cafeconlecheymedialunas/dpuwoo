@@ -87,7 +87,12 @@ class Admin_Settings
         $out['country']                = sanitize_text_field($input['country']                ?? 'AR');
         $out['base_currency']          = sanitize_text_field($input['base_currency']          ?? (function_exists('get_woocommerce_currency') ? get_woocommerce_currency() : 'ARS'));
         $out['reference_currency']     = sanitize_text_field($input['reference_currency']     ?? 'USD');
-        $out['origin_exchange_rate']   = floatval($input['origin_exchange_rate'] ?? 1.0);
+        // Preservar si el campo no vino en el POST (campo oculto cuando ya está configurado)
+        $existing_rate = floatval($existing['origin_exchange_rate'] ?? 0);
+        $submitted_rate = isset($input['origin_exchange_rate']) ? floatval($input['origin_exchange_rate']) : null;
+        $out['origin_exchange_rate'] = ($submitted_rate !== null && $submitted_rate > 0) ? $submitted_rate : ($existing_rate > 0 ? $existing_rate : 0);
+        // Preservar el flag de bloqueo desde onboarding
+        $out['origin_rate_locked']   = $existing['origin_rate_locked'] ?? false;
         $out['rate_generation_method'] = in_array($input['rate_generation_method'] ?? '', ['api', 'manual']) ? $input['rate_generation_method'] : 'manual';
 
         // Preservar currency y cron_currency
