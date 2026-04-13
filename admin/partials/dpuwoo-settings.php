@@ -17,11 +17,14 @@ $is_exchangerate_connected = !empty($opts['exchangerate_api_key']);
 $reference_currency = $opts['reference_currency'] ?? 'USD';
 
 $api_providers_list = [
-    'dolarapi'      => 'DolarAPI.com',
-    'jsdelivr'     => 'Jsdelivr Currency',
-    'cryptoprice'  => 'Crypto Price API',
-    'currencyapi'  => 'CurrencyAPI',
-    'exchangerate' => 'ExchangeRate-API',
+    'dolarapi'       => 'DolarAPI',
+    'jsdelivr'       => 'Jsdelivr',
+    'cryptoprice'    => 'CoinGecko',
+    'moneyconvert'   => 'MoneyConvert',
+    'hexarate'       => 'HexaRate',
+    'foreignrate'    => 'ForeignRate',
+    'currencyapi'   => 'CurrencyAPI',
+    'exchangerate'  => 'ExchangeRate-API',
 ];
 
 // Get currencies from API for reference currency select (lazy load via JS)
@@ -101,13 +104,43 @@ $excluded_cats = $opts['exclude_categories'] ?? [];
                 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 2a2 2 0 00-2 2v1H4a1 1 0 00-1 1v3a1 1 0 001 1h1v7a2 2 0 002 2h6a2 2 0 002-2v-7h1a1 1 0 001-1V4a1 1 0 00-1-1h-1V4a2 2 0 00-2-2h-2z"/>',
             ],
             'cryptoprice' => [
-                'label'  => 'Crypto Price API',
-                'desc'  => 'Criptomonedas (150+ coins)',
+                'label'  => 'CoinGecko',
+                'desc'  => 'Criptomonedas (100+ coins)',
                 'tag'   => '✓ Listo',
                 'tag_ok' => true,
                 'key_field' => null,
                 'icon_bg' => '#fef3c7',
                 'icon_color' => '#f59e0b',
+                'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+            ],
+            'moneyconvert' => [
+                'label'   => 'MoneyConvert',
+                'desc'    => 'Fiat mundial (182+ monedas)',
+                'tag'     => '✓ Listo',
+                'tag_ok'  => true,
+                'key_field' => null,
+                'icon_bg'  => '#e0f2fe',
+                'icon_color' => '#0891b2',
+                'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+            ],
+            'hexarate' => [
+                'label'   => 'HexaRate',
+                'desc'    => 'Fiat mundial (170+ monedas)',
+                'tag'     => '✓ Listo',
+                'tag_ok'  => true,
+                'key_field' => null,
+                'icon_bg'  => '#f0f9ff',
+                'icon_color' => '#0284c7',
+                'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+            ],
+            'foreignrate' => [
+                'label'   => 'ForeignRate',
+                'desc'    => 'Fiat mundial (150+ monedas)',
+                'tag'     => '✓ Listo',
+                'tag_ok'  => true,
+                'key_field' => null,
+                'icon_bg'  => '#f5f3ff',
+                'icon_color' => '#7c3aed',
                 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>',
             ],
             'currencyapi' => [
@@ -145,11 +178,14 @@ $excluded_cats = $opts['exclude_categories'] ?? [];
                 <span class="dpuwoo-collapsible__summary">
                     <?php 
                     $provider_labels = [
-                        'dolarapi' => 'DolarAPI',
-                        'jsdelivr' => 'Jsdelivr',
-                        'cryptoprice' => 'Crypto Price',
+                        'dolarapi'      => 'DolarAPI',
+                        'jsdelivr'     => 'Jsdelivr',
+                        'cryptoprice'  => 'CoinGecko',
+                        'moneyconvert' => 'MoneyConvert',
+                        'hexarate'     => 'HexaRate',
+                        'foreignrate'  => 'ForeignRate',
                         'currencyapi' => 'CurrencyAPI',
-                        'exchangerate' => 'ExchangeRate'
+                        'exchangerate' => 'ExchangeRate-API'
                     ];
                     echo esc_html($provider_labels[$current_provider] ?? $current_provider);
                     ?>

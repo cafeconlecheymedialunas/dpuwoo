@@ -8,8 +8,13 @@ $total_products = $product_count->publish ?? 0;
 
 $provider_key = $opts['api_provider'] ?? 'dolarapi';
 $api_providers_list = [
-    'dolarapi'      => 'DolarAPI.com',
-    'currencyapi'   => 'CurrencyAPI',
+    'dolarapi'       => 'DolarAPI',
+    'jsdelivr'     => 'Jsdelivr',
+    'cryptoprice'  => 'CoinGecko',
+    'moneyconvert' => 'MoneyConvert',
+    'hexarate'   => 'HexaRate',
+    'foreignrate' => 'ForeignRate',
+    'currencyapi'  => 'CurrencyAPI',
     'exchangerate' => 'ExchangeRate-API',
 ];
 $provider_name = $api_providers_list[$provider_key] ?? 'No configurado';

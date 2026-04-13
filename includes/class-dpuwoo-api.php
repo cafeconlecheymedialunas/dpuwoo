@@ -396,7 +396,7 @@ return $symbols[$code] ?? '';
             'DOLAR_OFICIAL' => ['name' => 'Dólar Oficial', 'symbol' => '$'],
             'DOLAR_BLUE' => ['name' => 'Dólar Blue', 'symbol' => '$'],
             'DOLAR_BOLSA' => ['name' => 'Dólar Bolsa', 'symbol' => '$'],
-            'DOLAR_CONTADOCONLIQUI' => ['name' => 'Contado con Liquidación', 'symbol' => '$'],
+            'DOLAR_CONTADOCONLIQUI' => ['name' => 'Dólar Contado con Liquidación', 'symbol' => '$'],
             'DOLAR_MAYORISTA' => ['name' => 'Dólar Mayorista', 'symbol' => '$'],
             'DOLAR_CRIPTO' => ['name' => 'Dólar Cripto', 'symbol' => '$'],
             'DOLAR_TARJETA' => ['name' => 'Dólar Tarjeta', 'symbol' => '$'],

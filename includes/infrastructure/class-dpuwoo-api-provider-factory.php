@@ -11,6 +11,9 @@ require_once dirname(__FILE__, 2) . '/class-dpuwoo-jsdelivr-provider.php';
 require_once dirname(__FILE__, 2) . '/class-dpuwoo-cryptoprice-provider.php';
 require_once dirname(__FILE__, 2) . '/class-dpuwoo-currencyapi-provider.php';
 require_once dirname(__FILE__, 2) . '/class-dpuwoo-exhangerateapi-provider.php';
+require_once dirname(__FILE__, 2) . '/class-dpuwoo-moneyconvert-provider.php';
+require_once dirname(__FILE__, 2) . '/class-dpuwoo-hexarate-provider.php';
+require_once dirname(__FILE__, 2) . '/class-dpuwoo-foreignrate-provider.php';
 
 /**
  * Factory Pattern para instanciar proveedores de API de tasa de cambio.
@@ -30,6 +33,9 @@ class API_Provider_Factory
         'cryptoprice'     => CryptoPrice_Provider::class,
         'currencyapi'    => CurrencyAPI_Provider::class,
         'exchangerate-api' => ExchangeRateAPI_Provider::class,
+        'moneyconvert'    => MoneyConvert_Provider::class,
+        'hexarate'        => HexaRate_Provider::class,
+        'foreignrate'     => ForeignRate_Provider::class,
     ];
 
     /**

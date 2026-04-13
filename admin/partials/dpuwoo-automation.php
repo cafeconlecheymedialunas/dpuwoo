@@ -33,9 +33,14 @@ $notify_email = $opts['cron_notify_email'] ?? get_option('admin_email');
 $notify_email_placeholder = get_option('admin_email');
 
 $api_providers_list = [
-    'dolarapi'      => 'DolarAPI.com',
-    'currencyapi'   => 'CurrencyAPI',
-    'exchangerate'  => 'ExchangeRate-API',
+    'dolarapi'       => 'DolarAPI',
+    'jsdelivr'     => 'Jsdelivr',
+    'cryptoprice'  => 'CoinGecko',
+    'moneyconvert' => 'MoneyConvert',
+    'hexarate'   => 'HexaRate',
+    'foreignrate' => 'ForeignRate',
+    'currencyapi'  => 'CurrencyAPI',
+    'exchangerate' => 'ExchangeRate-API',
 ];
 
 $is_currencyapi_connected = !empty($opts['currencyapi_api_key']);

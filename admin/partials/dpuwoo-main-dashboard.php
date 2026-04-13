@@ -131,8 +131,13 @@ $dollar_type   = $opts['dollar_type']  ?? 'oficial';
 $next_cron     = Cron::get_next_scheduled_time();
 
 $provider_labels = [
-    'dolarapi'      => 'DolarAPI',
-    'currencyapi'   => 'CurrencyAPI',
+    'dolarapi'       => 'DolarAPI',
+    'jsdelivr'      => 'Jsdelivr',
+    'cryptoprice'   => 'CoinGecko',
+    'moneyconvert'  => 'MoneyConvert',
+    'hexarate'     => 'HexaRate',
+    'foreignrate'   => 'ForeignRate',
+    'currencyapi'  => 'CurrencyAPI',
     'exchangerate'  => 'ExchangeRate-API',
 ];
 $provider_label = $provider_labels[$api_provider] ?? $api_provider;
