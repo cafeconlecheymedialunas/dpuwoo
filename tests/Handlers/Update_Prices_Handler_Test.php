@@ -273,7 +273,7 @@ class Update_Prices_Handler_Test extends TestCase
     {
         $settings = $this->createMock(\Settings_Repository::class);
         $settings->method('get_for_context')->willReturn([
-            'dollar_type' => 'blue',
+            'currency' => 'blue',
             'reference_currency' => 'USD',
             'threshold' => 1.0,
             'threshold_max' => 0,
@@ -358,7 +358,7 @@ class Update_Prices_Handler_Test extends TestCase
     {
         $settings = $this->createMock(\Settings_Repository::class);
         $settings->method('get_for_context')->willReturn([
-            'dollar_type' => 'bolsa',
+            'currency' => 'bolsa',
             'reference_currency' => 'USD',
             'threshold' => 1.0,
             'threshold_max' => 0,
@@ -401,7 +401,7 @@ class Update_Prices_Handler_Test extends TestCase
     {
         $settings = $this->createMock(\Settings_Repository::class);
         $settings->method('get_for_context')->willReturn([
-            'dollar_type' => 'euro',
+            'currency' => 'euro',
             'reference_currency' => 'EUR',
             'threshold' => 1.0,
             'threshold_max' => 0,

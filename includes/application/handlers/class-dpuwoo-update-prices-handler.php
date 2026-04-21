@@ -40,6 +40,16 @@ class Update_Prices_Handler
 
         $current_rate = floatval($api_res['value']);
 
+        // P0: Validar tasa de cambio > 0 (CRÍTICO)
+        if ($current_rate <= 0 || is_nan($current_rate) || is_infinite($current_rate)) {
+            error_log('DPUWoo: Tasa de cambio inválida: ' . var_export($current_rate, true));
+            return [
+                'error'   => 'invalid_rate',
+                'message' => 'La tasa de cambio es inválida (negativa, cero, NaN o infinita)',
+                'rate'    => $current_rate,
+            ];
+        }
+
         $reference_currency = $opts['reference_currency'] ?? 'USD';
         [$previous_rate, $is_first_run] = $this->get_previous_rate($opts, $currency, $reference_currency);
 
@@ -198,14 +208,15 @@ class Update_Prices_Handler
         $reference_currency = $opts['reference_currency'] ?? 'USD';
 
         $run_data = [
-            'currency'            => $currency,
-            'reference_currency'  => $reference_currency,
+            'currency'           => $currency,
+            'reference_currency' => $reference_currency,
             'dollar_value'       => $current_rate,
             'rules'              => $opts,
             'total_products'     => $total_products,
             'user_id'            => get_current_user_id(),
             'note'               => $context === 'cron' ? 'Actualización automática (cron)' : 'Actualización manual',
             'percentage_change'  => $exchange_rate->percentage_change,
+            'context'            => $context,
         ];
 
         $run_id = $this->logger->begin_run_transaction($run_data);

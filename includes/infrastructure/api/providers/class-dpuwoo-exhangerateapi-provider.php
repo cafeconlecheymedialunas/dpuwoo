@@ -1,7 +1,4 @@
 <?php
-// Incluir el formateador de respuestas
-require_once 'class-dpuwoo-api-response-formatter.php';
-
 // Implementación para ExchangeRate-API
 class ExchangeRateAPI_Provider extends Base_API_Provider {
     protected $base_url = 'https://v6.exchangerate-api.com/v6';

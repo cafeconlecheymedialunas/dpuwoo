@@ -1,5 +1,4 @@
 <?php
-require_once 'class-dpuwoo-api-response-formatter.php';
 
 class CryptoPrice_Provider extends Base_API_Provider {
     protected $base_url = 'https://api.coingecko.com/api/v3';

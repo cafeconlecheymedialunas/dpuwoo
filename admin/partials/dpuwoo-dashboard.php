@@ -6,6 +6,17 @@ $opts           = get_option('dpuwoo_settings', []);
 $product_count  = wp_count_posts('product');
 $total_products = $product_count->publish ?? 0;
 
+// Si no hay tasa configurada, intentar obtenerla de la API
+$display_rate = $opts['origin_exchange_rate'] ?? 0;
+if (empty($display_rate)) {
+    $currency_type = $opts['currency'] ?? 'oficial';
+    $api = new API_Client();
+    $rate = $api->get_rate($currency_type);
+    if ($rate && isset($rate['value'])) {
+        $display_rate = floatval($rate['value']);
+    }
+}
+
 $provider_key = $opts['api_provider'] ?? 'dolarapi';
 $api_providers_list = [
     'dolarapi'       => 'DolarAPI',
@@ -50,8 +61,8 @@ $provider_name = $api_providers_list[$provider_key] ?? 'No configurado';
         <div class="dpuwoo-stat">
             <span class="dpuwoo-stat__label">Tasa de cambio</span>
             <span class="dpuwoo-stat__value">
-                <?php if (($opts['origin_exchange_rate'] ?? 0) > 0): ?>
-                    <span class="dpuwoo-stat__rate">$<?php echo number_format($opts['origin_exchange_rate'], 2); ?></span>
+                <?php if ($display_rate > 0): ?>
+                    <span class="dpuwoo-stat__rate">$<?php echo number_format($display_rate, 2); ?></span>
                 <?php else: ?>
                     <span class="dpuwoo-stat__empty">Sin configurar</span>
                 <?php endif; ?>

@@ -84,7 +84,11 @@ class Batch_Processor
             $theoretical_pct
         );
 
-        if (!$calc->has_any_change()) {
+        $has_log = Log_Repository::get_instance()->has_any_log_for_product($product->get_id());
+        
+        if (!$has_log) {
+            $change['reason'] = 'Primera actualización';
+        } elseif (!$calc->has_any_change()) {
             $change['status'] = 'skipped';
             $change['reason'] = 'Sin cambios';
             $result->add_change($change);
@@ -142,7 +146,11 @@ class Batch_Processor
             $change['parent_id']      = $variable->get_id();
             $change['variation_name'] = $variation_display;
 
-            if (!$calc->has_any_change()) {
+            $has_log = Log_Repository::get_instance()->has_any_log_for_product($variation_id);
+            
+            if (!$has_log) {
+                $change['reason'] = 'Primera actualización';
+            } elseif (!$calc->has_any_change()) {
                 $change['status'] = 'skipped';
                 $change['reason'] = 'Sin cambios';
                 $result->add_change($change);

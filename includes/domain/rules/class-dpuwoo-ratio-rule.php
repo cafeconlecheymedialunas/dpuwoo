@@ -12,6 +12,11 @@ class Ratio_Rule implements Price_Rule_Interface
     public function apply(float $price, Price_Context $context): float
     {
         $this->applied_ratio = $context->exchange_rate->ratio;
+        
+        if ($context->usd_baseline > 0) {
+            return $context->usd_baseline * $this->applied_ratio;
+        }
+        
         return $price * $this->applied_ratio;
     }
 

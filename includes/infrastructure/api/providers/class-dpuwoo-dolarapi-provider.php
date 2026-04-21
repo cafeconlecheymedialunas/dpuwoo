@@ -1,6 +1,4 @@
 <?php
-// Incluir el formateador de respuestas
-require_once 'class-dpuwoo-api-response-formatter.php';
 
 class DolarAPI_Provider extends Base_API_Provider {
     protected $base_url = 'https://{country}dolarapi.com/v1';

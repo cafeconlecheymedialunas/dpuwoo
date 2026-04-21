@@ -4,17 +4,13 @@ if (!defined('ABSPATH')) exit;
 class Activator
 {
     /** Versión del esquema de BD. Incrementar cuando cambie la estructura de tablas. */
-    const DB_VERSION = '1.3';
+    const DB_VERSION = '1.4';
 
     public static function activate()
     {
         self::create_tables();
         self::migrate_run_items_columns();
 
-        if (get_option('dpuwoo_initial_setup_done')) {
-            return;
-        }
-        
         $initial_rate = self::fetch_initial_dollar_value();
         $auto_provider = self::get_auto_provider();
         
@@ -136,6 +132,7 @@ $rate = floatval($body['usd'][$currency_lower]);
             self::create_tables();
             self::migrate_run_items_columns();
             self::migrate_runs_reference_currency();
+            self::migrate_runs_context_column();
             update_option('dpuwoo_db_version', self::DB_VERSION);
         }
     }
@@ -164,6 +161,7 @@ $rate = floatval($body['usd'][$currency_lower]);
             user_id bigint(20) NOT NULL DEFAULT 0,
             note text,
             percentage_change decimal(10,4) DEFAULT NULL,
+            context varchar(20) DEFAULT 'manual',
             PRIMARY KEY (id)
         ) $charset_collate;";
 
@@ -216,6 +214,25 @@ $rate = floatval($body['usd'][$currency_lower]);
             if (empty($col_exists)) {
                 $wpdb->query("ALTER TABLE {$table} ADD COLUMN {$column} {$definition}");
             }
+        }
+    }
+
+    /**
+     * Agrega la columna context a runs (v1.4).
+     */
+    public static function migrate_runs_context_column(): void
+    {
+        global $wpdb;
+        $table = $wpdb->prefix . 'dpuwoo_runs';
+
+        $col_exists = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+             WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s AND COLUMN_NAME = %s",
+            DB_NAME, $table, 'context'
+        ));
+
+        if (empty($col_exists)) {
+            $wpdb->query("ALTER TABLE {$table} ADD COLUMN context varchar(20) DEFAULT 'manual' AFTER percentage_change");
         }
     }
 

@@ -116,11 +116,9 @@ class Cron
         $simulate = ($notify_mode === 'simulate_only');
 
         // Run the batch processing
-        $batch  = 0;
-        $result = $bus->dispatch(new Update_Prices_Command($batch, simulate: $simulate, context: 'cron'));
+        $result = $bus->dispatch(new Update_Prices_Command(0, simulate: $simulate, context: 'cron'));
 
         if (isset($result['error'])) {
-            // Send error notification if enabled
             if ($notify_mode !== 'disabled') {
                 self::send_error_notification($result['error']);
             }
@@ -128,11 +126,20 @@ class Cron
         }
 
         $total_batches = $result['batch_info']['total_batches'] ?? 1;
-        $run_id = $result['run_id'] ?? 0;
+        $run_id        = $result['run_id'] ?? 0;
+
+        // Acumular summary de todos los batches para la notificación
+        $combined_summary = $result['summary'] ?? ['updated' => 0, 'errors' => 0, 'skipped' => 0];
 
         for ($batch = 1; $batch < $total_batches; $batch++) {
-            $bus->dispatch(new Update_Prices_Command($batch, simulate: $simulate, context: 'cron', run_id: $run_id));
+            $batch_result = $bus->dispatch(new Update_Prices_Command($batch, simulate: $simulate, context: 'cron', run_id: $run_id));
+            $bs = $batch_result['summary'] ?? [];
+            $combined_summary['updated']  += $bs['updated']  ?? 0;
+            $combined_summary['errors']   += $bs['errors']   ?? 0;
+            $combined_summary['skipped']  += $bs['skipped']  ?? 0;
         }
+
+        $result['summary'] = $combined_summary;
 
         // Send notification if enabled
         if ($notify_mode !== 'disabled') {
@@ -185,13 +192,10 @@ class Cron
     public static function get_next_scheduled_time(): ?int
     {
         if (self::is_action_scheduler_available()) {
-            $action = as_get_scheduled_action(self::HOOK, [], self::SCHEDULE_GROUP);
-            if ($action) {
-                return $action->get_schedule()->get_next();
-            }
-            return null;
+            $timestamp = as_next_scheduled_action(self::HOOK, [], self::SCHEDULE_GROUP);
+            return $timestamp ?: null;
         }
 
-        return wp_next_scheduled(self::HOOK);
+        return wp_next_scheduled(self::HOOK) ?: null;
     }
 }

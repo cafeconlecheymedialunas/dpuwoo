@@ -76,9 +76,13 @@ class Admin
 	
 	public function enqueue_scripts($hook)
 	{
-		if (strpos($hook, 'dpuwoo_') === false) return;
+		$is_dpuwoo = strpos($hook, 'dpuwoo_') !== false;
+		
+		if (!$is_dpuwoo && defined('DOING_AJAX')) {
+			$is_dpuwoo = true;
+		}
 
-		// Tailwind CSS desde CDN
+		if (!$is_dpuwoo) return;
 		wp_enqueue_script(
 			'tailwind', 
 			'https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4', 
@@ -96,9 +100,11 @@ class Admin
 		);
 
 		wp_enqueue_script('select2', 'https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.0-rc.0/js/select2.min.js', array('jquery'), '4.1.0-rc.0', true);
-    	wp_enqueue_style('select2', 'https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.0-rc.0/css/select2.min.css', array(), '4.1.0-rc.0');
+wp_enqueue_style('select2', 'https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.0-rc.0/css/select2.min.css', array(), '4.1.0-rc.0');
 
-		// Script de tabs PRIMERO (sin dependencias complejas)
+
+
+	 // Script de tabs PRIMERO (sin dependencias complejas)
 		wp_enqueue_script(
 			$this->plugin_name . '-tabs',
 			plugin_dir_url(__FILE__) . 'js/dpuwoo-tabs.js',
@@ -266,6 +272,15 @@ class Admin
 			'dpuwoo_logs',
 			[__CLASS__, 'render_logs']
 		);
+		
+		add_submenu_page(
+			'dpuwoo_settings',
+			'Dollar Sync - Reset DB',
+			'Reset DB',
+			'manage_options',
+			'dpuwoo_reset',
+			[__CLASS__, 'render_reset_db']
+		);
 	}
 
 
@@ -289,9 +304,14 @@ class Admin
 		include DPUWOO_PLUGIN_DIR . 'admin/partials/dpuwoo-automation.php';
 	}
 
-	public static function render_logs()
+public static function render_logs()
 	{
 		include DPUWOO_PLUGIN_DIR . 'admin/partials/dpuwoo-logs.php';
+	}
+
+	public static function render_reset_db()
+	{
+		include DPUWOO_PLUGIN_DIR . 'admin/partials/dpuwoo-reset-db.php';
 	}
 
 	/**

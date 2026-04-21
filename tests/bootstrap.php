@@ -33,14 +33,15 @@ require_once $includes_dir . 'domain/rules/class-dpuwoo-margin-rule.php';
 require_once $includes_dir . 'domain/rules/class-dpuwoo-direction-rule.php';
 require_once $includes_dir . 'domain/rules/class-dpuwoo-rounding-rule.php';
 require_once $includes_dir . 'domain/rules/class-dpuwoo-category-exclusion-rule.php';
-require_once $includes_dir . 'class-dpuwoo-log-repository.php';
-require_once $includes_dir . 'class-dpuwoo-product-repository.php';
+require_once $includes_dir . 'infrastructure/repositories/class-dpuwoo-log-repository.php';
+require_once $includes_dir . 'infrastructure/repositories/class-dpuwoo-product-repository.php';
 require_once $includes_dir . 'class-dpuwoo-trait-request.php';
-require_once $includes_dir . 'class-dpuwoo-currencyapi-provider.php';
-require_once $includes_dir . 'class-dpuwoo-exhangerateapi-provider.php';
-require_once $includes_dir . 'class-dpuwoo-dolarapi-provider.php';
+require_once $includes_dir . 'infrastructure/api/class-dpuwoo-api-response-formatter.php';
+require_once $includes_dir . 'infrastructure/api/providers/class-dpuwoo-currencyapi-provider.php';
+require_once $includes_dir . 'infrastructure/api/providers/class-dpuwoo-exhangerateapi-provider.php';
+require_once $includes_dir . 'infrastructure/api/providers/class-dpuwoo-dolarapi-provider.php';
 require_once $includes_dir . 'infrastructure/class-dpuwoo-api-provider-factory.php';
-require_once $includes_dir . 'class-dpuwoo-api.php';
+require_once $includes_dir . 'infrastructure/api/class-dpuwoo-api-client.php';
 require_once $includes_dir . 'infrastructure/class-dpuwoo-settings-repository.php';
 require_once $includes_dir . 'class-dpuwoo-logger.php';
 require_once $includes_dir . 'application/services/class-dpuwoo-price-calculation-engine.php';
@@ -53,4 +54,5 @@ require_once $includes_dir . 'application/handlers/class-dpuwoo-rollback-handler
 require_once $includes_dir . 'application/class-dpuwoo-command-bus.php';
 require_once $includes_dir . 'class-dpuwoo-cron.php';
 
+require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/TestCase.php';

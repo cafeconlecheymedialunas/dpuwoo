@@ -1,11 +1,6 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
-/**
- * DPUWoo_Repository
- * Encapsula todo el acceso a base de datos para runs y run_items.
- * Implementa Log_Repository_Interface (capa de dominio).
- */
 class Log_Repository implements Log_Repository_Interface
 {
     protected static $instance;
@@ -42,14 +37,15 @@ class Log_Repository implements Log_Repository_Interface
         $now = current_time('mysql');
 
         $insert_data = [
-            'date'                => $now,
-            'dollar_type'         => $data['currency'] ?? $data['dollar_type'] ?? '',
-            'dollar_value'        => floatval($data['dollar_value'] ?? 0),
-            'rules'               => maybe_serialize($data['rules'] ?? []),
-            'total_products'       => intval($data['total_products'] ?? 0),
+            'date'               => $now,
+            'dollar_type'        => $data['currency'] ?? $data['dollar_type'] ?? '',
+            'dollar_value'       => floatval($data['dollar_value'] ?? 0),
+            'rules'              => maybe_serialize($data['rules'] ?? []),
+            'total_products'     => intval($data['total_products'] ?? 0),
             'user_id'            => intval($data['user_id'] ?? 0),
             'note'               => $data['note'] ?? '',
-            'percentage_change'   => isset($data['percentage_change']) ? floatval($data['percentage_change']) : null,
+            'percentage_change'  => isset($data['percentage_change']) ? floatval($data['percentage_change']) : null,
+            'context'            => $data['context'] ?? 'manual',
         ];
 
         if (isset($data['reference_currency']) && !empty($data['reference_currency'])) {
@@ -281,5 +277,109 @@ class Log_Repository implements Log_Repository_Interface
             ),
             ARRAY_A
         ) ?: [];
+    }
+
+    public function get_last_price_for_product(
+        int    $product_id,
+        string $currency = '',
+        string $reference_currency = ''
+    ): ?array {
+        $sql = "SELECT ri.*, r.date, r.dollar_value, r.dollar_type
+                FROM {$this->table_items} ri
+                JOIN {$this->table_runs} r ON r.id = ri.run_id
+                WHERE ri.product_id = %d AND ri.status IN ('updated', 'reverted')";
+
+        $args = [$product_id];
+
+        if (!empty($currency)) {
+            $sql .= " AND r.dollar_type = %s";
+            $args[] = $currency;
+        }
+
+        if (!empty($reference_currency)) {
+            $sql .= " AND r.reference_currency = %s";
+            $args[] = $reference_currency;
+        }
+
+        $sql .= " ORDER BY ri.id DESC LIMIT 1";
+
+        $row = $this->wpdb->get_row(
+            $this->wpdb->prepare($sql, $args)
+        );
+
+        if (!$row) {
+            return null;
+        }
+
+        return [
+            'old_regular' => $row->old_regular_price,
+            'new_regular' => $row->new_regular_price,
+            'old_sale'    => $row->old_sale_price,
+            'new_sale'    => $row->new_sale_price,
+            'date'        => $row->date,
+            'dollar_value'=> $row->dollar_value,
+            'dollar_type' => $row->dollar_type,
+        ];
+    }
+
+    public function has_any_log_for_product(int $product_id): bool
+    {
+        $exists = $this->wpdb->get_var($this->wpdb->prepare(
+            "SELECT COUNT(*) FROM {$this->table_items} WHERE product_id = %d",
+            $product_id
+        ));
+        return $exists > 0;
+    }
+
+    /* ---------------------------
+     * Database Transactions (P0: Crítico)
+     * Implementa transacciones reales para garantizar integridad de datos
+     * entre múltiples batches de actualización.
+     * --------------------------- */
+    
+    /**
+     * Inicia una transacción de base de datos.
+     * Debe ser seguida por commit_transaction() o rollback_transaction().
+     * 
+     * @return bool True si la transacción fue iniciada
+     */
+    public function begin_transaction(): bool
+    {
+        $this->wpdb->query('START TRANSACTION');
+        if ($this->wpdb->last_error) {
+            error_log('DPUWoo: Error al iniciar transacción: ' . $this->wpdb->last_error);
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Confirma la transacción de base de datos.
+     * 
+     * @return bool True si el commit fue exitoso
+     */
+    public function commit_transaction(): bool
+    {
+        $this->wpdb->query('COMMIT');
+        if ($this->wpdb->last_error) {
+            error_log('DPUWoo: Error al confirmar transacción: ' . $this->wpdb->last_error);
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Revierte la transacción de base de datos.
+     * 
+     * @return bool True si el rollback fue exitoso
+     */
+    public function rollback_transaction(): bool
+    {
+        $this->wpdb->query('ROLLBACK');
+        if ($this->wpdb->last_error) {
+            error_log('DPUWoo: Error al revertir transacción: ' . $this->wpdb->last_error);
+            return false;
+        }
+        return true;
     }
 }

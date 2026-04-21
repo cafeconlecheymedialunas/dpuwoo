@@ -9,12 +9,14 @@ class Price_Calculation_Engine_Test extends TestCase
         float $old_regular = 100.0,
         float $old_sale = 0.0,
         ?\Exchange_Rate $rate = null,
-        array $settings = []
+        array $settings = [],
+        float $usd_baseline = 0.0
     ): \Price_Context {
         return new \Price_Context(
             product_id: 1,
             old_regular: $old_regular,
             old_sale: $old_sale,
+            usd_baseline: $usd_baseline,
             exchange_rate: $rate ?? \Exchange_Rate::first_run(1250.0),
             settings: array_merge([
                 'margin' => 0,
@@ -110,6 +112,7 @@ class Price_Calculation_Engine_Test extends TestCase
             product_id: 1,
             old_regular: 100.0,
             old_sale: 0.0,
+            usd_baseline: 0.0,
             exchange_rate: $rate,
             settings: ['exclude_categories' => [10]],
             category_ids: [10, 20]
@@ -132,6 +135,7 @@ class Price_Calculation_Engine_Test extends TestCase
             product_id: 1,
             old_regular: 100.0,
             old_sale: 0.0,
+            usd_baseline: 0.0,
             exchange_rate: $rate,
             settings: ['exclude_categories' => [10]],
             category_ids: [20, 30]

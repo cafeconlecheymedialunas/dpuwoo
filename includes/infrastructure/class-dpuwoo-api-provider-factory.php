@@ -2,18 +2,18 @@
 if (!defined('ABSPATH')) exit;
 
 // Load base classes first
-require_once dirname(__FILE__, 2) . '/class-dpuwoo-trait-request.php';
-require_once dirname(__FILE__, 2) . '/class-dpuwoo-api-response-formatter.php';
+require_once __DIR__ . '/../class-dpuwoo-trait-request.php';
+require_once __DIR__ . '/api/class-dpuwoo-api-response-formatter.php';
 
 // Load provider classes
-require_once dirname(__FILE__, 2) . '/class-dpuwoo-dolarapi-provider.php';
-require_once dirname(__FILE__, 2) . '/class-dpuwoo-jsdelivr-provider.php';
-require_once dirname(__FILE__, 2) . '/class-dpuwoo-cryptoprice-provider.php';
-require_once dirname(__FILE__, 2) . '/class-dpuwoo-currencyapi-provider.php';
-require_once dirname(__FILE__, 2) . '/class-dpuwoo-exhangerateapi-provider.php';
-require_once dirname(__FILE__, 2) . '/class-dpuwoo-moneyconvert-provider.php';
-require_once dirname(__FILE__, 2) . '/class-dpuwoo-hexarate-provider.php';
-require_once dirname(__FILE__, 2) . '/class-dpuwoo-foreignrate-provider.php';
+require_once __DIR__ . '/api/providers/class-dpuwoo-dolarapi-provider.php';
+require_once __DIR__ . '/api/providers/class-dpuwoo-jsdelivr-provider.php';
+require_once __DIR__ . '/api/providers/class-dpuwoo-cryptoprice-provider.php';
+require_once __DIR__ . '/api/providers/class-dpuwoo-currencyapi-provider.php';
+require_once __DIR__ . '/api/providers/class-dpuwoo-exhangerateapi-provider.php';
+require_once __DIR__ . '/api/providers/class-dpuwoo-moneyconvert-provider.php';
+require_once __DIR__ . '/api/providers/class-dpuwoo-hexarate-provider.php';
+require_once __DIR__ . '/api/providers/class-dpuwoo-foreignrate-provider.php';
 
 /**
  * Factory Pattern para instanciar proveedores de API de tasa de cambio.

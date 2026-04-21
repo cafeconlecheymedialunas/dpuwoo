@@ -92,14 +92,27 @@ class Product_Repository implements Product_Repository_Interface
 
     public function save_regular_price(\WC_Product $product, float $new_price): bool
     {
+        // P1: Validar rango de precio válido (ALTA PRIORIDAD)
+        if ($new_price < 0.01 || $new_price > 999999.99 || is_nan($new_price) || is_infinite($new_price)) {
+            error_log('DPUWoo: Precio regular inválido (P:' . $product->get_id() . '): ' . var_export($new_price, true));
+            return false;
+        }
+
         try {
             $product->set_regular_price($new_price);
             $product->save();
 
             // Doble verificación anti-conflictos de hooks
             $stored = $product->get_regular_price();
-            return ((string)$stored === (string)$new_price);
+            $success = ((string)$stored === (string)$new_price);
+            
+            if (!$success) {
+                error_log('DPUWoo: Fallo al guardar precio regular (P:' . $product->get_id() . '). Esperado: ' . $new_price . ', Guardado: ' . $stored);
+            }
+            
+            return $success;
         } catch (\Exception $e) {
+            error_log('DPUWoo: Excepción al guardar precio regular (P:' . $product->get_id() . '): ' . $e->getMessage());
             return false;
         }
     }
@@ -118,6 +131,11 @@ class Product_Repository implements Product_Repository_Interface
                 $product->set_date_on_sale_to('');
                 $product->set_date_on_sale_from('');
             } else {
+                // P1: Validar rango de precio válido para sale price (ALTA)
+                if ($new_price < 0.01 || $new_price > 999999.99 || is_nan($new_price) || is_infinite($new_price)) {
+                    error_log('DPUWoo: Precio de oferta inválido (P:' . $product->get_id() . '): ' . var_export($new_price, true));
+                    return false;
+                }
                 $product->set_sale_price($new_price);
             }
             
@@ -125,6 +143,7 @@ class Product_Repository implements Product_Repository_Interface
             return true;
             
         } catch (\Exception $e) {
+            error_log('DPUWoo: Excepción al guardar precio de oferta (P:' . $product->get_id() . '): ' . $e->getMessage());
             return false;
         }
     }

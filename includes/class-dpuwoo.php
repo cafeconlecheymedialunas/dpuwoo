@@ -127,16 +127,26 @@ class Dpuwoo {
 		require_once $base . 'includes/domain/rules/class-dpuwoo-rounding-rule.php';
 		require_once $base . 'includes/domain/rules/class-dpuwoo-category-exclusion-rule.php';
 
-		// ── Infrastructure — Repositorios y API ───────────────────────────────────
-		require_once $base . 'includes/class-dpuwoo-log-repository.php';
-		require_once $base . 'includes/class-dpuwoo-product-repository.php';
+		// ── Infrastructure — Base classes para API ───────────────────────────────
 		require_once $base . 'includes/class-dpuwoo-trait-request.php';
-		require_once $base . 'includes/class-dpuwoo-currencyapi-provider.php';
-		require_once $base . 'includes/class-dpuwoo-exhangerateapi-provider.php';
-		require_once $base . 'includes/class-dpuwoo-dolarapi-provider.php';
+
+		// ── Infrastructure — Repositorios y API ───────────────────────────────────
+		require_once $base . 'includes/infrastructure/repositories/class-dpuwoo-log-repository.php';
+		require_once $base . 'includes/infrastructure/repositories/class-dpuwoo-product-repository.php';
+		require_once $base . 'includes/infrastructure/api/class-dpuwoo-api-response-formatter.php';
+		require_once $base . 'includes/infrastructure/api/providers/class-dpuwoo-dolarapi-provider.php';
+		require_once $base . 'includes/infrastructure/api/providers/class-dpuwoo-jsdelivr-provider.php';
+		require_once $base . 'includes/infrastructure/api/providers/class-dpuwoo-cryptoprice-provider.php';
+		require_once $base . 'includes/infrastructure/api/providers/class-dpuwoo-currencyapi-provider.php';
+		require_once $base . 'includes/infrastructure/api/providers/class-dpuwoo-exhangerateapi-provider.php';
+		require_once $base . 'includes/infrastructure/api/providers/class-dpuwoo-moneyconvert-provider.php';
+		require_once $base . 'includes/infrastructure/api/providers/class-dpuwoo-hexarate-provider.php';
+		require_once $base . 'includes/infrastructure/api/providers/class-dpuwoo-foreignrate-provider.php';
 		require_once $base . 'includes/infrastructure/class-dpuwoo-api-provider-factory.php';
-		require_once $base . 'includes/class-dpuwoo-api.php';
+		require_once $base . 'includes/infrastructure/api/class-dpuwoo-api-client.php';
 		require_once $base . 'includes/infrastructure/class-dpuwoo-settings-repository.php';
+		require_once $base . 'includes/infrastructure/services/class-dpuwoo-email-notifier.php';
+		require_once $base . 'includes/infrastructure/services/class-dpuwoo-multi-currency-manager.php';
 		require_once $base . 'includes/class-dpuwoo-logger.php';
 
 		// ── Application — Servicios ────────────────────────────────────────────────
@@ -234,6 +244,7 @@ class Dpuwoo {
 		$this->loader->add_action('wp_ajax_dpuwoo_get_dashboard_stats',  $ajax, 'handle_get_dashboard_stats');
 		$this->loader->add_action('wp_ajax_dpuwoo_get_setup_progress',   $ajax, 'handle_get_setup_progress');
 		$this->loader->add_action('wp_ajax_dpuwoo_save_origin_rate',      $ajax, 'handle_save_origin_rate');
+		$this->loader->add_action('wp_ajax_dpuwoo_first_setup_batch',    $ajax, 'handle_first_setup_batch');
 	}
 	
 

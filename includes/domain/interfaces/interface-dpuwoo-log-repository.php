@@ -74,4 +74,27 @@ interface Log_Repository_Interface
      * @return float
      */
     public function get_last_applied_rate(string $dollar_type, string $reference_currency): float;
+
+    /**
+     * Retorna el último precio guardado para un producto específico,
+     * filtrando por currency y reference_currency.
+     *
+     * @param int    $product_id         ID del producto.
+     * @param string $currency          Tipo de cambio (ej: 'oficial', 'blue').
+     * @param string $reference_currency Moneda de referencia (ej: 'USD', 'EUR').
+     * @return array|null {old_regular, new_regular, old_sale, new_sale, date, dollar_value, dollar_type} o null.
+     */
+    public function get_last_price_for_product(
+        int    $product_id,
+        string $currency = '',
+        string $reference_currency = ''
+    ): ?array;
+
+    /**
+     * Verifica si existe algún log para el producto.
+     *
+     * @param int $product_id ID del producto.
+     * @return bool
+     */
+    public function has_any_log_for_product(int $product_id): bool;
 }

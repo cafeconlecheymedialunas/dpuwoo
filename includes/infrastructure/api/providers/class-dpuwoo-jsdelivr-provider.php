@@ -1,5 +1,4 @@
 <?php
-require_once 'class-dpuwoo-api-response-formatter.php';
 
 class Jsdelivr_Provider extends Base_API_Provider {
     protected $base_url = 'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1';
@@ -14,14 +13,26 @@ class Jsdelivr_Provider extends Base_API_Provider {
         $currency_lower = strtolower($store_currency);
         $type_lower = strtolower($type);
         
+        // La API de jsdelivr devuelve: { "ars": { "usd": 0.000736, ... } }
+        // donde 1 ARS = 0.000736 USD, entonces ARS/USD = 1/0.000736 ≈ 1358
         $url = $this->build_url("/currencies/{$type_lower}.json");
         $response = $this->make_request($url);
         
-        if (!$response || !isset($response['data'][$type_lower][$currency_lower])) {
+        if (!$response || !isset($response['data'][$type_lower])) {
             return false;
         }
         
-        $value = floatval($response['data'][$type_lower][$currency_lower]);
+        $data = $response['data'][$type_lower];
+        
+        // Buscar el valor relativo a USD (la clave es "usd" en minúsculas)
+        $usd_value = floatval($data['usd'] ?? 0);
+        
+        if ($usd_value <= 0) {
+            return false;
+        }
+        
+        // Invertir: si 1 ARS = 0.000736 USD, entonces 1 USD = 1/0.000736 ARS
+        $value = 1 / $usd_value;
         
         $formatted_data = [
             'value' => $value,
@@ -30,9 +41,9 @@ class Jsdelivr_Provider extends Base_API_Provider {
             'updated' => current_time('mysql'),
             'raw' => $response,
             'provider' => 'jsdelivr',
-            'base_currency' => strtoupper($type),
-            'target_currency' => $store_currency,
-            'pair' => $store_currency . '_' . strtoupper($type),
+            'base_currency' => $store_currency,
+            'target_currency' => 'USD',
+            'pair' => $store_currency . '_USD',
             'type' => $type,
             'api_code' => $type,
             'currency' => strtoupper($type)

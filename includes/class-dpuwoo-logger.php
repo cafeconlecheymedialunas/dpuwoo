@@ -38,15 +38,21 @@ class Logger
     }
 
     /**
-     * Begin run (solo inserta la run, sin transacción)
+     * Begin run transaction (P0: CRÍTICO)
+     * Implementa transacción real de BD para garantizar atomicidad entre batches.
      */
     public function begin_run_transaction($run_data)
     {
-        // Se elimina la llamada a $this->repo->begin_transaction()
+        if (!$this->repo->begin_transaction()) {
+            error_log('DPUWoo: Fallo al iniciar transacción de BD');
+            return false;
+        }
         
         $run_id = $this->repo->insert_run($run_data);
 
         if (!$run_id) {
+            $this->repo->rollback_transaction();
+            error_log('DPUWoo: Fallo al insertar run');
             return false;
         }
 
@@ -78,20 +84,28 @@ class Logger
     }
 
     /**
-     * Commit (solo retorna el ID, sin hacer commit)
+     * Commit run transaction (P0: CRÍTICO)
+     * Confirma todos los cambios de la transacción.
      */
     public function commit_run_transaction($run_id)
     {
-        // Se elimina la llamada a $this->repo->commit()
+        if (!$this->repo->commit_transaction()) {
+            error_log('DPUWoo: Fallo al confirmar transacción (Run: ' . $run_id . ')');
+            return false;
+        }
         return $run_id;
     }
 
     /**
-     * Rollback (solo retorna true, sin hacer rollback)
+     * Rollback run transaction (P0: CRÍTICO)
+     * Revierte todos los cambios de la transacción.
      */
     public function rollback_run_transaction()
     {
-        // Se elimina la llamada a $this->repo->rollback()
+        if (!$this->repo->rollback_transaction()) {
+            error_log('DPUWoo: Fallo al revertir transacción');
+            return false;
+        }
         return true;
     }
 

@@ -52,24 +52,15 @@ class Admin_Settings
         //  Secciones y campos para Automatización / Cron
         // ════════════════════════════════════════════════════════════════════
 
-        add_settings_section('dpuwoo_automation_section',  '', '__return_false', 'dpuwoo_settings_page');
-        add_settings_section('dpuwoo_cron_rules_section',  '', '__return_false', 'dpuwoo_settings_page');
-        add_settings_section('dpuwoo_cron_format_section', '', '__return_false', 'dpuwoo_settings_page');
+        add_settings_section('dpuwoo_automation_section', '', '__return_false', 'dpuwoo_settings_page');
 
         // — Programación ———————————————————————————————————————————————————
-        add_settings_field('dpuwoo_cron_enabled',   'Habilitar automatización', [__CLASS__, 'render_cron_enabled'], 'dpuwoo_settings_page', 'dpuwoo_automation_section');
-        add_settings_field('dpuwoo_update_interval','Frecuencia',               [__CLASS__, 'render_interval'],     'dpuwoo_settings_page', 'dpuwoo_automation_section');
-
-        // — Reglas de cálculo cron —————————————————————————————————————————
-        add_settings_field('dpuwoo_cron_margin',           'Margen de Corrección',       [__CLASS__, 'render_cron_margin'],           'dpuwoo_settings_page', 'dpuwoo_cron_rules_section');
-        add_settings_field('dpuwoo_cron_threshold',        'Variación Mínima',           [__CLASS__, 'render_cron_threshold'],        'dpuwoo_settings_page', 'dpuwoo_cron_rules_section');
-        add_settings_field('dpuwoo_cron_threshold_max',    'Variación Máxima Permitida', [__CLASS__, 'render_cron_threshold_max'],    'dpuwoo_settings_page', 'dpuwoo_cron_rules_section');
-        add_settings_field('dpuwoo_cron_update_direction', 'Sentido de Actualización',   [__CLASS__, 'render_cron_update_direction'], 'dpuwoo_settings_page', 'dpuwoo_cron_rules_section');
-
-        // — Redondeo y exclusiones cron ————————————————————————————————————
-        add_settings_field('dpuwoo_cron_rounding_type',      'Tipo de Redondeo',   [__CLASS__, 'render_cron_rounding_type'],      'dpuwoo_settings_page', 'dpuwoo_cron_format_section');
-        add_settings_field('dpuwoo_cron_nearest_to',         'Redondear a',        [__CLASS__, 'render_cron_nearest_to'],         'dpuwoo_settings_page', 'dpuwoo_cron_format_section');
-        add_settings_field('dpuwoo_cron_exclude_categories', 'Excluir Categorías', [__CLASS__, 'render_cron_exclude_categories'], 'dpuwoo_settings_page', 'dpuwoo_cron_format_section');
+        add_settings_field('dpuwoo_cron_enabled',      'Habilitar automatización', [__CLASS__, 'render_cron_enabled'],      'dpuwoo_settings_page', 'dpuwoo_automation_section');
+        add_settings_field('dpuwoo_update_interval',   'Frecuencia',               [__CLASS__, 'render_interval'],          'dpuwoo_settings_page', 'dpuwoo_automation_section');
+        add_settings_field('dpuwoo_cron_api_provider', 'API para Cron',            [__CLASS__, 'render_cron_api_provider'], 'dpuwoo_settings_page', 'dpuwoo_automation_section');
+        add_settings_field('dpuwoo_cron_dollar_type',  'Moneda para Cron',         [__CLASS__, 'render_cron_dollar_type'],  'dpuwoo_settings_page', 'dpuwoo_automation_section');
+        add_settings_field('dpuwoo_cron_notify_mode',  'Notificaciones',           [__CLASS__, 'render_cron_notify_mode'],  'dpuwoo_settings_page', 'dpuwoo_automation_section');
+        add_settings_field('dpuwoo_cron_notify_email', 'Email de notificación',    [__CLASS__, 'render_cron_notify_email'], 'dpuwoo_settings_page', 'dpuwoo_automation_section');
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -121,19 +112,7 @@ class Admin_Settings
         $out['cron_api_provider']         = sanitize_text_field($input['cron_api_provider']         ?? '');
         $out['cron_country']             = sanitize_text_field($input['cron_country']             ?? '');
         $out['cron_reference_currency']  = sanitize_text_field($input['cron_reference_currency']  ?? '');
-
-        // — Reglas cron ('' = usar fallback manual) ——————————————————————
-        $out['cron_margin']           = ($input['cron_margin']        ?? '') !== '' ? floatval($input['cron_margin'])        : ($existing['cron_margin'] ?? '');
-        $out['cron_threshold']        = ($input['cron_threshold']     ?? '') !== '' ? floatval($input['cron_threshold'])     : ($existing['cron_threshold'] ?? '');
-        $out['cron_threshold_max']    = ($input['cron_threshold_max'] ?? '') !== '' ? floatval($input['cron_threshold_max']) : ($existing['cron_threshold_max'] ?? '');
-        $out['cron_update_direction'] = sanitize_text_field($input['cron_update_direction'] ?? ($existing['cron_update_direction'] ?? ''));
-        $out['cron_rounding_type']    = sanitize_text_field($input['cron_rounding_type']    ?? ($existing['cron_rounding_type'] ?? ''));
-        $out['cron_nearest_to']       = sanitize_text_field($input['cron_nearest_to']       ?? ($existing['cron_nearest_to'] ?? ''));
-
-        // Exclusiones cron: array vacío también significa "sin selección" = fallback manual
-        $out['cron_exclude_categories'] = isset($input['cron_exclude_categories'])
-            ? array_map('intval', $input['cron_exclude_categories'])
-            : [];
+        $out['cron_dollar_type']         = sanitize_text_field($input['cron_dollar_type']         ?? '');
 
         // — Notificaciones cron ——————————————————————————————————————————————
         $valid_notify_modes = ['update_and_notify', 'simulate_only', 'disabled'];
@@ -395,102 +374,59 @@ class Admin_Settings
         echo '<p class="description">Desactivar pausa el cron sin borrar la configuración.</p>';
     }
 
-    public static function render_cron_margin()
+    public static function render_cron_api_provider()
     {
         $opts = get_option('dpuwoo_settings', []);
-        $val  = $opts['cron_margin'] ?? '';
-        echo '<input type="number" step="0.1" min="0" name="dpuwoo_settings[cron_margin]" value="' . esc_attr($val) . '" class="small-text" placeholder="(manual)"> %';
-        echo '<p class="description">Margen extra para el cron. Vacío = usa el de Ejecución Manual.</p>';
-    }
-
-    public static function render_cron_threshold()
-    {
-        $opts = get_option('dpuwoo_settings', []);
-        $val  = $opts['cron_threshold'] ?? '';
-        echo '<input type="number" step="0.1" min="0" name="dpuwoo_settings[cron_threshold]" value="' . esc_attr($val) . '" class="small-text" placeholder="(manual)"> %';
-        echo '<p class="description">Variación mínima para el cron. Vacío = usa el de Ejecución Manual.</p>';
-    }
-
-    public static function render_cron_threshold_max()
-    {
-        $opts = get_option('dpuwoo_settings', []);
-        $val  = $opts['cron_threshold_max'] ?? '';
-        echo '<input type="number" step="0.1" min="0" name="dpuwoo_settings[cron_threshold_max]" value="' . esc_attr($val) . '" class="small-text" placeholder="(manual)"> %';
-        echo '<p class="description">Freno de seguridad del cron. Vacío = usa el de Ejecución Manual.</p>';
-    }
-
-    public static function render_cron_update_direction()
-    {
-        $opts       = get_option('dpuwoo_settings', []);
-        $val        = $opts['cron_update_direction'] ?? '';
-        $directions = [
-            ''              => '(usar configuración manual)',
-            'bidirectional' => 'Bidireccional (sube y baja)',
-            'up_only'       => 'Solo incremento',
-            'down_only'     => 'Solo disminución',
+        $val = $opts['cron_api_provider'] ?? '';
+        $providers = [
+            '' => 'Usar configuración principal',
+            'dolarapi' => 'DolarAPI',
+            'jsdelivr' => 'Jsdelivr',
+            'cryptoprice' => 'CoinGecko',
+            'moneyconvert' => 'MoneyConvert',
+            'hexarate' => 'HexaRate',
+            'foreignrate' => 'ForeignRate',
         ];
-        echo '<select name="dpuwoo_settings[cron_update_direction]" class="regular-text">';
-        foreach ($directions as $k => $label) {
+        echo '<select name="dpuwoo_settings[cron_api_provider]" class="regular-text">';
+        foreach ($providers as $k => $label) {
             printf('<option value="%s"%s>%s</option>', esc_attr($k), selected($val, $k, false), esc_html($label));
         }
         echo '</select>';
-        echo '<p class="description">Vacío = usa la dirección de Ejecución Manual.</p>';
+        echo '<p class="description">API específica para el cron. Vacío = usa la API configurada en principal.</p>';
     }
 
-    public static function render_cron_rounding_type()
+    public static function render_cron_dollar_type()
     {
-        $opts  = get_option('dpuwoo_settings', []);
-        $val   = $opts['cron_rounding_type'] ?? '';
-        $types = [
-            ''        => '(usar configuración manual)',
-            'none'    => 'Sin redondeo',
-            'integer' => 'Enteros',
-            'ceil'    => 'Al mayor (Ceiling)',
-            'floor'   => 'Al menor (Floor)',
-            'nearest' => 'Al más cercano',
+        $opts = get_option('dpuwoo_settings', []);
+        $val = $opts['cron_dollar_type'] ?? '';
+        echo '<input type="text" name="dpuwoo_settings[cron_dollar_type]" value="' . esc_attr($val) . '" class="regular-text" placeholder="Ej: DOLAR_OFICIAL">';
+        echo '<p class="description">Código de moneda para el cron. Vacío = usa la moneda de referencia principal.</p>';
+    }
+
+    public static function render_cron_notify_mode()
+    {
+        $opts = get_option('dpuwoo_settings', []);
+        $val = $opts['cron_notify_mode'] ?? 'update_and_notify';
+        $modes = [
+            'update_and_notify' => 'Actualizar y notificar',
+            'simulate_only' => 'Solo simular (notificar sin actualizar)',
+            'disabled' => 'Sin notificaciones',
         ];
-        echo '<select name="dpuwoo_settings[cron_rounding_type]" class="regular-text">';
-        foreach ($types as $k => $label) {
+        echo '<select name="dpuwoo_settings[cron_notify_mode]" class="regular-text">';
+        foreach ($modes as $k => $label) {
             printf('<option value="%s"%s>%s</option>', esc_attr($k), selected($val, $k, false), esc_html($label));
         }
         echo '</select>';
-        echo '<p class="description">Vacío = usa el redondeo de Ejecución Manual.</p>';
     }
 
-    public static function render_cron_nearest_to()
+    public static function render_cron_notify_email()
     {
-        $opts    = get_option('dpuwoo_settings', []);
-        $val     = $opts['cron_nearest_to'] ?? '';
-        $options = ['' => '(usar configuración manual)', '1' => 'Unidad', '10' => 'Decena', '50' => 'Cincuenta', '100' => 'Centena'];
-        echo '<select name="dpuwoo_settings[cron_nearest_to]" class="regular-text">';
-        foreach ($options as $k => $label) {
-            printf('<option value="%s"%s>%s</option>', esc_attr($k), selected($val, $k, false), esc_html($label));
-        }
-        echo '</select>';
-        echo '<p class="description">Solo aplica cuando el redondeo del cron es "Al más cercano".</p>';
+        $opts = get_option('dpuwoo_settings', []);
+        $val = $opts['cron_notify_email'] ?? get_option('admin_email');
+        echo '<input type="email" name="dpuwoo_settings[cron_notify_email]" value="' . esc_attr($val) . '" class="regular-text">';
+        echo '<p class="description">Email para recibir notificaciones del cron.</p>';
     }
-
-    public static function render_cron_exclude_categories()
-    {
-        $opts       = get_option('dpuwoo_settings', []);
-        $selected   = $opts['cron_exclude_categories'] ?? [];
-        $is_array   = is_array($selected);
-        $categories = get_terms(['taxonomy' => 'product_cat', 'hide_empty' => false, 'orderby' => 'name']);
-
-        echo '<p class="description" style="margin-bottom:6px;">Sin selección = usa las exclusiones de Ejecución Manual.</p>';
-        if (!empty($categories) && !is_wp_error($categories)) {
-            echo '<select name="dpuwoo_settings[cron_exclude_categories][]" multiple="multiple" class="regular-text" style="height:130px;">';
-            foreach ($categories as $cat) {
-                $is_selected = $is_array && in_array($cat->term_id, $selected);
-                printf('<option value="%s"%s>%s</option>', esc_attr($cat->term_id), selected($is_selected, true, false), esc_html($cat->name . ' (' . $cat->count . ')'));
-            }
-            echo '</select>';
-            echo '<p class="description">Ctrl+clic para seleccionar múltiples.</p>';
-        } else {
-            echo '<p>No hay categorías creadas.</p>';
-        }
-    }
-
+    
     /**
      * Reprograma el cron cuando se guardan los settings.
      */
