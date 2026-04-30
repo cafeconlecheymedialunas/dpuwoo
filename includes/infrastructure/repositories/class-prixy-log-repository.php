@@ -25,8 +25,8 @@ class Log_Repository implements Log_Repository_Interface
     {
         global $wpdb;
         $this->wpdb = $wpdb;
-        $this->table_runs  = $wpdb->prefix . 'dpuwoo_runs';
-        $this->table_items = $wpdb->prefix . 'dpuwoo_run_items';
+        $this->table_runs  = $wpdb->prefix . 'prixy_runs';
+        $this->table_items = $wpdb->prefix . 'prixy_run_items';
     }
 
     /* ---------------------------

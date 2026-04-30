@@ -34,7 +34,7 @@ class API_Client
     public function get_provider(?string $provider_key = null): API_Provider_Interface
     {
         if (empty($provider_key)) {
-            $opts         = get_option('dpuwoo_settings', []);
+            $opts         = get_option('prixy_settings', []);
             $provider_key = $opts['api_provider'] ?? 'dolarapi';
         }
 
@@ -134,7 +134,7 @@ class API_Client
     public function get_currencies($provider_key = null)
     {
         $provider_key = $provider_key ?? 'dolarapi';
-        $transient_key = 'dpuwoo_currencies_' . $provider_key;
+        $transient_key = 'prixy_currencies_' . $provider_key;
         
         // Verificar cache
         $cached = get_transient($transient_key);
@@ -169,7 +169,7 @@ class API_Client
     public function clear_currencies_cache($provider_key = null)
     {
         if ($provider_key) {
-            delete_transient('dpuwoo_currencies_' . $provider_key);
+            delete_transient('prixy_currencies_' . $provider_key);
         } else {
             // Limpiar todos los caches de currencies
             global $wpdb;
@@ -340,7 +340,7 @@ return $symbols[$code] ?? '';
     public function get_rates(string $api_type, string $base_currency = 'USD'): array
     {
         try {
-            $opts = get_option('dpuwoo_settings', []);
+            $opts = get_option('prixy_settings', []);
             
             // Usar API key correspondiente si existe
             $api_key = '';

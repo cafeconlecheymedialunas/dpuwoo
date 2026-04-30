@@ -31,34 +31,34 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 }
 
 // COMPLETE RESET ON UNINSTALL
-function dpuwoo_uninstall_cleanup()
+function prixy_uninstall_cleanup()
 {
 	global $wpdb;
 	
 	// 1. DELETE ALL PLUGIN OPTIONS
-	delete_option('dpuwoo_settings');
-	delete_option('dpuwoo_reference_currency');
-	delete_option('dpuwoo_last_dollar_value');
-	delete_option('dpuwoo_initial_setup_done');
-	delete_option('dpuwoo_admin_notice');
+	delete_option('prixy_settings');
+	delete_option('prixy_reference_currency');
+	delete_option('prixy_last_dollar_value');
+	delete_option('prixy_initial_setup_done');
+	delete_option('prixy_admin_notice');
 	// Note: baseline_dollar_value is deprecated and no longer used
-	delete_option('dpuwoo_auto_detection_date');
+	delete_option('prixy_auto_detection_date');
 	
 	// 2. REMOVE ALL PRODUCT USD PRICE METADATA
 	$wpdb->query("DELETE FROM {$wpdb->postmeta} WHERE meta_key = '_prixy_original_price_usd'");
 	
 	// 3. REMOVE BASELINE TABLE
-	$baseline_table = $wpdb->prefix . 'dpuwoo_baselines';
+	$baseline_table = $wpdb->prefix . 'prixy_baselines';
 	$wpdb->query("DROP TABLE IF EXISTS {$baseline_table}");
 	
 	// 3. CLEAR SCHEDULED HOOKS
-	wp_clear_scheduled_hook('dpuwoo_do_update');
+	wp_clear_scheduled_hook('prixy_do_update');
 	
 	// 4. DROP PLUGIN TABLES (optional - uncomment if you want to remove all data)
 	/*
 	$tables = [
-		$wpdb->prefix . 'dpuwoo_runs',
-		$wpdb->prefix . 'dpuwoo_run_items'
+		$wpdb->prefix . 'prixy_runs',
+		$wpdb->prefix . 'prixy_run_items'
 	];
 	
 	foreach ($tables as $table) {
@@ -69,4 +69,4 @@ function dpuwoo_uninstall_cleanup()
 	error_log('DPUWoo: Complete uninstall cleanup performed');
 }
 
-dpuwoo_uninstall_cleanup();
+prixy_uninstall_cleanup();

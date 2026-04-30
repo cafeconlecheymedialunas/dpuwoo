@@ -10,7 +10,7 @@ class Email_Notifier
 
     public function __construct()
     {
-        $opts = get_option('dpuwoo_settings', []);
+        $opts = get_option('prixy_settings', []);
         $this->to = $opts['cron_notify_email'] ?? get_option('admin_email');
         $this->headers = [
             'Content-Type: text/html; charset=UTF-8',

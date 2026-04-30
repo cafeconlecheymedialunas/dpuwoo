@@ -3,12 +3,12 @@ if (!defined('ABSPATH')) exit;
 
 /**
  * Repositorio de configuración del plugin.
- * Encapsula todos los accesos a get_option/update_option para 'dpuwoo_settings'.
+ * Encapsula todos los accesos a get_option/update_option para 'prixy_settings'.
  * Elimina la lectura directa de settings dispersa en Price_Updater, Price_Calculator y Cron.
  */
 class Settings_Repository
 {
-    private const OPTION_KEY = 'dpuwoo_settings';
+    private const OPTION_KEY = 'prixy_settings';
 
     /** @var array Cache en memoria para evitar múltiples get_option por request. */
     private array $cache = [];

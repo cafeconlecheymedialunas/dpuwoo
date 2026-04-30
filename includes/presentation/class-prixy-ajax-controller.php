@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) exit;
  */
 class Ajax_Controller
 {
-    private const NONCE_ACTION = 'dpuwoo_ajax_nonce';
+    private const NONCE_ACTION = 'prixy_ajax_nonce';
     private const NONCE_FIELD  = 'nonce';
 
     public function __construct(
@@ -30,7 +30,7 @@ class Ajax_Controller
     ==========================================================*/
 
     /**
-     * POST: dpuwoo_simulate_batch
+     * POST: prixy_simulate_batch
      * Simula la actualización de precios sin persistir cambios.
      */
     public function handle_simulate_batch(): void
@@ -39,7 +39,7 @@ class Ajax_Controller
     }
 
     /**
-     * POST: dpuwoo_update_batch
+     * POST: prixy_update_batch
      * Ejecuta la actualización real de precios para el lote dado.
      */
     public function handle_update_batch(): void
@@ -97,7 +97,7 @@ class Ajax_Controller
     ==========================================================*/
 
     /**
-     * POST: dpuwoo_revert_item
+     * POST: prixy_revert_item
      * Revierte el precio de un item individual.
      */
     public function handle_revert_item(): void
@@ -119,7 +119,7 @@ class Ajax_Controller
     }
 
     /**
-     * POST: dpuwoo_revert_run
+     * POST: prixy_revert_run
      * Revierte todos los precios de una ejecución completa.
      */
     public function handle_revert_run(): void
@@ -140,7 +140,7 @@ class Ajax_Controller
     ==========================================================*/
 
     /**
-     * POST: dpuwoo_initialize_baseline
+     * POST: prixy_initialize_baseline
      * Obtiene la tasa actual y la persiste como origin_exchange_rate.
      * Lo que antes hacía Price_Updater::initialize_from_current_rate().
      */
@@ -288,7 +288,7 @@ class Ajax_Controller
     }
 
     /**
-     * POST: dpuwoo_test_api_connection
+     * POST: prixy_test_api_connection
      * Prueba la conectividad con el proveedor dado.
      */
     public function handle_test_api_connection(): void
@@ -306,7 +306,7 @@ class Ajax_Controller
     }
 
     /**
-     * POST: dpuwoo_test_api
+     * POST: prixy_test_api
      * Prueba la conexión con una API específica usando la API key proporcionada.
      */
     public function handle_test_api(): void
@@ -360,7 +360,7 @@ class Ajax_Controller
     }
 
     /**
-     * POST: dpuwoo_save_origin_rate
+     * POST: prixy_save_origin_rate
      * Guarda la tasa de referencia inicial y procesa todos los productos.
      */
     public function handle_save_origin_rate(): void
@@ -373,11 +373,11 @@ class Ajax_Controller
         }
 
         // Guardar tasa y bloquear ANTES de procesar (bypass cache)
-        $all_settings = (array) get_option('dpuwoo_settings', []);
+        $all_settings = (array) get_option('prixy_settings', []);
         $all_settings['origin_exchange_rate'] = $value;
         $all_settings['origin_rate_locked'] = '1';
-        update_option('dpuwoo_settings', $all_settings);
-        wp_cache_delete('dpuwoo_settings', 'options');
+        update_option('prixy_settings', $all_settings);
+        wp_cache_delete('prixy_settings', 'options');
 
         // Procesar todos los productos (si falla, igual la tasa queda guardada)
         $count = 0;
@@ -395,7 +395,7 @@ class Ajax_Controller
             'value' => $value,
             'processed' => $count,
             'products' => $details,
-            'redirect' => admin_url('admin.php?page=dpuwoo_configuration'),
+            'redirect' => admin_url('admin.php?page=prixy_configuration'),
         ]);
     }
     
@@ -486,7 +486,7 @@ class Ajax_Controller
     }
 
     /**
-     * POST: dpuwoo_preview_products
+     * POST: prixy_preview_products
      * Devuelve los primeros 10 productos para vista previa con ARS y USD calculado.
      */
     public function handle_preview_products(): void
@@ -590,7 +590,7 @@ class Ajax_Controller
         }
 
         // Run_id persistente entre requests AJAX (static se pierde entre procesos)
-        $run_id = get_option('dpuwoo_setup_run_id', 0);
+        $run_id = get_option('prixy_setup_run_id', 0);
 
         $products = wc_get_products([
             'limit' => $limit,
@@ -620,7 +620,7 @@ class Ajax_Controller
                 'note' => 'Setup inicial - Registro de precios base'
             ];
             $run_id = $this->log_repo->insert_run($run_data);
-            update_option('dpuwoo_setup_run_id', $run_id);
+            update_option('prixy_setup_run_id', $run_id);
         }
 
         $processed = [];
@@ -662,7 +662,7 @@ class Ajax_Controller
 
         // Limpiar option cuando se completó todo
         if (count($products) < $limit) {
-            delete_option('dpuwoo_setup_run_id');
+            delete_option('prixy_setup_run_id');
         }
 
         wp_send_json_success([
