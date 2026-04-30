@@ -105,6 +105,26 @@ class Update_Prices_Handler
             ]);
         }
 
+        if ($cmd->batch > 0 && empty($cmd->run_id)) {
+            return array_merge($exchange_rate->to_array(), [
+                'currency'         => $currency,
+                'previous_rate'    => $previous_rate,
+                'is_first_run'     => $is_first_run,
+                'threshold_met'    => true,
+                'error'            => 'missing_run_id',
+                'message'          => 'Batch subsiguiente requiere run_id del run principal',
+                'total_batches'    => $total_batches,
+                'batch_info'       => [
+                    'current_batch'      => $cmd->batch,
+                    'total_batches'      => $total_batches,
+                    'processed_in_batch' => 0,
+                    'total_products'     => $total_products,
+                ],
+                'changes'         => [],
+                'summary'         => ['updated' => 0, 'errors' => 0, 'skipped' => 0, 'simulated' => $cmd->simulate],
+            ]);
+        }
+
         $batch_ids    = $this->product_repo->get_product_ids_batch($batch_size, $offset);
         $batch_result = $this->processor->process($batch_ids, $exchange_rate, $opts, $cmd->simulate);
 
@@ -113,7 +133,31 @@ class Update_Prices_Handler
             if ($cmd->batch === 0) {
                 $run_id = $this->persist_run($currency, $current_rate, $exchange_rate, $batch_result, $opts, $total_products, $cmd->context);
             } else {
-                $run_id = $this->add_items_to_run($cmd->run_id ?? 0, $batch_result, $opts);
+                $run_id = $this->add_items_to_run($cmd->run_id, $batch_result);
+            }
+
+            if ($run_id === false) {
+                return array_merge($exchange_rate->to_array(), [
+                    'rate'           => $current_rate,
+                    'previous_rate'  => $previous_rate,
+                    'is_first_run'   => $is_first_run,
+                    'currency'       => $currency,
+                    'threshold_met'  => true,
+                    'direction'      => $direction,
+                    'error'          => 'log_persistence_failed',
+                    'message'        => 'No se pudo guardar el log del batch de actualización',
+                    'changes'        => $batch_result->get_changes(),
+                    'run_id'         => false,
+                    'batch_info'     => [
+                        'current_batch'      => $cmd->batch,
+                        'total_batches'      => $total_batches,
+                        'processed_in_batch' => count($batch_ids),
+                        'total_products'    => $total_products,
+                    ],
+                    'batch_results'  => $this->format_batch_results_for_ui($batch_result),
+                    'summary'        => $batch_result->to_summary($cmd->simulate),
+                    'errors_map'     => $batch_result->get_errors_map(),
+                ]);
             }
         }
 
@@ -241,18 +285,33 @@ class Update_Prices_Handler
      * Agrega items de un batch subsiguiente a un run existente.
      * El run ya fue creado y commiteado en batch 0 por persist_run().
      */
-    private function add_items_to_run(int $run_id, Batch_Result $result, array $opts): int|false
+    private function add_items_to_run(int $run_id, Batch_Result $result): int|false
     {
+        if ($run_id <= 0) {
+            error_log('DPUWoo: run_id inválido para batch subsiguiente');
+            return false;
+        }
+
         $items = $result->get_changes();
 
         if (empty($items)) {
             return $run_id;
         }
 
+        if (!$this->log_repo->begin_transaction()) {
+            error_log('DPUWoo: Fallo al iniciar transacción para items de batch subsiguiente');
+            return false;
+        }
+
         $success = $this->logger->add_items_to_transaction($run_id, $items);
 
         if (!$success) {
-            $this->logger->rollback_run_transaction();
+            $this->log_repo->rollback_transaction();
+            return false;
+        }
+
+        if (!$this->log_repo->commit_transaction()) {
+            $this->log_repo->rollback_transaction();
             return false;
         }
 

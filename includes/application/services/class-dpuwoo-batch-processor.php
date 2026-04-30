@@ -10,7 +10,8 @@ class Batch_Processor
 {
     public function __construct(
         private Product_Repository_Interface $product_repo,
-        private Price_Calculation_Engine     $engine
+        private Price_Calculation_Engine     $engine,
+        private Log_Repository_Interface     $log_repo
     ) {}
 
     /**
@@ -67,7 +68,7 @@ class Batch_Processor
         Batch_Result  $result,
         float         $theoretical_pct = 0.0
     ): void {
-        $context    = Price_Context::from_product($product, $exchange_rate, $settings);
+        $context    = Price_Context::from_product($product, $exchange_rate, $settings, $this->log_repo);
         $calc       = $this->engine->calculate($context);
         $change     = $this->make_change_data(
             $product->get_id(),
@@ -84,7 +85,7 @@ class Batch_Processor
             $theoretical_pct
         );
 
-        $has_log = Log_Repository::get_instance()->has_any_log_for_product($product->get_id());
+        $has_log = $this->log_repo->has_any_log_for_product($product->get_id());
         
         if (!$has_log) {
             $change['reason'] = 'Primera actualización';
@@ -125,7 +126,7 @@ class Batch_Processor
                 continue;
             }
 
-            $context = Price_Context::from_product($variation, $exchange_rate, $settings);
+            $context = Price_Context::from_product($variation, $exchange_rate, $settings, $this->log_repo);
             $calc    = $this->engine->calculate($context);
 
             $variation_display = $this->get_variation_display_name($variable, $variation);
@@ -146,7 +147,7 @@ class Batch_Processor
             $change['parent_id']      = $variable->get_id();
             $change['variation_name'] = $variation_display;
 
-            $has_log = Log_Repository::get_instance()->has_any_log_for_product($variation_id);
+            $has_log = $this->log_repo->has_any_log_for_product($variation_id);
             
             if (!$has_log) {
                 $change['reason'] = 'Primera actualización';
@@ -172,15 +173,22 @@ class Batch_Processor
      */
     private function persist_prices(\WC_Product $product, Calculation_Result $calc): string
     {
-        $saved_regular = true;
-        $saved_sale    = true;
+        $saved_regular   = true;
+        $saved_sale      = true;
+        $anything_saved  = false;
 
         if ($calc->has_regular_change() && $calc->new_regular > 0) {
-            $saved_regular = $this->product_repo->save_regular_price($product, $calc->new_regular);
+            $saved_regular  = $this->product_repo->save_regular_price($product, $calc->new_regular);
+            $anything_saved = true;
         }
 
         if ($calc->has_sale_change()) {
-            $saved_sale = $this->product_repo->save_sale_price($product, $calc->new_sale);
+            $saved_sale     = $this->product_repo->save_sale_price($product, $calc->new_sale);
+            $anything_saved = true;
+        }
+
+        if (!$anything_saved) {
+            return 'skipped';
         }
 
         return ($saved_regular && $saved_sale) ? 'updated' : 'error';
