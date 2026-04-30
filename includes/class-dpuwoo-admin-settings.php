@@ -71,6 +71,9 @@ class Admin_Settings
     {
         $out = [];
 
+        // Leer settings existentes primero para preservar campos no enviados en el POST
+        $existing = get_option('dpuwoo_settings', []);
+
         // — Origen (compartido) ——————————————————————————————————————————
         $out['api_provider']           = sanitize_text_field($input['api_provider']           ?? 'dolarapi');
         $out['currencyapi_api_key']    = sanitize_text_field($input['currencyapi_api_key']    ?? '');
@@ -82,12 +85,11 @@ class Admin_Settings
         $existing_rate = floatval($existing['origin_exchange_rate'] ?? 0);
         $submitted_rate = isset($input['origin_exchange_rate']) ? floatval($input['origin_exchange_rate']) : null;
         $out['origin_exchange_rate'] = ($submitted_rate !== null && $submitted_rate > 0) ? $submitted_rate : ($existing_rate > 0 ? $existing_rate : 0);
-        // Preservar el flag de bloqueo desde onboarding
-        $out['origin_rate_locked']   = $existing['origin_rate_locked'] ?? false;
+        // Preservar el flag de bloqueo: tomar del input si viene, si no del existente
+        $out['origin_rate_locked']   = !empty($input['origin_rate_locked']) ? $input['origin_rate_locked'] : ($existing['origin_rate_locked'] ?? false);
         $out['rate_generation_method'] = in_array($input['rate_generation_method'] ?? '', ['api', 'manual']) ? $input['rate_generation_method'] : 'manual';
 
         // Preservar currency y cron_currency
-        $existing           = get_option('dpuwoo_settings', []);
         $out['currency'] = sanitize_text_field($input['currency'] ?? ($existing['currency'] ?? 'oficial'));
         $out['cron_currency'] = sanitize_text_field($input['cron_currency'] ?? ($existing['cron_currency'] ?? ''));
 
@@ -429,12 +431,11 @@ class Admin_Settings
     
     /**
      * Reprograma el cron cuando se guardan los settings.
+     * El reschedule real lo maneja el hook registrado en class-dpuwoo.php via Loader.
      */
-    public static function on_settings_updated($old_value, $new_value, $option)
+    public static function on_settings_updated($old_value, $new_value, $option): void
     {
-        if (!class_exists('Cron')) {
-            require_once DPUWOO_PLUGIN_DIR . 'includes/class-dpuwoo-cron.php';
-        }
-        Cron::schedule();
+        // Noop: Cron::schedule() ya está registrado en define_admin_hooks() via Loader.
+        // Este método se mantiene como punto de extensión para futuros cambios.
     }
 }

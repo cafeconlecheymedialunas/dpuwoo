@@ -21,7 +21,8 @@ class Ajax_Controller
         private Command_Bus          $bus,
         private Logger               $logger,
         private API_Client           $api,
-        private Settings_Repository  $settings
+        private Settings_Repository  $settings,
+        private Log_Repository       $log_repo
     ) {}
 
     /*==========================================================
@@ -332,11 +333,10 @@ class Ajax_Controller
     {
         $this->verify_nonce_only();
 
-        $repo       = Log_Repository::get_instance();
         $settings   = $this->settings->get_all();
-        $last_runs  = $repo->get_runs(5);
-        $chart_runs = $repo->get_runs_for_chart(30);
-        $stats      = $repo->get_aggregate_stats();
+        $last_runs  = $this->log_repo->get_runs(5);
+        $chart_runs = $this->log_repo->get_runs_for_chart(30);
+        $stats      = $this->log_repo->get_aggregate_stats();
         $next_cron  = Cron::get_next_scheduled_time();
 
         wp_send_json_success([
@@ -372,16 +372,30 @@ class Ajax_Controller
             wp_send_json_error(['message' => 'La tasa debe ser mayor a 0']);
         }
 
-        $this->settings->set('origin_exchange_rate', $value);
-        $this->settings->set('origin_rate_locked', true);
+        // Guardar tasa y bloquear ANTES de procesar (bypass cache)
+        $all_settings = (array) get_option('dpuwoo_settings', []);
+        $all_settings['origin_exchange_rate'] = $value;
+        $all_settings['origin_rate_locked'] = '1';
+        update_option('dpuwoo_settings', $all_settings);
+        wp_cache_delete('dpuwoo_settings', 'options');
 
-        // Procesar todos los productos
-        $products_processed = $this->process_first_setup_products($value);
+        // Procesar todos los productos (si falla, igual la tasa queda guardada)
+        $count = 0;
+        $details = [];
+        try {
+            $result = $this->process_first_setup_products($value);
+            $count = $result['count'];
+            $details = $result['details'];
+        } catch (\Throwable $e) {
+            error_log('DPUWoo: Error en process_first_setup_products: ' . $e->getMessage());
+        }
 
+        // Devolver URL de redirección a configuración
         wp_send_json_success([
             'value' => $value,
-            'processed' => $products_processed['count'],
-            'products' => $products_processed['details']
+            'processed' => $count,
+            'products' => $details,
+            'redirect' => admin_url('admin.php?page=dpuwoo_configuration'),
         ]);
     }
     
@@ -421,7 +435,9 @@ class Ajax_Controller
             $sale_price = $product->get_sale_price();
             
             if ($regular_price > 0) {
+                $usd = round($regular_price / $rate, 2);
                 $item = [
+                    'product_id' => $product_id,
                     'status' => 'updated',
                     'old_regular_price' => 0,
                     'new_regular_price' => $regular_price,
@@ -436,7 +452,8 @@ class Ajax_Controller
                     $processed[] = [
                         'id' => $product_id,
                         'name' => $product->get_name(),
-                        'ars' => $regular_price
+                        'ars' => number_format($regular_price, 2),
+                        'usd' => number_format($usd, 2),
                     ];
                     $count++;
                 }
@@ -466,6 +483,41 @@ class Ajax_Controller
         } else {
             wp_send_json_error(['message' => $result['error'] ?? 'Error al obtener tasas']);
         }
+    }
+
+    /**
+     * POST: dpuwoo_preview_products
+     * Devuelve los primeros 10 productos para vista previa con ARS y USD calculado.
+     */
+    public function handle_preview_products(): void
+    {
+        $this->verify_nonce_only();
+
+        $rate = floatval($_POST['rate'] ?? 0);
+        if ($rate <= 0) {
+            wp_send_json_error(['message' => 'Tasa inválida'], 400);
+        }
+
+        $products = wc_get_products([
+            'limit' => 10,
+            'status' => 'publish',
+            'return' => 'objects',
+        ]);
+
+        $preview = [];
+        foreach ($products as $product) {
+            $regular_price = floatval($product->get_regular_price());
+            if ($regular_price > 0) {
+                $preview[] = [
+                    'id' => $product->get_id(),
+                    'name' => $product->get_name(),
+                    'ars' => number_format($regular_price, 2),
+                    'usd' => number_format(round($regular_price / $rate, 2), 2),
+                ];
+            }
+        }
+
+        wp_send_json_success(['products' => $preview]);
     }
 
     /*==========================================================
@@ -537,6 +589,9 @@ class Ajax_Controller
             wp_send_json_error(['message' => 'Tasa inválida'], 400);
         }
 
+        // Run_id persistente entre requests AJAX (static se pierde entre procesos)
+        $run_id = get_option('dpuwoo_setup_run_id', 0);
+
         $products = wc_get_products([
             'limit' => $limit,
             'offset' => $offset,
@@ -544,10 +599,18 @@ class Ajax_Controller
             'return' => 'objects',
         ]);
 
-        $processed = [];
-        static $run_id = null;
+        if (count($products) === 0) {
+            wp_send_json_success([
+                'products' => [],
+                'offset' => $offset,
+                'limit' => $limit,
+                'rate' => $rate,
+                'done' => true,
+            ]);
+            return;
+        }
 
-        if ($offset === 0) {
+        if ($run_id === 0) {
             $run_data = [
                 'currency' => 'USD',
                 'dollar_value' => $rate,
@@ -557,7 +620,10 @@ class Ajax_Controller
                 'note' => 'Setup inicial - Registro de precios base'
             ];
             $run_id = $this->log_repo->insert_run($run_data);
+            update_option('dpuwoo_setup_run_id', $run_id);
         }
+
+        $processed = [];
 
         foreach ($products as $product) {
             $product_id = $product->get_id();
@@ -568,7 +634,10 @@ class Ajax_Controller
                 continue;
             }
 
+            $usd = round($regular_price / $rate, 2);
+
             $item = [
+                'product_id' => $product_id,
                 'status' => 'updated',
                 'old_regular_price' => 0,
                 'new_regular_price' => $regular_price,
@@ -584,10 +653,16 @@ class Ajax_Controller
                     'id' => $product_id,
                     'name' => $product->get_name(),
                     'ars' => number_format($regular_price, 2),
+                    'usd' => number_format($usd, 2),
                 ];
             }
 
             update_post_meta($product_id, '_dpuwoo_first_setup_done', current_time('mysql'));
+        }
+
+        // Limpiar option cuando se completó todo
+        if (count($products) < $limit) {
+            delete_option('dpuwoo_setup_run_id');
         }
 
         wp_send_json_success([
@@ -595,6 +670,7 @@ class Ajax_Controller
             'offset' => $offset,
             'limit' => $limit,
             'rate' => $rate,
+            'done' => count($products) < $limit,
         ]);
     }
 }

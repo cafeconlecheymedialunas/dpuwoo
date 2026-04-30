@@ -119,13 +119,19 @@ class Cron
         $result = $bus->dispatch(new Update_Prices_Command(0, simulate: $simulate, context: 'cron'));
 
         if (isset($result['error'])) {
+            error_log('DPUWoo Cron: error en ejecución — ' . ($result['message'] ?? $result['error']));
             if ($notify_mode !== 'disabled') {
                 self::send_error_notification($result['error']);
             }
             return;
         }
 
-        $total_batches = $result['batch_info']['total_batches'] ?? 1;
+        if (isset($result['threshold_met']) && $result['threshold_met'] === false) {
+            error_log('DPUWoo Cron: threshold no alcanzado — ' . ($result['message'] ?? ''));
+            return;
+        }
+
+        $total_batches = $result['batch_info']['total_batches'] ?? 0;
         $run_id        = $result['run_id'] ?? 0;
 
         // Acumular summary de todos los batches para la notificación
@@ -133,6 +139,12 @@ class Cron
 
         for ($batch = 1; $batch < $total_batches; $batch++) {
             $batch_result = $bus->dispatch(new Update_Prices_Command($batch, simulate: $simulate, context: 'cron', run_id: $run_id));
+
+            if (isset($batch_result['error'])) {
+                error_log('DPUWoo Cron: error en batch ' . $batch . ': ' . $batch_result['error']);
+                break;
+            }
+
             $bs = $batch_result['summary'] ?? [];
             $combined_summary['updated']  += $bs['updated']  ?? 0;
             $combined_summary['errors']   += $bs['errors']   ?? 0;

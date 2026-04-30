@@ -4,8 +4,7 @@ global $wpdb;
 
 $opts = get_option('dpuwoo_settings', []);
 $origin_rate = floatval($opts['origin_exchange_rate'] ?? 0);
-$rate_locked = !empty($opts['origin_rate_locked']);
-$rate_auto = $origin_rate > 0;
+$rate_locked = $origin_rate > 0 || !empty($opts['origin_rate_locked']);
 
 // Obtener tasa automáticamente si no hay una guardada
 if (!$rate_locked && $origin_rate <= 0) {
@@ -30,7 +29,7 @@ if (!$rate_locked && $origin_rate <= 0) {
 // Get products stats
 $product_count = wp_count_posts('product');
 $total_products = $product_count->publish ?? 0;
-$products_done = $wpdb->get_var("SELECT COUNT(DISTINCT product_id) FROM {$wpdb->prefix}dpuwoo_run_items WHERE status = 'updated'");
+$products_done = $wpdb->get_var("SELECT COUNT(DISTINCT product_id) FROM {$wpdb->prefix}dpuwoo_run_items WHERE status = 'updated' AND product_id > 0");
 $needs_setup = $total_products - $products_done;
 
 // Reference rate
@@ -96,18 +95,38 @@ $excluded_cats = $opts['exclude_categories'] ?? [];
     <?php
     // STEP 1: Si no hay tasa guardada o no está lockeada, mostrar onboarding
     if (!$rate_locked):
+
+        $all_products = new WP_Query([
+            'post_type' => 'product',
+            'post_status' => 'publish',
+            'posts_per_page' => 10,
+        ]);
+        $preview_products = [];
+        while ($all_products->have_posts()) {
+            $all_products->the_post();
+            $prod = wc_get_product(get_the_ID());
+            if ($prod) {
+                $rp = floatval($prod->get_regular_price());
+                if ($rp > 0) {
+                    $preview_products[] = [
+                        'id' => $prod->get_id(),
+                        'name' => $prod->get_name(),
+                        'ars' => $rp,
+                    ];
+                }
+            }
+        }
+        wp_reset_postdata();
     ?>
 
-    <!-- ONBOARDING UX DISEÑADO -->
+    <!-- ONBOARDING -->
     <div style="max-width: 900px; margin: 0 auto; padding-top: 20px;">
 
-        <!-- Header -->
         <div style="text-align: center; margin-bottom: 24px;">
             <h1 style="font-size: 24px; font-weight: 700; color: #111827; margin: 0 0 8px;">Setup Inicial - Dollar Sync</h1>
             <p style="font-size: 14px; color: #6b7280; margin: 0;">Configurá la tasa de referencia para comenzar a sincronizar tus precios</p>
         </div>
 
-        <!-- Explicación breve -->
         <div style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border-radius: 12px; padding: 16px 20px; color: white; margin-bottom: 24px; display: flex; gap: 16px; align-items: center;">
             <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" style="flex-shrink: 0;"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             <div style="font-size: 14px; opacity: 0.95;">
@@ -116,7 +135,7 @@ $excluded_cats = $opts['exclude_categories'] ?? [];
         </div>
 
         <!-- Input de Tasa -->
-        <div style="background: white; border: 2px solid #e5e7eb; border-radius: 16px; padding: 24px; margin-bottom: 24px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+        <div style="background: white; border: 2px solid #e5e7eb; border-radius: 16px; padding: 24px; margin-bottom: 24px; display: flex; align-items: flex-end; gap: 20px; flex-wrap: wrap;">
             <div style="flex: 1; min-width: 200px;">
                 <label style="display: block; font-size: 13px; font-weight: 600; color: #6b7280; margin-bottom: 8px;">TASA DE REFERENCIA (ARS/USD)</label>
                 <div style="position: relative;">
@@ -124,18 +143,18 @@ $excluded_cats = $opts['exclude_categories'] ?? [];
                     <input type="number" id="dpuwoo-origin-rate" value="<?php echo $origin_rate > 0 ? esc_attr(number_format($origin_rate, 2, '.', '')) : ''; ?>" step="0.01" min="0.01" placeholder="ej: 1368.00" style="padding: 14px 16px 14px 36px; border: 2px solid #d1d5db; border-radius: 10px; font-size: 20px; font-weight: 700; width: 100%; max-width: 200px; outline: none; color: #111827;">
                 </div>
             </div>
-            <button type="button" id="dpuwoo-preview-btn" style="background: #f3f4f6; color: #374151; border: none; border-radius: 10px; padding: 14px 24px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap;">
-                Ver Productos
+            <div id="dpuwoo-rate-msg" style="font-size: 13px; flex: 1;"></div>
+            <button type="button" id="dpuwoo-save-origin-rate" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; border: none; border-radius: 10px; padding: 14px 32px; font-size: 15px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 14px rgba(99,102,241,0.4); white-space: nowrap;">
+                Confirmar y continuar
             </button>
         </div>
 
-        <!-- Área de productos (se muestra al hacer click) -->
-        <div id="products-preview-area" style="display: none; background: white; border: 1px solid #e5e7eb; border-radius: 16px; overflow: hidden; margin-bottom: 24px;">
+        <!-- Preview de productos con calculo en vivo -->
+        <div id="products-preview-area" style="background: white; border: 1px solid #e5e7eb; border-radius: 16px; overflow: hidden; margin-bottom: 24px;">
             <div style="background: #f9fafb; padding: 16px 20px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-weight: 600; color: #111827;">Vista previa de productos</span>
+                <span style="font-weight: 600; color: #111827;">Vista previa de productos (cálculo en vivo)</span>
                 <span id="products-count" style="font-size: 13px; color: #6b7280;"></span>
             </div>
-            
             <div id="products-table-container" style="max-height: 400px; overflow-y: auto;">
                 <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
                     <thead style="background: #f9fafb; position: sticky; top: 0;">
@@ -146,24 +165,16 @@ $excluded_cats = $opts['exclude_categories'] ?? [];
                         </tr>
                     </thead>
                     <tbody id="products-tbody">
-                        <!-- Se llena via JS -->
+                        <?php foreach ($preview_products as $pp): ?>
+                        <tr>
+                            <td style="padding: 8px 12px; border-bottom: 1px solid #f3f4f6;"><?php echo esc_html($pp['name']); ?></td>
+                            <td style="padding: 8px 12px; text-align: right; border-bottom: 1px solid #f3f4f6;" data-ars="<?php echo esc_attr($pp['ars']); ?>">$<?php echo number_format($pp['ars'], 2); ?></td>
+                            <td class="usd-cell" style="padding: 8px 12px; text-align: right; border-bottom: 1px solid #f3f4f6; color: #16a34a; font-weight: 600;">—</td>
+                        </tr>
+                        <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
-        </div>
-
-        <!-- Mensaje de estado -->
-        <div id="dpuwoo-rate-msg" style="font-size: 13px; margin-bottom: 16px; min-height: 20px;"></div>
-
-        <!-- Botón Confirmar (flotante) -->
-        <div id="confirm-section" style="display: none; position: sticky; bottom: 20px; background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px 20px; box-shadow: 0 -4px 20px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-            <div>
-                <span style="font-weight: 600; color: #111827;">¿Todo listo?</span>
-                <span style="font-size: 13px; color: #6b7280; display: block;">Confirmá para guardar los precios históricos en USD</span>
-            </div>
-            <button type="button" id="dpuwoo-save-origin-rate" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; border: none; border-radius: 10px; padding: 14px 32px; font-size: 15px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 14px rgba(99,102,241,0.4);">
-                Confirmar Setup
-            </button>
         </div>
 
     </div>
@@ -173,66 +184,39 @@ $excluded_cats = $opts['exclude_categories'] ?? [];
     elseif ($needs_setup > 0):
     ?>
 
-    <!-- PROCESSING: Tasa guardada, procesar productos -->
+    <!-- PROCESSING: Tasa guardada, procesando automáticamente -->
     <div style="max-width: 700px; margin: 0 auto; padding-top: 20px;">
 
-        <div style="background: linear-gradient(135deg, var(--upd-600), var(--upd-700)); border-radius: 16px; padding: 28px; color: white; margin-bottom: 24px;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
-                <div>
-                    <h2 style="margin: 0 0 8px 0; font-size: 20px; font-weight: 700; display: flex; align-items: center; gap: 10px;">
-                        <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                        Procesamiento Inicial
-                    </h2>
-                    <p style="margin: 0; opacity: 0.9; font-size: 14px;">
-                        Quedan <strong><?php echo number_format($needs_setup); ?></strong> productos por procesar con la tasa de referencia.
-                    </p>
-                    <p style="margin: 8px 0 0; opacity: 0.75; font-size: 12px;">
-                        Esto guardará el precio en USD de cada producto para poder comparar cambios futuros.
-                    </p>
-                </div>
-                <div style="text-align: right;">
-                    <div style="font-size: 12px; opacity: 0.8;">Tasa de referencia</div>
-                    <div style="font-size: 28px; font-weight: 700;">$<?php echo number_format($origin_rate, 2); ?></div>
-                </div>
-            </div>
+        <div id="dpuwoo-settings-metadata" style="display:none;" data-products-done="<?php echo intval($products_done); ?>" data-total-products="<?php echo intval($total_products); ?>" data-origin-rate="<?php echo floatval($origin_rate); ?>"></div>
 
-            <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.2);">
-                <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
-                    <div style="flex: 1; min-width: 200px;">
-                        <div style="font-size: 12px; opacity: 0.8; margin-bottom: 6px;">Progreso</div>
-                        <div style="background: rgba(255,255,255,0.2); border-radius: 999px; height: 10px; overflow: hidden;">
-                            <div id="setup-progress-fill" style="background: white; height: 100%; width: <?php echo $total_products > 0 ? (($products_done / $total_products) * 100) : 0; ?>%; transition: width 0.3s;"></div>
-                        </div>
-                        <div style="font-size: 13px; margin-top: 8px;">
-                            <?php echo number_format($products_done); ?> / <?php echo number_format($total_products); ?> productos
-                        </div>
-                    </div>
-                    <button type="button" id="start-setup-btn" class="dpuwoo-btn" style="background: white; color: var(--upd-600); padding: 14px 28px; font-size: 15px; font-weight: 700;">
-                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        Iniciar Procesamiento
-                    </button>
+        <div style="background: linear-gradient(135deg, var(--upd-600), var(--upd-700)); border-radius: 16px; padding: 28px; color: white; margin-bottom: 24px;">
+            <h2 style="margin: 0 0 8px 0; font-size: 20px; font-weight: 700; display: flex; align-items: center; gap: 10px;">
+                <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                Procesando productos...
+            </h2>
+            <p style="margin: 0; opacity: 0.9; font-size: 14px;">
+                Configurando <strong><?php echo number_format($needs_setup); ?></strong> productos con la tasa de referencia.
+            </p>
+            <div style="margin-top: 20px;">
+                <div style="background: rgba(255,255,255,0.2); border-radius: 999px; height: 10px; overflow: hidden;">
+                    <div id="setup-progress-fill" style="background: white; height: 100%; width: <?php echo $total_products > 0 ? (($products_done / $total_products) * 100) : 0; ?>%; transition: width 0.3s;"></div>
+                </div>
+                <div id="setup-count" style="font-size: 13px; margin-top: 8px;">
+                    <?php echo number_format($products_done); ?> / <?php echo number_format($total_products); ?> productos
                 </div>
             </div>
         </div>
 
-        <!-- Progress Panel -->
-        <div id="setup-progress-panel" style="display: none; background: var(--dpu-surface); border: 1px solid var(--dpu-border); border-radius: var(--dpu-radius); padding: 24px; margin-bottom: 24px;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 16px;">
-                <span style="font-weight: 600; font-size: 14px;">Procesando productos...</span>
-                <span id="setup-count" style="color: var(--upd-600); font-weight: 700;">0 / <?php echo number_format($total_products); ?></span>
-            </div>
-            <div style="background: var(--dpu-border); border-radius: 999px; height: 6px; overflow: hidden;">
-                <div id="setup-progress-bar" style="background: var(--upd-500); height: 100%; width: 0%; transition: width 0.2s;"></div>
-            </div>
-            <div id="setup-products-list" style="margin-top: 20px; max-height: 240px; overflow-y: auto; font-size: 13px;">
-            </div>
+        <div id="setup-products-list" style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; max-height: 300px; overflow-y: auto; font-size: 13px; margin-bottom: 24px;">
         </div>
 
         <div id="setup-complete-msg" style="display: none; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; text-align: center;">
             <svg width="48" height="48" fill="none" stroke="#22c55e" viewBox="0 0 24 24" stroke-width="2" style="margin: 0 auto 12px;"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            <h3 style="margin: 0 0 8px; color: #166534; font-size: 18px;">¡Procesamiento completado!</h3>
-            <p style="margin: 0; color: #166534; font-size: 14px;">Todos los productos fueron procesados. Podés continuar con la configuración.</p>
+            <h3 style="margin: 0 0 8px; color: #166534; font-size: 18px;">¡Completado!</h3>
+            <p style="margin: 0; color: #166534; font-size: 14px;">Redirigiendo a la configuración...</p>
         </div>
+
+    </div>
 
     <?php
     // STEP 3: Todo completo, mostrar settings normal
@@ -679,80 +663,79 @@ $excluded_cats = $opts['exclude_categories'] ?? [];
 
 </div>
 
+<?php endif; // rate_locked / needs_setup / else ?>
+
 <script>
-alert('Settings JS loaded! Check console for logs.');
-console.log('=== SETTINGS PAGE JS LOADED ===');
-// Ejecutar inmediatamente sin esperar a jQuery
 (function() {
-    console.log('=== IMMEDIATE FUNCTION RUNNING ===');
-    console.log('dpuwoo_ajax:', typeof dpuwoo_ajax !== 'undefined' ? dpuwoo_ajax : 'NOT DEFINED');
-    
     var input = document.getElementById('dpuwoo-origin-rate');
     var btn = document.getElementById('dpuwoo-save-origin-rate');
     var msg = document.getElementById('dpuwoo-rate-msg');
-    
-    console.log('Elements:', input, btn, msg);
-    
-    if (input && btn && msg) {
-        var currentVal = input.value;
-        console.log('Current value:', currentVal);
-        
-        // Auto-load si no hay valor
-        if (!currentVal || currentVal == '') {
-            btn.disabled = true;
-            btn.innerHTML = '<svg width="16" height="16" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Cargando...';
-            msg.innerHTML = '<span style="color: #6b7280;">Obteniendo tasa...</span>';
-            
-            if (typeof dpuwoo_ajax !== 'undefined') {
-                console.log(' Calling AJAX...');
-                var xhr = new XMLHttpRequest();
-                xhr.open('POST', dpuwoo_ajax.ajax_url, true);
-                xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-                xhr.onreadystatechange = function() {
-                    if (xhr.readyState === 4) {
-                        if (xhr.status === 200) {
-                            try {
-                                var res = JSON.parse(xhr.responseText);
-                                console.log('Response:', res);
-                                if (res.success && res.data && res.data.rate > 0) {
-                                    input.value = res.data.rate.toFixed(2);
-                                    btn.disabled = false;
-                                    btn.innerHTML = '<svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Confirmar y continuar';
-                                    msg.innerHTML = '<span style="color: #22c55e;">✓ Tasa: $' + res.data.rate.toFixed(2) + '</span>';
-                                } else {
-                                    btn.disabled = false;
-                                    btn.innerHTML = '<svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Guardar y continuar';
-                                    msg.innerHTML = '<span style="color: #d97706;">Manual</span>';
-                                }
-                            } catch(e) {
-                                console.log('Parse error:', e);
-                                btn.disabled = false;
-                            }
-                        } else {
-                            console.log('HTTP error:', xhr.status);
-                            btn.disabled = false;
-                        }
-                    }
-                };
-                xhr.send('action=dpuwoo_get_current_rate&nonce=' + dpuwoo_ajax.nonce);
-            } else {
-                console.log('dpuwoo_ajax no definido');
-                btn.disabled = false;
-                btn.innerHTML = '<svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Guardar y continuar';
+    var usdCells = document.querySelectorAll('.usd-cell');
+    var arstds = document.querySelectorAll('#products-tbody td[data-ars]');
+
+    // Calcular USD en vivo cada vez que cambia la tasa
+    function updateUsdPreview() {
+        var rate = parseFloat(input.value);
+        if (!rate || rate <= 0) {
+            usdCells.forEach(function(cell) { cell.textContent = '—'; });
+            return;
+        }
+        arstds.forEach(function(td, i) {
+            var ars = parseFloat(td.getAttribute('data-ars'));
+            if (!isNaN(ars) && ars > 0 && usdCells[i]) {
+                usdCells[i].textContent = '$' + (ars / rate).toFixed(2);
             }
+        });
+    }
+
+    if (input) {
+        updateUsdPreview();
+        input.addEventListener('input', updateUsdPreview);
+        input.addEventListener('change', updateUsdPreview);
+    }
+
+    // Auto-load rate desde API si no hay valor
+    if (input && btn && msg && typeof dpuwoo_ajax !== 'undefined') {
+        var currentVal = input.value;
+        if (!currentVal || currentVal == '' || currentVal == '0') {
+            btn.disabled = true;
+            btn.innerHTML = 'Cargando tasa...';
+            msg.innerHTML = '<span style="color: #6b7280;">Obteniendo tasa del dólar...</span>';
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', dpuwoo_ajax.ajax_url, true);
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    try {
+                        var res = JSON.parse(xhr.responseText);
+                        if (res.success && res.data && res.data.rate > 0) {
+                            input.value = res.data.rate.toFixed(2);
+                            msg.innerHTML = '<span style="color: #22c55e; font-weight: 600;">✓ Tasa auto-cargada: $' + res.data.rate.toFixed(2) + '</span>';
+                        } else {
+                            msg.innerHTML = '<span style="color: #d97706;">Ingresá la tasa manualmente.</span>';
+                        }
+                    } catch(e) {
+                        msg.innerHTML = '<span style="color: #d97706;">Ingresá la tasa manualmente.</span>';
+                    }
+                    btn.disabled = false;
+                    updateUsdPreview();
+                }
+            };
+            xhr.send('action=dpuwoo_get_current_rate&nonce=' + dpuwoo_ajax.nonce);
+        } else {
+            updateUsdPreview();
         }
     }
 })();
 
 jQuery(document).ready(function($) {
-    console.log('=== JQUERY READY ===');
-    
+
     // Collapsible sections
     $('.dpuwoo-collapsible').on('click', function() {
         var $btn = $(this);
         var section = $btn.data('section');
         var $content = $('#section-' + section);
-        
         $btn.toggleClass('dpuwoo-collapsible--expanded');
         $content.slideToggle(200);
     });
@@ -762,228 +745,107 @@ jQuery(document).ready(function($) {
         var api = $(this).data('api');
         var $result = $('#dpuwoo-api-test-result');
         var $btn = $(this);
-        
-        $btn.prop('disabled', true).html('<svg class="animate-spin" width="12" height="12" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Testeando...');
-        
-        $result.html('<div class="dpuwoo-notice dpuwoo-notice--info"><div class="dpuwoo-notice__icon"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><div class="dpuwoo-notice__content"><p>Probando conexión...</p></div></div>');
-        
-        var apiKey = api === 'currencyapi' 
-            ? $('input[name="dpuwoo_settings[currencyapi_api_key]"]').val()
-            : $('input[name="dpuwoo_settings[exchangerate_api_key]"]').val();
-        
-        $.post(dpuwoo_ajax.ajax_url, {
-            action: 'dpuwoo_test_api',
-            api: api,
-            api_key: apiKey,
-            nonce: dpuwoo_ajax.nonce
-        }, function(res) {
-            $btn.prop('disabled', false).html('<svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> Test');
-            
+        $btn.prop('disabled', true).html('Testeando...');
+        $result.html('<div class="dpuwoo-notice dpuwoo-notice--info"><div class="dpuwoo-notice__content"><p>Probando conexión...</p></div></div>');
+        var apiKey = api === 'currencyapi' ? $('input[name="dpuwoo_settings[currencyapi_api_key]"]').val() : $('input[name="dpuwoo_settings[exchangerate_api_key]"]').val();
+        $.post(dpuwoo_ajax.ajax_url, { action: 'dpuwoo_test_api', api: api, api_key: apiKey, nonce: dpuwoo_ajax.nonce }, function(res) {
+            $btn.prop('disabled', false).html('Test');
             if (res.success) {
-                $result.html('<div class="dpuwoo-notice dpuwoo-notice--success"><div class="dpuwoo-notice__icon"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><div class="dpuwoo-notice__content"><strong>¡Conexión exitosa!</strong><p>' + res.data.message + '</p></div></div>');
+                $result.html('<div class="dpuwoo-notice dpuwoo-notice--success"><div class="dpuwoo-notice__content"><strong>¡Conexión exitosa!</strong><p>' + res.data.message + '</p></div></div>');
             } else {
-                $result.html('<div class="dpuwoo-notice dpuwoo-notice--error"><div class="dpuwoo-notice__icon"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg></div><div class="dpuwoo-notice__content"><strong>Error de conexión</strong><p>' + res.data.message + '</p></div></div>');
+                $result.html('<div class="dpuwoo-notice dpuwoo-notice--error"><div class="dpuwoo-notice__content"><strong>Error</strong><p>' + res.data.message + '</p></div></div>');
             }
         }).fail(function() {
-            $btn.prop('disabled', false).html('<svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> Test');
-            $result.html('<div class="dpuwoo-notice dpuwoo-notice--error"><div class="dpuwoo-notice__content"><strong>Error</strong><p>No se pudo conectar con el servidor.</p></div></div>');
+            $btn.prop('disabled', false).html('Test');
+            $result.html('<div class="dpuwoo-notice dpuwoo-notice--error"><div class="dpuwoo-notice__content"><strong>Error</strong><p>No se pudo conectar.</p></div></div>');
         });
     });
 
     // Get from API button
     $('#dpuwoo-get-from-api').on('click', function() {
-        var $btn = $(this);
-        var $result = $('#dpuwoo-api-rates-result');
+        var $btn = $(this), $result = $('#dpuwoo-api-rates-result');
         var currency = $('#dpuwoo-ref-currency').val();
-        
-        $btn.prop('disabled', true).html('<svg class="animate-spin" width="14" height="14" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Obteniendo...');
-        
+        $btn.prop('disabled', true).html('Obteniendo...');
         $result.html('<div class="dpuwoo-notice dpuwoo-notice--info"><div class="dpuwoo-notice__content"><p>Obteniendo tasas...</p></div></div>');
-        
-        $.post(dpuwoo_ajax.ajax_url, {
-            action: 'dpuwoo_get_rates',
-            currency: currency,
-            nonce: dpuwoo_ajax.nonce
-        }, function(res) {
-            $btn.prop('disabled', false).html('<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> Obtener de API');
-            
+        $.post(dpuwoo_ajax.ajax_url, { action: 'dpuwoo_get_rates', currency: currency, nonce: dpuwoo_ajax.nonce }, function(res) {
+            $btn.prop('disabled', false).html('Obtener de API');
             if (res.success && res.data.rates) {
-                var rates = res.data.rates;
-                var optionsHtml = '<div class="dpuwoo-rates-list"><p class="dpuwoo-rates-list__label">Seleccioná una moneda:</p>';
-                
-                for (var code in rates) {
-                    optionsHtml += '<button type="button" class="dpuwoo-rate-option" data-currency="' + code + '" data-rate="' + rates[code] + '">';
-                    optionsHtml += '<span class="dpuwoo-rate-option__currency">' + code + '</span>';
-                    optionsHtml += '<span class="dpuwoo-rate-option__rate">$' + parseFloat(rates[code]).toFixed(2) + '</span>';
-                    optionsHtml += '</button>';
+                var html = '<div class="dpuwoo-rates-list">';
+                for (var code in res.data.rates) {
+                    html += '<button type="button" class="dpuwoo-rate-option" data-currency="' + code + '" data-rate="' + res.data.rates[code] + '"><span class="dpuwoo-rate-option__currency">' + code + '</span><span class="dpuwoo-rate-option__rate">$' + parseFloat(res.data.rates[code]).toFixed(2) + '</span></button>';
                 }
-                optionsHtml += '</div>';
-                
-                $result.html(optionsHtml);
-                
-                // Handle rate selection
+                html += '</div>';
+                $result.html(html);
                 $('.dpuwoo-rate-option').on('click', function() {
-                    var curr = $(this).data('currency');
-                    var rate = $(this).data('rate');
-                    
-                    $('#dpuwoo-ref-currency').val(curr);
-                    $('#dpuwoo-ref-rate').val(rate);
-                    
-                    $result.html('<div class="dpuwoo-notice dpuwoo-notice--success"><div class="dpuwoo-notice__content"><strong>¡Tasa seleccionada!</strong><p>' + curr + ': $' + parseFloat(rate).toFixed(4) + '</p></div></div>');
+                    $('#dpuwoo-ref-currency').val($(this).data('currency'));
+                    $('#dpuwoo-ref-rate').val($(this).data('rate'));
+                    $result.html('<div class="dpuwoo-notice dpuwoo-notice--success"><div class="dpuwoo-notice__content"><strong>¡Seleccionada!</strong><p>' + $(this).data('currency') + ': $' + parseFloat($(this).data('rate')).toFixed(4) + '</p></div></div>');
                 });
             } else {
                 $result.html('<div class="dpuwoo-notice dpuwoo-notice--error"><div class="dpuwoo-notice__content"><strong>Error</strong><p>' + (res.data?.message || 'No se pudieron obtener las tasas.') + '</p></div></div>');
             }
         }).fail(function() {
-            $btn.prop('disabled', false).html('<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> Obtener de API');
-            $result.html('<div class="dpuwoo-notice dpuwoo-notice--error"><div class="dpuwoo-notice__content"><strong>Error</strong><p>No se pudo conectar con el servidor.</p></div></div>');
+            $btn.prop('disabled', false).html('Obtener de API');
+            $result.html('<div class="dpuwoo-notice dpuwoo-notice--error"><div class="dpuwoo-notice__content"><strong>Error</strong><p>No se pudo conectar.</p></div></div>');
         });
     });
 
     // Form submit feedback
     $('#dpuwoo-config-form').on('submit', function() {
-        var btn = $(this).find('button[type="submit"]');
-        btn.prop('disabled', true).html('<svg class="animate-spin" width="14" height="14" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Guardando...');
+        $(this).find('button[type="submit"]').prop('disabled', true).html('Guardando...');
     });
 
-    // Auto-load rate on page load
-    console.log('=== AUTO-LOAD START ===');
-    try {
-        var $input = $('#dpuwoo-origin-rate');
-        var $btn = $('#dpuwoo-save-origin-rate');
-        var $msg = $('#dpuwoo-rate-msg');
-        
-        console.log('Elements found - input:', $input.length, 'btn:', $btn.length, 'msg:', $msg.length);
-        
-        var currentVal = $input.val();
-        console.log('Current input value:', currentVal, 'type:', typeof currentVal);
-        
-        // Solo si no hay valor guardado, obtener de API
-        if (!currentVal || currentVal == '' || currentVal == '0') {
-            $btn.prop('disabled', true).html('<svg class="animate-spin" width="16" height="16" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Cargando...');
-            $msg.html('<span style="color: #6b7280;">Obteniendo tasa automáticamente...</span>');
-
-            console.log('Calling AJAX...');
-
-            $.post(dpuwoo_ajax.ajax_url, {
-                action: 'dpuwoo_get_current_rate',
-                nonce: dpuwoo_ajax.nonce
-            }, function(res) {
-                console.log('SUCCESS response:', res);
-                if (res.success && res.data && res.data.rate > 0) {
-                    $input.val(res.data.rate.toFixed(2));
-                    $btn.prop('disabled', false).html('<svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Confirmar y continuar');
-                    $msg.html('<span style="color: #22c55e;">✓ Tasa: $' + res.data.rate.toFixed(2) + '</span>');
-                } else {
-                    $btn.prop('disabled', false).html('<svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Guardar y continuar');
-                    $msg.html('<span style="color: #d97706;">Ingresa manualmente.</span>');
-                }
-            }, 'json').fail(function(xhr, status, error) {
-                console.log('AJAX ERROR:', status, error, 'response:', xhr.responseText);
-                $btn.prop('disabled', false).html('<svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Guardar y continuar');
-                $msg.html('<span style="color: #d97706;">Error. Ingresa manualmente.</span>');
-            });
-        } else {
-            console.log('Value already exists, skipping auto-load');
-        }
-    } catch(e) {
-        console.log('AUTO-LOAD ERROR:', e);
-    }
-    console.log('=== AUTO-LOAD END ===');
-
-    // Save Origin Rate (Onboarding) - procesa productos
-    $(document).on('click', '#dpuwoo-save-origin-rate', function(e) {
+    /* ====== STEP 1: Save Origin Rate ====== */
+    $('#dpuwoo-save-origin-rate').on('click', function(e) {
         e.preventDefault();
         var rate = parseFloat($('#dpuwoo-origin-rate').val());
         var $btn = $(this);
         var $msg = $('#dpuwoo-rate-msg');
-
         if (!rate || rate <= 0) {
-            $msg.html('<span style="color: #dc2626;">Valor inválido.</span>');
+            $msg.html('<span style="color: #dc2626;">Ingresá un valor válido para la tasa.</span>');
             return;
         }
-
-        $btn.prop('disabled', true).html('<svg class="animate-spin" width="16" height="16" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Procesando...');
-        $msg.html('<span style="color: #6b7280;">Procesando productos...</span>');
-
+        $btn.prop('disabled', true).html('Procesando productos...');
+        $msg.html('<span style="color: #6b7280;">Guardando tasa y creando primer log...</span>');
         $.ajax({
             url: dpuwoo_ajax.ajax_url,
             type: 'POST',
             dataType: 'json',
-            data: {
-                action: 'dpuwoo_save_origin_rate',
-                value: rate,
-                nonce: dpuwoo_ajax.nonce
-            },
+            data: { action: 'dpuwoo_save_origin_rate', value: rate, nonce: dpuwoo_ajax.nonce },
             success: function(res) {
-                if (res.success) {
-                    var products = res.data.products || [];
+                if (res.success && res.data) {
                     var count = res.data.processed || 0;
-                    
-                    if (products.length > 0) {
-                        var html = '<div style="margin-top: 20px; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">';
-                        html += '<div style="background: #f0fdf4; padding: 12px 16px; border-bottom: 1px solid #bbf7d0; display: flex; align-items: center; gap: 8px;">';
-                        html += '<svg width="20" height="20" fill="none" stroke="#16a34a" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>';
-                        html += '<span style="color: #166534; font-weight: 600;">✓ ' + count + ' productos procesados</span>';
-                        html += '</div>';
-                        html += '<div style="max-height: 300px; overflow-y: auto;">';
-                        html += '<table style="width: 100%; border-collapse: collapse; font-size: 13px;">';
-                        html += '<tr style="background: #f9fafb;"><th style="padding: 8px 12px; text-align: left; border-bottom: 1px solid #e5e7eb;">Producto</th><th style="padding: 8px 12px; text-align: right; border-bottom: 1px solid #e5e7eb;">ARS</th><th style="padding: 8px 12px; text-align: right; border-bottom: 1px solid #e5e7eb;">USD</th></tr>';
-                        
-                        for (var i = 0; i < products.length; i++) {
-                            var p = products[i];
-                            html += '<tr>';
-                            html += '<td style="padding: 8px 12px; border-bottom: 1px solid #f3f4f6;">' + p.name + '</td>';
-                            html += '<td style="padding: 8px 12px; text-align: right; border-bottom: 1px solid #f3f4f6; color: #dc2626;">$' + p.ars + '</td>';
-                            html += '<td style="padding: 8px 12px; text-align: right; border-bottom: 1px solid #f3f4f6; color: #16a34a; font-weight: 600;">$' + p.usd + '</td>';
-                            html += '</tr>';
-                        }
-                        html += '</table></div></div>';
-                        
-                        $msg.html(html);
-                    } else {
-                        $msg.html('<span style="color: #22c55e;">✓ Tasa guardada. ' + count + ' productos configurados.</span>');
-                    }
-                    
-                    $btn.hide();
-                    
-                    setTimeout(function() { window.location.reload(); }, 3000);
+                    $msg.html('<div style="margin-top: 16px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 16px 20px; display: flex; align-items: center; gap: 10px;"><svg width="20" height="20" fill="none" stroke="#16a34a" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><span style="color: #166534; font-weight: 600;">✓ Tasa guardada (' + count + ' productos). Redirigiendo a configuración...</span></div>');
+                    $btn.html('✓ Completado');
+                    var redirectUrl = res.data.redirect || '/wp-admin/admin.php?page=dpuwoo_configuration';
+                    setTimeout(function() { window.location.replace(redirectUrl); }, 1200);
                 } else {
-                    $btn.prop('disabled', false).html('<svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Guardar y continuar');
-                    $msg.html('<span style="color: #dc2626;">Error: ' + (res.data?.message || 'No se pudo guardar') + '</span>');
+                    $btn.prop('disabled', false).html('Confirmar y continuar');
+                    $msg.html('<span style="color: #dc2626;">Error: respuesta inesperada del servidor.</span>');
                 }
             },
-            error: function(xhr, status, error) {
-                $btn.prop('disabled', false).html('<svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Guardar y continuar');
-                $msg.html('<span style="color: #dc2626;">Error de conexión.</span>');
+            error: function(xhr, status, err) {
+                $btn.prop('disabled', false).html('Confirmar y continuar');
+                $msg.html('<span style="color: #dc2626;">Error de conexión: ' + status + '</span>');
             }
         });
     });
 
-    // First Setup Button
+    /* ====== STEP 2: Auto-start batch processing ====== */
     var setupProcessed = <?php echo intval($products_done); ?>;
     var setupTotal = <?php echo intval($total_products); ?>;
     var setupRate = <?php echo floatval($origin_rate); ?>;
-    var setupBatchSize = 5;
+    var setupBatchSize = 10;
 
-    $('#start-setup-btn').on('click', function() {
-        if (setupRate <= 0) {
-            alert('Primero configurá la tasa de referencia en el formulario.');
-            return;
-        }
-
-        $('#setup-progress-panel').show();
-        $('#start-setup-btn').prop('disabled', true).text('Procesando...');
-
-        processSetupBatch();
-    });
+    if (setupTotal > 0 && setupProcessed < setupTotal && setupRate > 0) {
+        setTimeout(processSetupBatch, 500);
+    }
 
     function processSetupBatch() {
         if (setupProcessed >= setupTotal) {
             completeSetup();
             return;
         }
-
         $.post(dpuwoo_ajax.ajax_url, {
             action: 'dpuwoo_first_setup_batch',
             nonce: dpuwoo_ajax.nonce,
@@ -994,20 +856,21 @@ jQuery(document).ready(function($) {
             if (response.success && response.data.products) {
                 setupProcessed += response.data.products.length;
                 updateSetupProgress();
-
                 response.data.products.forEach(function(p) {
+                    var usd = p.usd || (parseFloat(p.ars) / setupRate).toFixed(2);
                     $('#setup-products-list').append(
-                        '<div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--dpu-border);">' +
+                        '<div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f3f4f6;">' +
                         '<span style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">' + p.name + '</span>' +
-                        '<span style="color: var(--upd-600);">$' + p.ars + ' → $' + p.usd + '</span>' +
-                        '</div>'
+                        '<span style="color: #6366f1;">$' + p.ars + ' → $' + usd + '</span></div>'
                     );
                 });
-
                 var list = $('#setup-products-list')[0];
-                list.scrollTop = list.scrollHeight;
-
-                setTimeout(processSetupBatch, 100);
+                if (list) list.scrollTop = list.scrollHeight;
+                if (response.data.done) {
+                    completeSetup();
+                } else {
+                    setTimeout(processSetupBatch, 100);
+                }
             }
         }).fail(function() {
             setupProcessed += setupBatchSize;
@@ -1018,14 +881,15 @@ jQuery(document).ready(function($) {
 
     function updateSetupProgress() {
         var percent = setupTotal > 0 ? (setupProcessed / setupTotal) * 100 : 0;
-        $('#setup-progress-bar').css('width', percent + '%');
+        $('#setup-progress-fill').css('width', percent + '%');
         $('#setup-count').text(setupProcessed + ' / ' + setupTotal);
     }
 
     function completeSetup() {
-        $('#setup-progress-bar').css('width', '100%');
+        $('#setup-progress-fill').css('width', '100%');
         $('#setup-count').text(setupTotal + ' / ' + setupTotal);
-        $('#start-setup-btn').text('✓ Completado').addClass('dpuwoo-btn--success').prop('disabled', false);
+        $('#setup-complete-msg').show();
+        setTimeout(function() { window.location.reload(); }, 2000);
     }
 });
 </script>
@@ -1123,5 +987,3 @@ jQuery(document).ready(function($) {
 .dpuwoo-notice--error .dpuwoo-notice__content strong { color: #991b1b; }
 .dpuwoo-notice--error .dpuwoo-notice__content p { color: #991b1b; }
 </style>
-
-<?php endif; // rate_locked / needs_setup / else ?>

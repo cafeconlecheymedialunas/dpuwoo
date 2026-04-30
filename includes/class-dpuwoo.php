@@ -245,6 +245,7 @@ class Dpuwoo {
 		$this->loader->add_action('wp_ajax_dpuwoo_get_setup_progress',   $ajax, 'handle_get_setup_progress');
 		$this->loader->add_action('wp_ajax_dpuwoo_save_origin_rate',      $ajax, 'handle_save_origin_rate');
 		$this->loader->add_action('wp_ajax_dpuwoo_first_setup_batch',    $ajax, 'handle_first_setup_batch');
+		$this->loader->add_action('wp_ajax_dpuwoo_preview_products',     $ajax, 'handle_preview_products');
 	}
 	
 
