@@ -122,6 +122,243 @@ class Update_Prices_Handler_Test extends TestCase
         $this->assertEquals(1, $result['summary']['updated']);
     }
 
+    public function test_handle_returns_error_when_subsequent_batch_without_run_id(): void
+    {
+        $settings = $this->createMock(\Settings_Repository::class);
+        $settings->method('get_for_context')->willReturn([
+            'dollar_type' => 'oficial',
+            'reference_currency' => 'USD',
+            'threshold' => 1.0,
+            'threshold_max' => 0,
+            'update_direction' => 'bidirectional',
+        ]);
+
+        $api = $this->createMock(\API_Client::class);
+        $api->method('get_rate')->willReturn(['value' => 1050.0]);
+
+        $productRepo = $this->createMock(\Product_Repository_Interface::class);
+        $productRepo->method('count_all_products')->willReturn(51);
+
+        $handler = new \Update_Prices_Handler(
+            $settings,
+            $api,
+            $this->createMock(\Batch_Processor::class),
+            $productRepo,
+            $this->createMock(\Logger::class),
+            new \Threshold_Policy(),
+            $this->createMock(\Log_Repository_Interface::class)
+        );
+
+        $cmd = new \Update_Prices_Command(1, false, 'manual');
+        $result = $handler->handle($cmd);
+
+        $this->assertArrayHasKey('error', $result);
+        $this->assertEquals('missing_run_id', $result['error']);
+        $this->assertEquals(0, $result['summary']['updated']);
+    }
+
+    public function test_handle_subsequent_batch_transaction_start_failure_returns_error(): void
+    {
+        $settings = $this->createMock(\Settings_Repository::class);
+        $settings->method('get_for_context')->willReturn([
+            'dollar_type' => 'oficial',
+            'reference_currency' => 'USD',
+            'threshold' => 1.0,
+            'threshold_max' => 0,
+            'update_direction' => 'bidirectional',
+        ]);
+
+        $api = $this->createMock(\API_Client::class);
+        $api->method('get_rate')->willReturn(['value' => 1050.0]);
+
+        $productRepo = $this->createMock(\Product_Repository_Interface::class);
+        $productRepo->method('count_all_products')->willReturn(51);
+        $productRepo->method('get_product_ids_batch')->willReturn([1]);
+
+        $batchResult = new \Batch_Result();
+        $batchResult->add_change([
+            'product_id' => 1,
+            'status' => 'updated',
+            'old_regular_price' => 100.0,
+            'new_regular_price' => 105.0,
+        ]);
+
+        $batchProcessor = $this->createMock(\Batch_Processor::class);
+        $batchProcessor->method('process')->willReturn($batchResult);
+
+        $logRepo = $this->createMock(\Log_Repository_Interface::class);
+        $logRepo->method('get_last_applied_rate')->willReturnCallback(fn($type, $ref) => 1000.0);
+        $logRepo->method('begin_transaction')->willReturn(false);
+
+        $logger = $this->createMock(\Logger::class);
+        $logger->expects($this->never())->method('add_items_to_transaction');
+
+        $handler = new \Update_Prices_Handler(
+            $settings,
+            $api,
+            $batchProcessor,
+            $productRepo,
+            $logger,
+            new \Threshold_Policy(),
+            $logRepo
+        );
+
+        $cmd = new \Update_Prices_Command(1, false, 'manual', 42);
+        $result = $handler->handle($cmd);
+
+        $this->assertArrayHasKey('error', $result);
+        $this->assertEquals('log_persistence_failed', $result['error']);
+        $this->assertFalse($result['run_id']);
+    }
+
+    public function test_handle_persist_run_failure_returns_error(): void
+    {
+        $settings = $this->createMock(\Settings_Repository::class);
+        $settings->method('get_for_context')->willReturn([
+            'dollar_type' => 'oficial',
+            'reference_currency' => 'USD',
+            'threshold' => 1.0,
+            'threshold_max' => 0,
+            'update_direction' => 'bidirectional',
+        ]);
+
+        $api = $this->createMock(\API_Client::class);
+        $api->method('get_rate')->willReturn(['value' => 1050.0]);
+
+        $productRepo = $this->createMock(\Product_Repository_Interface::class);
+        $productRepo->method('count_all_products')->willReturn(1);
+        $productRepo->method('get_product_ids_batch')->willReturn([1]);
+
+        $batchResult = new \Batch_Result();
+        $batchResult->add_change([
+            'product_id' => 1,
+            'status' => 'updated',
+            'old_regular_price' => 100.0,
+            'new_regular_price' => 105.0,
+        ]);
+
+        $batchProcessor = $this->createMock(\Batch_Processor::class);
+        $batchProcessor->method('process')->willReturn($batchResult);
+
+        $logRepo = $this->createMock(\Log_Repository_Interface::class);
+        $logRepo->method('get_last_applied_rate')->willReturnCallback(fn($type, $ref) => 1000.0);
+
+        $logger = $this->createMock(\Logger::class);
+        $logger->method('begin_run_transaction')->willReturn(false);
+        $logger->expects($this->never())->method('add_items_to_transaction');
+
+        $handler = new \Update_Prices_Handler(
+            $settings,
+            $api,
+            $batchProcessor,
+            $productRepo,
+            $logger,
+            new \Threshold_Policy(),
+            $logRepo
+        );
+
+        $cmd = new \Update_Prices_Command(0, false, 'manual');
+        $result = $handler->handle($cmd);
+
+        $this->assertArrayHasKey('error', $result);
+        $this->assertEquals('log_persistence_failed', $result['error']);
+        $this->assertFalse($result['run_id']);
+    }
+
+    public function test_handle_subsequent_batch_uses_log_transaction(): void
+    {
+        $settings = $this->createMock(\Settings_Repository::class);
+        $settings->method('get_for_context')->willReturn([
+            'dollar_type' => 'oficial',
+            'reference_currency' => 'USD',
+            'threshold' => 1.0,
+            'threshold_max' => 0,
+            'update_direction' => 'bidirectional',
+        ]);
+
+        $api = $this->createMock(\API_Client::class);
+        $api->method('get_rate')->willReturn(['value' => 1050.0]);
+
+        $productRepo = $this->createMock(\Product_Repository_Interface::class);
+        $productRepo->method('count_all_products')->willReturn(51);
+        $productRepo->method('get_product_ids_batch')->willReturn([51]);
+
+        $batchResult = new \Batch_Result();
+        $batchResult->add_change([
+            'product_id' => 1,
+            'status' => 'updated',
+            'old_regular_price' => 100.0,
+            'new_regular_price' => 105.0,
+        ]);
+
+        $batchProcessor = $this->createMock(\Batch_Processor::class);
+        $batchProcessor->method('process')->willReturn($batchResult);
+
+        $logRepo = $this->createMock(\Log_Repository_Interface::class);
+        $logRepo->method('get_last_applied_rate')->willReturnCallback(fn($type, $ref) => 1000.0);
+        $logRepo->expects($this->once())->method('begin_transaction')->willReturn(true);
+        $logRepo->expects($this->once())->method('commit_transaction')->willReturn(true);
+
+        $logger = $this->createMock(\Logger::class);
+        $logger->method('add_items_to_transaction')->willReturn(true);
+        $logger->expects($this->never())->method('begin_run_transaction');
+
+        $handler = new \Update_Prices_Handler(
+            $settings,
+            $api,
+            $batchProcessor,
+            $productRepo,
+            $logger,
+            new \Threshold_Policy(),
+            $logRepo
+        );
+
+        $cmd = new \Update_Prices_Command(1, false, 'manual', 42);
+        $result = $handler->handle($cmd);
+
+        $this->assertTrue($result['threshold_met']);
+        $this->assertEquals(1, $result['summary']['updated']);
+        $this->assertEquals(42, $result['run_id']);
+    }
+
+    public function test_handle_batch_beyond_total_batches_returns_empty(): void
+    {
+        $settings = $this->createMock(\Settings_Repository::class);
+        $settings->method('get_for_context')->willReturn([
+            'dollar_type' => 'oficial',
+            'reference_currency' => 'USD',
+            'threshold' => 1.0,
+            'threshold_max' => 0,
+            'update_direction' => 'bidirectional',
+        ]);
+
+        $api = $this->createMock(\API_Client::class);
+        $api->method('get_rate')->willReturn(['value' => 1050.0]);
+
+        $productRepo = $this->createMock(\Product_Repository_Interface::class);
+        $productRepo->method('count_all_products')->willReturn(50);
+
+        $logRepo = $this->createMock(\Log_Repository_Interface::class);
+        $logRepo->method('get_last_applied_rate')->willReturnCallback(fn($type, $ref) => 1000.0);
+
+        $handler = new \Update_Prices_Handler(
+            $settings,
+            $api,
+            $this->createMock(\Batch_Processor::class),
+            $productRepo,
+            $this->createMock(\Logger::class),
+            new \Threshold_Policy(),
+            $logRepo
+        );
+
+        $cmd = new \Update_Prices_Command(1, false, 'manual', 42);
+        $result = $handler->handle($cmd);
+
+        $this->assertTrue($result['threshold_met']);
+        $this->assertEmpty($result['changes']);
+        $this->assertEquals(0, $result['summary']['updated']);
+    }
+
     public function test_handle_first_run_with_origin_rate(): void
     {
         $settings = $this->createMock(\Settings_Repository::class);

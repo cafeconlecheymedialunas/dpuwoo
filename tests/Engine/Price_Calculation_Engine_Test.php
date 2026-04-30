@@ -71,6 +71,26 @@ class Price_Calculation_Engine_Test extends TestCase
         $this->assertContains('direction_up_only_blocked', $result->applied_rules);
     }
 
+    public function test_margin_applied_after_direction_block(): void
+    {
+        $engine = new \Price_Calculation_Engine([
+            new \Ratio_Rule(),
+            new \Direction_Rule(),
+            new \Margin_Rule(),
+            new \Rounding_Rule()
+        ]);
+        $rate = new \Exchange_Rate(1100.0, 1000.0);
+        $context = $this->createContext(100.0, 0.0, $rate, [
+            'margin' => 10,
+            'update_direction' => 'down_only',
+            'rounding_type' => 'none',
+        ]);
+
+        $result = $engine->calculate($context);
+
+        $this->assertEqualsWithDelta(110.0, $result->new_regular, 0.01);
+    }
+
     public function test_direction_up_only_allows_increase(): void
     {
         $engine = new \Price_Calculation_Engine([
@@ -122,6 +142,62 @@ class Price_Calculation_Engine_Test extends TestCase
 
         $this->assertEquals(100.0, $result->new_regular);
         $this->assertContains('category_exclusion', $result->applied_rules);
+    }
+
+    public function test_sale_price_category_exclusion_preserves_old_sale(): void
+    {
+        $engine = new \Price_Calculation_Engine([
+            new \Ratio_Rule(),
+            new \Margin_Rule(),
+            new \Category_Exclusion_Rule(),
+            new \Rounding_Rule()
+        ]);
+        $rate = new \Exchange_Rate(1250.0, 1000.0);
+        $context = new \Price_Context(
+            product_id: 1,
+            old_regular: 100.0,
+            old_sale: 80.0,
+            usd_baseline: 0.0,
+            exchange_rate: $rate,
+            settings: [
+                'exclude_categories' => [10],
+                'margin' => 10,
+                'rounding_type' => 'integer',
+            ],
+            category_ids: [10]
+        );
+
+        $result = $engine->calculate($context);
+
+        $this->assertEquals(80.0, $result->new_sale);
+        $this->assertEquals(100.0, $result->new_regular);
+    }
+
+    public function test_sale_price_uses_same_margin_and_rounding_settings(): void
+    {
+        $engine = new \Price_Calculation_Engine([
+            new \Ratio_Rule(),
+            new \Margin_Rule(),
+            new \Rounding_Rule()
+        ]);
+        $rate = new \Exchange_Rate(1200.0, 1000.0);
+        $context = new \Price_Context(
+            product_id: 1,
+            old_regular: 100.0,
+            old_sale: 50.0,
+            usd_baseline: 0.0,
+            exchange_rate: $rate,
+            settings: [
+                'margin' => 10,
+                'rounding_type' => 'ceil',
+            ],
+            category_ids: []
+        );
+
+        $result = $engine->calculate($context);
+
+        $this->assertEquals(132.0, $result->new_regular);
+        $this->assertEquals(66.0, $result->new_sale);
     }
 
     public function test_category_not_excluded_processes_normally(): void

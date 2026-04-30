@@ -9,8 +9,9 @@ class Batch_Processor_Test extends TestCase
     {
         $productRepo = $this->createMock(\Product_Repository_Interface::class);
         $engine = $this->createMock(\Price_Calculation_Engine::class);
-        
-        $processor = new \Batch_Processor($productRepo, $engine);
+        $logRepo = $this->createMock(\Log_Repository_Interface::class);
+
+        $processor = new \Batch_Processor($productRepo, $engine, $logRepo);
         $rate = \Exchange_Rate::first_run(1250.0);
 
         $result = $processor->process([], $rate, []);

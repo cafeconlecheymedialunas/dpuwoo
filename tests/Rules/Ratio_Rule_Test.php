@@ -8,9 +8,10 @@ class Ratio_Rule_Test extends TestCase
     public function test_apply_uses_usd_baseline_when_available(): void
     {
         $rule = new \Ratio_Rule();
-        
+
         $exchangeRate = new \Exchange_Rate(1500.0, 1000.0);
-        
+
+        // usd_baseline=50 USD, current=1500 ARS/USD → new ARS = 50 * 1500 = 75000
         $context = new \Price_Context(
             product_id: 1,
             old_regular: 50000.0,
@@ -20,10 +21,10 @@ class Ratio_Rule_Test extends TestCase
             settings: [],
             category_ids: []
         );
-        
+
         $result = $rule->apply(50000.0, $context);
-        
-        $this->assertEquals(75.0, $result);
+
+        $this->assertEquals(75000.0, $result);
     }
 
     public function test_apply_falls_back_to_price_when_no_usd_baseline(): void
@@ -113,9 +114,10 @@ class Ratio_Rule_Test extends TestCase
     public function test_ratio_calculation_with_usd_baseline(): void
     {
         $rule = new \Ratio_Rule();
-        
+
         $exchangeRate = new \Exchange_Rate(1250.0, 1000.0);
-        
+
+        // usd_baseline=40 USD, current=1250 ARS/USD → new ARS = 40 * 1250 = 50000
         $context = new \Price_Context(
             product_id: 1,
             old_regular: 50000.0,
@@ -125,10 +127,10 @@ class Ratio_Rule_Test extends TestCase
             settings: [],
             category_ids: []
         );
-        
+
         $result = $rule->apply(50000.0, $context);
-        
-        $this->assertEquals(50.0, $result);
+
+        $this->assertEquals(50000.0, $result);
     }
 
     public function test_ratio_calculation_without_usd_baseline(): void
