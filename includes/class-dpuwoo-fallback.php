@@ -23,7 +23,7 @@ class Fallback
 
     public function get_fallback_rate()
     {
-        $opts = get_option('dpuwoo_settings', []);
+        $opts = get_option('prixy_settings', []);
         if (!empty($opts['last_rate'])) return floatval($opts['last_rate']);
         return false;
     }

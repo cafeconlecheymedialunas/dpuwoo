@@ -5,8 +5,8 @@
  * This class defines all code necessary to run during the plugin's deactivation.
  *
  * @since      1.0.0
- * @package    Dpuwoo
- * @subpackage Dpuwoo/includes
+ * @package    Prixy
+ * @subpackage Prixy/includes
  * @author     Mauro Gaitan <maurogaitansouvaje@gmail.com>
  */
 class Deactivator {

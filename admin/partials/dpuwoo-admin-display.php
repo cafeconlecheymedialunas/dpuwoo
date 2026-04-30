@@ -8,8 +8,8 @@
  * @link       https://https://github.com/cafeconlecheymedialunas
  * @since      1.0.0
  *
- * @package    Dpuwoo
- * @subpackage Dpuwoo/admin/partials
+ * @package    Prixy
+ * @subpackage Prixy/admin/partials
  */
 ?>
 

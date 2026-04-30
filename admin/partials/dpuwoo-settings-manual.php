@@ -1,6 +1,6 @@
 <?php if (!defined('ABSPATH')) exit; ?>
 
-<div class="wrap dpuwoo-admin">
+<div class="wrap prixy-admin">
 
     <?php settings_errors(); ?>
 
@@ -15,23 +15,23 @@
 
     <!-- Breadcrumb nav -->
     <div class="dpu-settings-nav">
-        <a href="<?php echo esc_url(admin_url('admin.php?page=dpuwoo_dashboard')); ?>" class="dpu-settings-nav__link">
+        <a href="<?php echo esc_url(admin_url('admin.php?page=prixy_dashboard')); ?>" class="dpu-settings-nav__link">
             <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l9-9 9 9M5 10v10h14V10"/></svg>
             Dashboard
         </a>
         <span class="dpu-settings-nav__sep">›</span>
         <span class="dpu-settings-nav__current">Ejecución Manual</span>
         <span class="dpu-settings-nav__sep">·</span>
-        <a href="<?php echo esc_url(admin_url('admin.php?page=dpuwoo_cron_settings')); ?>" class="dpu-settings-nav__link">
+        <a href="<?php echo esc_url(admin_url('admin.php?page=prixy_cron_settings')); ?>" class="dpu-settings-nav__link">
             <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             Ir a Automatización →
         </a>
     </div>
 
     <!-- Form -->
-    <form id="dpuwoo-settings-form" method="post" action="options.php">
+    <form id="prixy-settings-form" method="post" action="options.php">
 
-        <?php settings_fields('dpuwoo_settings_group'); ?>
+        <?php settings_fields('prixy_settings_group'); ?>
 
         <!-- Sección: Origen -->
         <div class="dpu-settings-section dpu-settings-section--manual">
@@ -47,7 +47,7 @@
                 </div>
             </div>
             <div class="dpu-settings-section__body">
-                <table class="form-table"><tbody><?php do_settings_fields('dpuwoo_manual_settings', 'dpuwoo_main_section'); ?></tbody></table>
+                <table class="form-table"><tbody><?php do_settings_fields('prixy_manual_settings', 'prixy_main_section'); ?></tbody></table>
             </div>
         </div>
 
@@ -65,7 +65,7 @@
                 </div>
             </div>
             <div class="dpu-settings-section__body">
-                <table class="form-table"><tbody><?php do_settings_fields('dpuwoo_manual_settings', 'dpuwoo_calculation_section'); ?></tbody></table>
+                <table class="form-table"><tbody><?php do_settings_fields('prixy_manual_settings', 'prixy_calculation_section'); ?></tbody></table>
             </div>
         </div>
 
@@ -83,7 +83,7 @@
                 </div>
             </div>
             <div class="dpu-settings-section__body">
-                <table class="form-table"><tbody><?php do_settings_fields('dpuwoo_manual_settings', 'dpuwoo_rounding_section'); ?></tbody></table>
+                <table class="form-table"><tbody><?php do_settings_fields('prixy_manual_settings', 'prixy_rounding_section'); ?></tbody></table>
             </div>
         </div>
 
@@ -101,13 +101,13 @@
                 </div>
             </div>
             <div class="dpu-settings-section__body">
-                <table class="form-table"><tbody><?php do_settings_fields('dpuwoo_manual_settings', 'dpuwoo_exclusion_section'); ?></tbody></table>
+                <table class="form-table"><tbody><?php do_settings_fields('prixy_manual_settings', 'prixy_exclusion_section'); ?></tbody></table>
             </div>
         </div>
 
         <!-- Footer -->
         <div class="dpu-settings-footer">
-            <button type="submit" id="dpuwoo-save-settings" class="dpu-btn dpu-btn--save">
+            <button type="submit" id="prixy-save-settings" class="dpu-btn dpu-btn--save">
                 <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
                 </svg>
@@ -120,12 +120,12 @@
                     Guardando…
                 </span>
             </button>
-            <a href="<?php echo esc_url(admin_url('admin.php?page=dpuwoo_settings_page#dpu-automation')); ?>" class="dpu-btn dpu-btn--ghost">
+            <a href="<?php echo esc_url(admin_url('admin.php?page=prixy_settings_page#dpu-automation')); ?>" class="dpu-btn dpu-btn--ghost">
                 Configurar Automatización →
             </a>
-            <span id="dpuwoo-save-status" style="font-size:.8rem; color:var(--dpu-text-3);"></span>
+            <span id="prixy-save-status" style="font-size:.8rem; color:var(--dpu-text-3);"></span>
         </div>
 
     </form>
 
-</div><!-- .dpuwoo-admin -->
+</div><!-- .prixy-admin -->

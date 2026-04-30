@@ -1,6 +1,6 @@
 <?php if (!defined('ABSPATH')) exit; ?>
 
-<div class="wrap dpuwoo-admin">
+<div class="wrap prixy-admin">
 
     <?php settings_errors(); ?>
 
@@ -15,32 +15,32 @@
 
     <!-- Breadcrumb nav -->
     <div class="dpu-settings-nav">
-        <a href="<?php echo esc_url(admin_url('admin.php?page=dpuwoo_dashboard')); ?>" class="dpu-settings-nav__link">
+        <a href="<?php echo esc_url(admin_url('admin.php?page=prixy_dashboard')); ?>" class="dpu-settings-nav__link">
             <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l9-9 9 9M5 10v10h14V10"/></svg>
             Dashboard
         </a>
         <span class="dpu-settings-nav__sep">›</span>
         <span class="dpu-settings-nav__current">Automatización</span>
         <span class="dpu-settings-nav__sep">·</span>
-        <a href="<?php echo esc_url(admin_url('admin.php?page=dpuwoo_settings_page')); ?>" class="dpu-settings-nav__link">
+        <a href="<?php echo esc_url(admin_url('admin.php?page=prixy_settings_page')); ?>" class="dpu-settings-nav__link">
             Ir a Configuración general
         </a>
     </div>
 
     <?php
     // Status del cron
-    $opts        = get_option('dpuwoo_settings', []);
+    $opts        = get_option('prixy_settings', []);
     $enabled     = $opts['cron_enabled'] ?? 1;
     $interval_s  = intval($opts['interval'] ?? 3600);
-    $next        = wp_next_scheduled('dpuwoo_do_update');
+    $next        = wp_next_scheduled('prixy_do_update');
 
     global $wpdb;
     $last_run = $wpdb->get_row(
         "SELECT r.date, r.dollar_value, r.percentage_change,
                 SUM(CASE WHEN i.status = 'updated' THEN 1 ELSE 0 END) AS updated_count,
                 SUM(CASE WHEN i.status = 'skipped' THEN 1 ELSE 0 END) AS skipped_count
-         FROM {$wpdb->prefix}dpuwoo_runs r
-         LEFT JOIN {$wpdb->prefix}dpuwoo_run_items i ON i.run_id = r.id
+         FROM {$wpdb->prefix}prixy_runs r
+         LEFT JOIN {$wpdb->prefix}prixy_run_items i ON i.run_id = r.id
          GROUP BY r.id
          ORDER BY r.id DESC
          LIMIT 1"
@@ -105,9 +105,9 @@
     <?php endif; ?>
 
     <!-- Form -->
-    <form id="dpuwoo-settings-form" method="post" action="options.php">
+    <form id="prixy-settings-form" method="post" action="options.php">
 
-        <?php settings_fields('dpuwoo_settings_group'); ?>
+        <?php settings_fields('prixy_settings_group'); ?>
 
         <!-- Sección: Programación -->
         <div class="dpu-settings-section dpu-settings-section--cron">
@@ -123,7 +123,7 @@
                 </div>
             </div>
             <div class="dpu-settings-section__body">
-                <table class="form-table"><tbody><?php do_settings_fields('dpuwoo_settings_page', 'dpuwoo_automation_section'); ?></tbody></table>
+                <table class="form-table"><tbody><?php do_settings_fields('prixy_settings_page', 'prixy_automation_section'); ?></tbody></table>
             </div>
         </div>
 
@@ -141,7 +141,7 @@
                 </div>
             </div>
             <div class="dpu-settings-section__body">
-                <table class="form-table"><tbody><?php do_settings_fields('dpuwoo_settings_page', 'dpuwoo_cron_rules_section'); ?></tbody></table>
+                <table class="form-table"><tbody><?php do_settings_fields('prixy_settings_page', 'prixy_cron_rules_section'); ?></tbody></table>
             </div>
         </div>
 
@@ -159,7 +159,7 @@
                 </div>
             </div>
             <div class="dpu-settings-section__body">
-                <table class="form-table"><tbody><?php do_settings_fields('dpuwoo_settings_page', 'dpuwoo_cron_format_section'); ?></tbody></table>
+                <table class="form-table"><tbody><?php do_settings_fields('prixy_settings_page', 'prixy_cron_format_section'); ?></tbody></table>
             </div>
         </div>
 
@@ -168,16 +168,16 @@
             <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             <div>
                 <strong>Cómo funciona:</strong> Los campos vacíos usan como respaldo la configuración de
-                <a href="<?php echo esc_url(admin_url('admin.php?page=dpuwoo_settings_page')); ?>">Configuración</a>.
+                <a href="<?php echo esc_url(admin_url('admin.php?page=prixy_settings_page')); ?>">Configuración</a>.
                 El proveedor de API y las monedas son siempre compartidos entre ambos contextos.
                 El historial de ejecuciones automáticas está en
-                <a href="<?php echo esc_url(admin_url('admin.php?page=dpuwoo_logs')); ?>">Historial</a>.
+                <a href="<?php echo esc_url(admin_url('admin.php?page=prixy_logs')); ?>">Historial</a>.
             </div>
         </div>
 
         <!-- Footer -->
         <div class="dpu-settings-footer">
-            <button type="submit" id="dpuwoo-save-settings" class="dpu-btn dpu-btn--cron-save">
+            <button type="submit" id="prixy-save-settings" class="dpu-btn dpu-btn--cron-save">
                 <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
                 </svg>
@@ -190,12 +190,12 @@
                     Guardando…
                 </span>
             </button>
-            <a href="<?php echo esc_url(admin_url('admin.php?page=dpuwoo_settings_page')); ?>" class="dpu-btn dpu-btn--ghost">
+            <a href="<?php echo esc_url(admin_url('admin.php?page=prixy_settings_page')); ?>" class="dpu-btn dpu-btn--ghost">
                 ← Configuración general
             </a>
-            <span id="dpuwoo-save-status" style="font-size:.8rem; color:var(--dpu-text-3);"></span>
+            <span id="prixy-save-status" style="font-size:.8rem; color:var(--dpu-text-3);"></span>
         </div>
 
     </form>
 
-</div><!-- .dpuwoo-admin -->
+</div><!-- .prixy-admin -->

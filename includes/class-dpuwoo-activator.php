@@ -14,7 +14,7 @@ class Activator
         $initial_rate = self::fetch_initial_dollar_value();
         $auto_provider = self::get_auto_provider();
         
-        $settings = get_option('dpuwoo_settings', []);
+        $settings = get_option('prixy_settings', []);
         $settings['interval']             = $settings['interval']             ?? 3600;
         $settings['threshold']           = $settings['threshold']           ?? 1.0;
         $settings['threshold_max']       = $settings['threshold_max']       ?? 0;
@@ -24,13 +24,13 @@ class Activator
             $settings['origin_exchange_rate'] = $initial_rate > 0 ? $initial_rate : 0;
         }
 
-        update_option('dpuwoo_settings', $settings);
+        update_option('prixy_settings', $settings);
 
         self::create_usd_price_fields_for_products();
         Cron::schedule();
-        update_option('dpuwoo_initial_setup_done', true);
+        update_option('prixy_initial_setup_done', true);
 
-        set_transient('dpuwoo_activation_redirect', true, 60);
+        set_transient('prixy_activation_redirect', true, 60);
         self::add_activation_notice($initial_rate > 0);
     }
 
@@ -50,8 +50,8 @@ class Activator
         $fields_created = 0;
         
         foreach ($products as $product_id) {
-            update_post_meta($product_id, '_dpuwoo_regular_price_usd', '');
-            update_post_meta($product_id, '_dpuwoo_sale_price_usd', '');
+            update_post_meta($product_id, '_prixy_regular_price_usd', '');
+            update_post_meta($product_id, '_prixy_sale_price_usd', '');
             $fields_created++;
         }
     }
@@ -113,7 +113,7 @@ $rate = floatval($body['usd'][$currency_lower]);
     
     private static function add_activation_notice(bool $rate_ok = false): void
     {
-        update_option('dpuwoo_admin_notice', [
+        update_option('prixy_admin_notice', [
             'message'     => $rate_ok
                 ? 'Dollar Sync activado. Tasa de referencia inicializada automáticamente. Revisá la Configuración.'
                 : 'Dollar Sync activado. No se pudo obtener la tasa automáticamente — ingresala manualmente en Configuración.',
@@ -128,12 +128,12 @@ $rate = floatval($body['usd'][$currency_lower]);
      */
     public static function maybe_upgrade(): void
     {
-        if (get_option('dpuwoo_db_version') !== self::DB_VERSION) {
+        if (get_option('prixy_db_version') !== self::DB_VERSION) {
             self::create_tables();
             self::migrate_run_items_columns();
             self::migrate_runs_reference_currency();
             self::migrate_runs_context_column();
-            update_option('dpuwoo_db_version', self::DB_VERSION);
+            update_option('prixy_db_version', self::DB_VERSION);
         }
     }
 
@@ -147,8 +147,8 @@ $rate = floatval($body['usd'][$currency_lower]);
 
         $charset_collate = $wpdb->get_charset_collate();
 
-        $runs_table = $wpdb->prefix . 'dpuwoo_runs';
-        $items_table = $wpdb->prefix . 'dpuwoo_run_items';
+        $runs_table = $wpdb->prefix . 'prixy_runs';
+        $items_table = $wpdb->prefix . 'prixy_run_items';
 
         $sql_runs = "CREATE TABLE $runs_table (
             id bigint(20) NOT NULL AUTO_INCREMENT,
@@ -197,7 +197,7 @@ $rate = floatval($body['usd'][$currency_lower]);
     public static function migrate_run_items_columns(): void
     {
         global $wpdb;
-        $table = $wpdb->prefix . 'dpuwoo_run_items';
+        $table = $wpdb->prefix . 'prixy_run_items';
 
         $migrations = [
             'percentage_change' => 'decimal(5,2) AFTER new_sale_price',
@@ -223,7 +223,7 @@ $rate = floatval($body['usd'][$currency_lower]);
     public static function migrate_runs_context_column(): void
     {
         global $wpdb;
-        $table = $wpdb->prefix . 'dpuwoo_runs';
+        $table = $wpdb->prefix . 'prixy_runs';
 
         $col_exists = $wpdb->get_var($wpdb->prepare(
             "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
@@ -243,7 +243,7 @@ $rate = floatval($body['usd'][$currency_lower]);
     public static function migrate_runs_reference_currency(): void
     {
         global $wpdb;
-        $table = $wpdb->prefix . 'dpuwoo_runs';
+        $table = $wpdb->prefix . 'prixy_runs';
 
         $col_exists = $wpdb->get_var($wpdb->prepare(
             "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS

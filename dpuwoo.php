@@ -25,9 +25,9 @@
  * Domain Path:       /languages
  */
 
-require_once plugin_dir_path( __FILE__ ) . 'includes/class-dpuwoo-activator.php';
-require_once plugin_dir_path( __FILE__ ) . 'includes/class-dpuwoo-deactivator.php';
-require_once plugin_dir_path( __FILE__ ) . 'includes/class-dpuwoo.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/class-prixy-activator.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/class-prixy-deactivator.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/class-prixy.php';
 
 // If this file is called directly, abort.
 if ( ! defined( 'WPINC' ) ) {
@@ -36,22 +36,22 @@ if ( ! defined( 'WPINC' ) ) {
 
 /**
  * The code that runs during plugin activation.
- * This action is documented in includes/class-dpuwoo-activator.php
+ * This action is documented in includes/class-prixy-activator.php
  */
-function activate_dpuwoo() {
+function activate_prixy() {
 	Activator::activate();
 }
 
 /**
  * The code that runs during plugin deactivation.
- * This action is documented in includes/class-dpuwoo-deactivator.php
+ * This action is documented in includes/class-prixy-deactivator.php
  */
-function deactivate_dpuwoo() {
+function deactivate_prixy() {
 	Deactivator::deactivate();
 }
 
-register_activation_hook( __FILE__, 'activate_dpuwoo' );
-register_deactivation_hook( __FILE__, 'deactivate_dpuwoo' );
+register_activation_hook( __FILE__, 'activate_prixy' );
+register_deactivation_hook( __FILE__, 'deactivate_prixy' );
 
 /**
  * The core plugin class that is used to define internationalization,
@@ -68,18 +68,18 @@ register_deactivation_hook( __FILE__, 'deactivate_dpuwoo' );
  *
  * @since    1.0.0
  */
-function run_dpuwoo() {
+function run_prixy() {
 
-	define( 'DPUWOO_VERSION', '1.0.0' );
-	define( 'DPUWOO_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
-	define( 'DPUWOO_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+	define( 'PRIXY_VERSION', '1.0.0' );
+	define( 'PRIXY_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+	define( 'PRIXY_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
-	$plugin = new Dpuwoo();
+	$plugin = new Prixy();
 	$plugin->run();
 
 	// Exponer el container globalmente para que Cron::run_cron() pueda acceder
 	// sin reconstruirlo si ya está inicializado en el request actual.
-	global $dpuwoo_container;
-	$dpuwoo_container = $plugin->get_container();
+	global $prixy_container;
+	$prixy_container = $plugin->get_container();
 }
-run_dpuwoo();
+run_prixy();

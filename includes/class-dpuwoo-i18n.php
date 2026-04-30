@@ -6,8 +6,8 @@
  * so that it is ready for translation.
  *
  * @since      1.0.0
- * @package    Dpuwoo
- * @subpackage Dpuwoo/includes
+ * @package    Prixy
+ * @subpackage Prixy/includes
  * @author     Mauro Gaitan <maurogaitansouvaje@gmail.com>
  */
 class I18n {
@@ -21,7 +21,7 @@ class I18n {
 	public function load_plugin_textdomain() {
 
 		load_plugin_textdomain(
-			'dpuwoo',
+			'prixy',
 			false,
 			dirname( dirname( plugin_basename( __FILE__ ) ) ) . '/languages/'
 		);

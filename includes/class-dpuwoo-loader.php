@@ -7,8 +7,8 @@
  * the plugin, and register them with the WordPress API. Call the
  * run function to execute the list of actions and filters.
  *
- * @package    Dpuwoo
- * @subpackage Dpuwoo/includes
+ * @package    Prixy
+ * @subpackage Prixy/includes
  * @author     Mauro Gaitan <maurogaitansouvaje@gmail.com>
  */
 class Loader {

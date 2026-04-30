@@ -10,11 +10,11 @@
  * version of the plugin.
  *
  * @since      1.0.0
- * @package    Dpuwoo
- * @subpackage Dpuwoo/includes
+ * @package    Prixy
+ * @subpackage Prixy/includes
  * @author     Mauro Gaitan <maurogaitansouvaje@gmail.com>
  */
-class Dpuwoo {
+class Prixy {
 
 	/**
 	 * The loader that's responsible for maintaining and registering all hooks that power
@@ -22,7 +22,7 @@ class Dpuwoo {
 	 *
 	 * @since    1.0.0
 	 * @access   protected
-	 * @var      Dpuwoo_Loader    $loader    Maintains and registers all hooks for the plugin.
+	 * @var      Prixy_Loader    $loader    Maintains and registers all hooks for the plugin.
 	 */
 	protected $loader;
 
@@ -30,9 +30,9 @@ class Dpuwoo {
 	 * Contenedor de Inyección de Dependencias.
 	 * Construido una sola vez durante el bootstrap del plugin.
 	 *
-	 * @var Dpuwoo_Container
+	 * @var Prixy_Container
 	 */
-	private Dpuwoo_Container $container;
+	private Prixy_Container $container;
 
 	/**
 	 * The unique identifier of this plugin.
@@ -62,15 +62,15 @@ class Dpuwoo {
 	 * @since    1.0.0
 	 */
 	public function __construct() {
-		if ( defined( 'DPUWOO_VERSION' ) ) {
-			$this->version = DPUWOO_VERSION;
+		if ( defined( 'PRIXY_VERSION' ) ) {
+			$this->version = PRIXY_VERSION;
 		} else {
 			$this->version = '1.0.0';
 		}
-		$this->plugin_name = 'dpuwoo';
+		$this->plugin_name = 'prixy';
 
 		$this->load_dependencies();
-		$this->container = Dpuwoo_Container::build();
+		$this->container = Prixy_Container::build();
 		add_filter('cron_schedules', [Cron::class, 'register_schedule']);
 		$this->set_locale();
 		$this->define_admin_hooks();
@@ -83,10 +83,10 @@ class Dpuwoo {
 	 *
 	 * Include the following files that make up the plugin:
 	 *
-	 * - Dpuwoo_Loader. Orchestrates the hooks of the plugin.
-	 * - Dpuwoo_i18n. Defines internationalization functionality.
-	 * - Dpuwoo_Admin. Defines all hooks for the admin area.
-	 * - Dpuwoo_Public. Defines all hooks for the public side of the site.
+	 * - Prixy_Loader. Orchestrates the hooks of the plugin.
+	 * - Prixy_i18n. Defines internationalization functionality.
+	 * - Prixy_Admin. Defines all hooks for the admin area.
+	 * - Prixy_Public. Defines all hooks for the public side of the site.
 	 *
 	 * Create an instance of the loader which will be used to register the hooks
 	 * with WordPress.
@@ -98,83 +98,83 @@ class Dpuwoo {
 		$base = plugin_dir_path( dirname( __FILE__ ) );
 
 		// ── Core WordPress ─────────────────────────────────────────────────────────
-		require_once $base . 'includes/class-dpuwoo-loader.php';
-		require_once $base . 'includes/class-dpuwoo-i18n.php';
+		require_once $base . 'includes/class-prixy-loader.php';
+		require_once $base . 'includes/class-prixy-i18n.php';
 
 		// ── Admin & Public ─────────────────────────────────────────────────────────
-		require_once $base . 'admin/class-dpuwoo-admin.php';
-		require_once $base . 'public/class-dpuwoo-public.php';
+		require_once $base . 'admin/class-prixy-admin.php';
+		require_once $base . 'public/class-prixy-public.php';
 
 		// ── Domain — Interfaces ────────────────────────────────────────────────────
-		require_once $base . 'includes/domain/interfaces/interface-dpuwoo-price-rule.php';
-		require_once $base . 'includes/domain/interfaces/interface-dpuwoo-api-provider.php';
-		require_once $base . 'includes/domain/interfaces/interface-dpuwoo-product-repository.php';
-		require_once $base . 'includes/domain/interfaces/interface-dpuwoo-log-repository.php';
+		require_once $base . 'includes/domain/interfaces/interface-prixy-price-rule.php';
+		require_once $base . 'includes/domain/interfaces/interface-prixy-api-provider.php';
+		require_once $base . 'includes/domain/interfaces/interface-prixy-product-repository.php';
+		require_once $base . 'includes/domain/interfaces/interface-prixy-log-repository.php';
 
 		// ── Domain — Value Objects ─────────────────────────────────────────────────
-		require_once $base . 'includes/domain/value-objects/class-dpuwoo-exchange-rate.php';
-		require_once $base . 'includes/domain/value-objects/class-dpuwoo-price-context.php';
-		require_once $base . 'includes/domain/value-objects/class-dpuwoo-calculation-result.php';
-		require_once $base . 'includes/domain/value-objects/class-dpuwoo-batch-result.php';
+		require_once $base . 'includes/domain/value-objects/class-prixy-exchange-rate.php';
+		require_once $base . 'includes/domain/value-objects/class-prixy-price-context.php';
+		require_once $base . 'includes/domain/value-objects/class-prixy-calculation-result.php';
+		require_once $base . 'includes/domain/value-objects/class-prixy-batch-result.php';
 
 		// ── Domain — Policies ──────────────────────────────────────────────────────
-		require_once $base . 'includes/domain/policies/class-dpuwoo-threshold-policy.php';
+		require_once $base . 'includes/domain/policies/class-prixy-threshold-policy.php';
 
 		// ── Domain — Rules (Strategy Pattern) ─────────────────────────────────────
-		require_once $base . 'includes/domain/rules/class-dpuwoo-ratio-rule.php';
-		require_once $base . 'includes/domain/rules/class-dpuwoo-margin-rule.php';
-		require_once $base . 'includes/domain/rules/class-dpuwoo-direction-rule.php';
-		require_once $base . 'includes/domain/rules/class-dpuwoo-rounding-rule.php';
-		require_once $base . 'includes/domain/rules/class-dpuwoo-category-exclusion-rule.php';
+		require_once $base . 'includes/domain/rules/class-prixy-ratio-rule.php';
+		require_once $base . 'includes/domain/rules/class-prixy-margin-rule.php';
+		require_once $base . 'includes/domain/rules/class-prixy-direction-rule.php';
+		require_once $base . 'includes/domain/rules/class-prixy-rounding-rule.php';
+		require_once $base . 'includes/domain/rules/class-prixy-category-exclusion-rule.php';
 
 		// ── Infrastructure — Base classes para API ───────────────────────────────
-		require_once $base . 'includes/class-dpuwoo-trait-request.php';
+		require_once $base . 'includes/class-prixy-trait-request.php';
 
 		// ── Infrastructure — Repositorios y API ───────────────────────────────────
-		require_once $base . 'includes/infrastructure/repositories/class-dpuwoo-log-repository.php';
-		require_once $base . 'includes/infrastructure/repositories/class-dpuwoo-product-repository.php';
-		require_once $base . 'includes/infrastructure/api/class-dpuwoo-api-response-formatter.php';
-		require_once $base . 'includes/infrastructure/api/providers/class-dpuwoo-dolarapi-provider.php';
-		require_once $base . 'includes/infrastructure/api/providers/class-dpuwoo-jsdelivr-provider.php';
-		require_once $base . 'includes/infrastructure/api/providers/class-dpuwoo-cryptoprice-provider.php';
-		require_once $base . 'includes/infrastructure/api/providers/class-dpuwoo-currencyapi-provider.php';
-		require_once $base . 'includes/infrastructure/api/providers/class-dpuwoo-exhangerateapi-provider.php';
-		require_once $base . 'includes/infrastructure/api/providers/class-dpuwoo-moneyconvert-provider.php';
-		require_once $base . 'includes/infrastructure/api/providers/class-dpuwoo-hexarate-provider.php';
-		require_once $base . 'includes/infrastructure/api/providers/class-dpuwoo-foreignrate-provider.php';
-		require_once $base . 'includes/infrastructure/class-dpuwoo-api-provider-factory.php';
-		require_once $base . 'includes/infrastructure/api/class-dpuwoo-api-client.php';
-		require_once $base . 'includes/infrastructure/class-dpuwoo-settings-repository.php';
-		require_once $base . 'includes/infrastructure/services/class-dpuwoo-email-notifier.php';
-		require_once $base . 'includes/infrastructure/services/class-dpuwoo-multi-currency-manager.php';
-		require_once $base . 'includes/class-dpuwoo-logger.php';
+		require_once $base . 'includes/infrastructure/repositories/class-prixy-log-repository.php';
+		require_once $base . 'includes/infrastructure/repositories/class-prixy-product-repository.php';
+		require_once $base . 'includes/infrastructure/api/class-prixy-api-response-formatter.php';
+		require_once $base . 'includes/infrastructure/api/providers/class-prixy-dolarapi-provider.php';
+		require_once $base . 'includes/infrastructure/api/providers/class-prixy-jsdelivr-provider.php';
+		require_once $base . 'includes/infrastructure/api/providers/class-prixy-cryptoprice-provider.php';
+		require_once $base . 'includes/infrastructure/api/providers/class-prixy-currencyapi-provider.php';
+		require_once $base . 'includes/infrastructure/api/providers/class-prixy-exhangerateapi-provider.php';
+		require_once $base . 'includes/infrastructure/api/providers/class-prixy-moneyconvert-provider.php';
+		require_once $base . 'includes/infrastructure/api/providers/class-prixy-hexarate-provider.php';
+		require_once $base . 'includes/infrastructure/api/providers/class-prixy-foreignrate-provider.php';
+		require_once $base . 'includes/infrastructure/class-prixy-api-provider-factory.php';
+		require_once $base . 'includes/infrastructure/api/class-prixy-api-client.php';
+		require_once $base . 'includes/infrastructure/class-prixy-settings-repository.php';
+		require_once $base . 'includes/infrastructure/services/class-prixy-email-notifier.php';
+		require_once $base . 'includes/infrastructure/services/class-prixy-multi-currency-manager.php';
+		require_once $base . 'includes/class-prixy-logger.php';
 
 		// ── Application — Servicios ────────────────────────────────────────────────
-		require_once $base . 'includes/application/services/class-dpuwoo-price-calculation-engine.php';
-		require_once $base . 'includes/application/services/class-dpuwoo-batch-processor.php';
+		require_once $base . 'includes/application/services/class-prixy-price-calculation-engine.php';
+		require_once $base . 'includes/application/services/class-prixy-batch-processor.php';
 
 		// ── Application — Commands (DTOs) ──────────────────────────────────────────
-		require_once $base . 'includes/application/commands/class-dpuwoo-update-prices-command.php';
-		require_once $base . 'includes/application/commands/class-dpuwoo-rollback-item-command.php';
-		require_once $base . 'includes/application/commands/class-dpuwoo-rollback-run-command.php';
+		require_once $base . 'includes/application/commands/class-prixy-update-prices-command.php';
+		require_once $base . 'includes/application/commands/class-prixy-rollback-item-command.php';
+		require_once $base . 'includes/application/commands/class-prixy-rollback-run-command.php';
 
 		// ── Application — Handlers ─────────────────────────────────────────────────
-		require_once $base . 'includes/application/handlers/class-dpuwoo-update-prices-handler.php';
-		require_once $base . 'includes/application/handlers/class-dpuwoo-rollback-handler.php';
+		require_once $base . 'includes/application/handlers/class-prixy-update-prices-handler.php';
+		require_once $base . 'includes/application/handlers/class-prixy-rollback-handler.php';
 
 		// ── Application — Command Bus ──────────────────────────────────────────────
-		require_once $base . 'includes/application/class-dpuwoo-command-bus.php';
+		require_once $base . 'includes/application/class-prixy-command-bus.php';
 
 		// ── Presentation ───────────────────────────────────────────────────────────
-		require_once $base . 'includes/presentation/class-dpuwoo-ajax-controller.php';
+		require_once $base . 'includes/presentation/class-prixy-ajax-controller.php';
 
 		// ── DI Container ───────────────────────────────────────────────────────────
-		require_once $base . 'includes/class-dpuwoo-container.php';
+		require_once $base . 'includes/class-prixy-container.php';
 
 		// ── Miscelánea ─────────────────────────────────────────────────────────────
-		require_once $base . 'includes/class-dpuwoo-fallback.php';
-		require_once $base . 'includes/class-dpuwoo-cron.php';
-		require_once $base . 'includes/class-dpuwoo-admin-settings.php';
+		require_once $base . 'includes/class-prixy-fallback.php';
+		require_once $base . 'includes/class-prixy-cron.php';
+		require_once $base . 'includes/class-prixy-admin-settings.php';
 		require_once $base . 'includes/helpers/functions.php';
 
 		$this->loader = new Loader();
@@ -183,7 +183,7 @@ class Dpuwoo {
 	/**
 	 * Define the locale for this plugin for internationalization.
 	 *
-	 * Uses the Dpuwoo_i18n class in order to set the domain and to register the hook
+	 * Uses the Prixy_i18n class in order to set the domain and to register the hook
 	 * with WordPress.
 	 *
 	 * @since    1.0.0
@@ -218,7 +218,7 @@ class Dpuwoo {
 		$this->loader->add_action('admin_init', Activator::class, 'maybe_upgrade');
 
 		// Re-agendar (o desagendar) el cron al guardar settings
-		$this->loader->add_action('update_option_dpuwoo_settings', Cron::class, 'schedule');
+		$this->loader->add_action('update_option_prixy_settings', Cron::class, 'schedule');
 		$this->loader->add_action(Cron::HOOK, Cron::class, 'run_cron');
 
 		// ── AJAX handlers — Capa de Presentación (via DI Container) ───────────────
@@ -228,24 +228,24 @@ class Dpuwoo {
 		/** @var Ajax_Controller $ajax */
 		$ajax = $this->container->get('ajax_controller');
 
-		$this->loader->add_action('wp_ajax_dpuwoo_simulate_batch',    $ajax, 'handle_simulate_batch');
-		$this->loader->add_action('wp_ajax_dpuwoo_update_batch',      $ajax, 'handle_update_batch');
-		$this->loader->add_action('wp_ajax_dpuwoo_get_runs',          $ajax, 'handle_get_runs');
-		$this->loader->add_action('wp_ajax_dpuwoo_get_run_items',     $ajax, 'handle_get_run_items');
-		$this->loader->add_action('wp_ajax_dpuwoo_revert_item',       $ajax, 'handle_revert_item');
-		$this->loader->add_action('wp_ajax_dpuwoo_revert_run',        $ajax, 'handle_revert_run');
-		$this->loader->add_action('wp_ajax_dpuwoo_get_currencies',    $ajax, 'handle_get_currencies');
-		$this->loader->add_action('wp_ajax_dpuwoo_get_current_rate',  $ajax, 'handle_get_current_rate');
-		$this->loader->add_action('wp_ajax_dpuwoo_get_providers_info',$ajax, 'handle_get_providers_info');
-		$this->loader->add_action('wp_ajax_dpuwoo_test_api_connection',$ajax, 'handle_test_api_connection');
-		$this->loader->add_action('wp_ajax_dpuwoo_initialize_baseline', $ajax, 'handle_initialize_baseline');
-		$this->loader->add_action('wp_ajax_dpuwoo_test_api',            $ajax, 'handle_test_api');
-		$this->loader->add_action('wp_ajax_dpuwoo_get_rates',         $ajax, 'handle_get_rates');
-		$this->loader->add_action('wp_ajax_dpuwoo_get_dashboard_stats',  $ajax, 'handle_get_dashboard_stats');
-		$this->loader->add_action('wp_ajax_dpuwoo_get_setup_progress',   $ajax, 'handle_get_setup_progress');
-		$this->loader->add_action('wp_ajax_dpuwoo_save_origin_rate',      $ajax, 'handle_save_origin_rate');
-		$this->loader->add_action('wp_ajax_dpuwoo_first_setup_batch',    $ajax, 'handle_first_setup_batch');
-		$this->loader->add_action('wp_ajax_dpuwoo_preview_products',     $ajax, 'handle_preview_products');
+		$this->loader->add_action('wp_ajax_prixy_simulate_batch',    $ajax, 'handle_simulate_batch');
+		$this->loader->add_action('wp_ajax_prixy_update_batch',      $ajax, 'handle_update_batch');
+		$this->loader->add_action('wp_ajax_prixy_get_runs',          $ajax, 'handle_get_runs');
+		$this->loader->add_action('wp_ajax_prixy_get_run_items',     $ajax, 'handle_get_run_items');
+		$this->loader->add_action('wp_ajax_prixy_revert_item',       $ajax, 'handle_revert_item');
+		$this->loader->add_action('wp_ajax_prixy_revert_run',        $ajax, 'handle_revert_run');
+		$this->loader->add_action('wp_ajax_prixy_get_currencies',    $ajax, 'handle_get_currencies');
+		$this->loader->add_action('wp_ajax_prixy_get_current_rate',  $ajax, 'handle_get_current_rate');
+		$this->loader->add_action('wp_ajax_prixy_get_providers_info',$ajax, 'handle_get_providers_info');
+		$this->loader->add_action('wp_ajax_prixy_test_api_connection',$ajax, 'handle_test_api_connection');
+		$this->loader->add_action('wp_ajax_prixy_initialize_baseline', $ajax, 'handle_initialize_baseline');
+		$this->loader->add_action('wp_ajax_prixy_test_api',            $ajax, 'handle_test_api');
+		$this->loader->add_action('wp_ajax_prixy_get_rates',         $ajax, 'handle_get_rates');
+		$this->loader->add_action('wp_ajax_prixy_get_dashboard_stats',  $ajax, 'handle_get_dashboard_stats');
+		$this->loader->add_action('wp_ajax_prixy_get_setup_progress',   $ajax, 'handle_get_setup_progress');
+		$this->loader->add_action('wp_ajax_prixy_save_origin_rate',      $ajax, 'handle_save_origin_rate');
+		$this->loader->add_action('wp_ajax_prixy_first_setup_batch',    $ajax, 'handle_first_setup_batch');
+		$this->loader->add_action('wp_ajax_prixy_preview_products',     $ajax, 'handle_preview_products');
 	}
 	
 
@@ -258,7 +258,7 @@ class Dpuwoo {
 	 */
 	private function define_public_hooks() {
 
-		$plugin_public = new Dpuwoo_Public( $this->get_plugin_name(), $this->get_version() );
+		$plugin_public = new Prixy_Public( $this->get_plugin_name(), $this->get_version() );
 
 		$this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_styles' );
 		$this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_scripts' );
@@ -290,7 +290,7 @@ class Dpuwoo {
 	 * The reference to the class that orchestrates the hooks with the plugin.
 	 *
 	 * @since     1.0.0
-	 * @return    Dpuwoo_Loader    Orchestrates the hooks of the plugin.
+	 * @return    Prixy_Loader    Orchestrates the hooks of the plugin.
 	 */
 	public function get_loader() {
 		return $this->loader;
@@ -312,9 +312,9 @@ class Dpuwoo {
 	 * Retorna el DI Container bootstrapped del plugin.
 	 * Usado para exponer el container al Cron y a tests de integración.
 	 *
-	 * @return Dpuwoo_Container
+	 * @return Prixy_Container
 	 */
-	public function get_container(): Dpuwoo_Container {
+	public function get_container(): Prixy_Container {
 		return $this->container;
 	}
 

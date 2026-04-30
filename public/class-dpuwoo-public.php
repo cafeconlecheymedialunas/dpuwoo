@@ -10,7 +10,7 @@
  * @subpackage Dpuwoo/public
  * @author     Mauro Gaitan <maurogaitansouvaje@gmail.com>
  */
-class Dpuwoo_Public {
+class Prixy_Public {
 
 	/**
 	 * The ID of this plugin.
@@ -55,10 +55,10 @@ class Dpuwoo_Public {
 		 * This function is provided for demonstration purposes only.
 		 *
 		 * An instance of this class should be passed to the run() function
-		 * defined in Dpuwoo_Loader as all of the hooks are defined
+		 * defined in Prixy_Loader as all of the hooks are defined
 		 * in that particular class.
 		 *
-		 * The Dpuwoo_Loader will then create the relationship
+		 * The Prixy_Loader will then create the relationship
 		 * between the defined hooks and the functions defined in this
 		 * class.
 		 */
@@ -78,10 +78,10 @@ class Dpuwoo_Public {
 		 * This function is provided for demonstration purposes only.
 		 *
 		 * An instance of this class should be passed to the run() function
-		 * defined in Dpuwoo_Loader as all of the hooks are defined
+		 * defined in Prixy_Loader as all of the hooks are defined
 		 * in that particular class.
 		 *
-		 * The Dpuwoo_Loader will then create the relationship
+		 * The Prixy_Loader will then create the relationship
 		 * between the defined hooks and the functions defined in this
 		 * class.
 		 */

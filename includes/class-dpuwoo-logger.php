@@ -22,7 +22,7 @@ class Logger
 
     /**
      * Singleton de compatibilidad.
-     * @deprecated Preferir inyección vía Dpuwoo_Container.
+     * @deprecated Preferir inyección vía Prixy_Container.
      */
     public static function init(): static
     {

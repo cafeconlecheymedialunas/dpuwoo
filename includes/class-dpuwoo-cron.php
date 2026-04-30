@@ -3,12 +3,12 @@ if (!defined('ABSPATH')) exit;
 
 class Cron
 {
-    const HOOK = 'dpuwoo_do_update';
-    const SCHEDULE_GROUP = 'dpuwoo-cron';
+    const HOOK = 'prixy_do_update';
+    const SCHEDULE_GROUP = 'prixy-cron';
 
     public static function register_schedule(array $schedules): array
     {
-        $opts    = get_option('dpuwoo_settings', []);
+        $opts    = get_option('prixy_settings', []);
         $interval_key = $opts['update_interval'] ?? 'twicedaily';
         $interval_seconds = [
             'hourly' => 3600,
@@ -19,7 +19,7 @@ class Cron
         $interval = $interval_seconds[$interval_key] ?? 43200;
         $interval = max(300, $interval);
 
-        $schedules['dpuwoo_custom'] = [
+        $schedules['prixy_custom'] = [
             'interval' => $interval,
             'display'  => 'DPU WOO (' . $interval . 's)',
         ];
@@ -29,7 +29,7 @@ class Cron
 
     public static function schedule(): void
     {
-        $opts    = get_option('dpuwoo_settings', []);
+        $opts    = get_option('prixy_settings', []);
         $enabled = $opts['cron_enabled'] ?? 1;
 
         self::unschedule();
@@ -68,7 +68,7 @@ class Cron
 
     private static function schedule_with_wp_cron(int $interval): void
     {
-        wp_schedule_event(time(), 'dpuwoo_custom', self::HOOK);
+        wp_schedule_event(time(), 'prixy_custom', self::HOOK);
     }
 
     public static function unschedule(): void
@@ -92,18 +92,18 @@ class Cron
 
     public static function run_cron(): void
     {
-        global $dpuwoo_container;
+        global $prixy_container;
 
-        if (!$dpuwoo_container instanceof Dpuwoo_Container) {
-            $dpuwoo_container = Dpuwoo_Container::build();
+        if (!$prixy_container instanceof Prixy_Container) {
+            $prixy_container = Prixy_Container::build();
         }
 
         /** @var Command_Bus $bus */
-        $bus = $dpuwoo_container->get('command_bus');
+        $bus = $prixy_container->get('command_bus');
 
-        $dpuwoo_container->get('settings')->refresh();
+        $prixy_container->get('settings')->refresh();
 
-        $opts    = $dpuwoo_container->get('settings')->get_all();
+        $opts    = $prixy_container->get('settings')->get_all();
         $enabled = $opts['cron_enabled'] ?? 1;
         
         if (!$enabled) {
@@ -162,7 +162,7 @@ class Cron
     private static function send_notification(array $result, bool $simulate): void
     {
         if (!class_exists('Email_Notifier')) {
-            require_once DPUWOO_PLUGIN_DIR . 'includes/class-dpuwoo-email-notifier.php';
+            require_once PRIXY_PLUGIN_DIR . 'includes/class-prixy-email-notifier.php';
         }
 
         $notifier = new Email_Notifier();
@@ -177,10 +177,10 @@ class Cron
     private static function send_error_notification(string $error): void
     {
         if (!class_exists('Email_Notifier')) {
-            require_once DPUWOO_PLUGIN_DIR . 'includes/class-dpuwoo-email-notifier.php';
+            require_once PRIXY_PLUGIN_DIR . 'includes/class-prixy-email-notifier.php';
         }
 
-        $opts = get_option('dpuwoo_settings', []);
+        $opts = get_option('prixy_settings', []);
         $to = $opts['cron_notify_email'] ?? get_option('admin_email');
 
         $subject = sprintf(

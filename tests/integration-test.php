@@ -3,7 +3,7 @@
  * Test de integración: Setup + Update
  * 
  * Ejecutar desde la carpeta public:
- * php wp-content/plugins/dpuwoo/tests/integration-test.php
+ * php wp-content/plugins/prixy/tests/integration-test.php
  * 
  * FLUJO:
  * 1. SETUP: Guardar precio ARS actual + tasa oficial (ej: 1000)

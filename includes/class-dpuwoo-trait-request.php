@@ -78,7 +78,7 @@ trait HTTP_Request_Trait {
      * Obtener API key de configuración
      */
     protected function get_api_key() {
-        $opts = get_option('dpuwoo_settings', []);
+        $opts = get_option('prixy_settings', []);
         
         // Obtener la API key específica del proveedor actual
         if (get_class($this) === 'CurrencyAPI_Provider') {
@@ -111,7 +111,7 @@ trait HTTP_Request_Trait {
      * Obtener código de moneda base de la tienda
      */
     protected function get_store_currency() {
-        return strtoupper(\Dpuwoo\Helpers\dpuwoo_get_store_currency());
+        return strtoupper(\Prixy\Helpers\prixy_get_store_currency());
     }
     
     /**

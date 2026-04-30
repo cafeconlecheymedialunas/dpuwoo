@@ -6,8 +6,8 @@
  * Defines the plugin name, version, and two examples hooks for how to
  * enqueue the admin-specific stylesheet and JavaScript.
  *
- * @package    Dpuwoo
- * @subpackage Dpuwoo/admin
+ * @package    Prixy
+ * @subpackage Prixy/admin
  * @author     Mauro Gaitan <maurogaitansouvaje@gmail.com>
  */
 class Admin
@@ -57,15 +57,15 @@ class Admin
 		 * This function is provided for demonstration purposes only.
 		 *
 		 * An instance of this class should be passed to the run() function
-		 * defined in Dpuwoo_Loader as all of the hooks are defined
+		 * defined in Prixy_Loader as all of the hooks are defined
 		 * in that particular class.
 		 *
-		 * The Dpuwoo_Loader will then create the relationship
+		 * The Prixy_Loader will then create the relationship
 		 * between the defined hooks and the functions defined in this
 		 * class.
 		 */
 
-		wp_enqueue_style($this->plugin_name, plugin_dir_url(__FILE__) . 'css/dpuwoo-main.css', array(), $this->version, 'all');
+		wp_enqueue_style($this->plugin_name, plugin_dir_url(__FILE__) . 'css/prixy-main.css', array(), $this->version, 'all');
 	}
 
 	/**
@@ -76,13 +76,13 @@ class Admin
 	
 	public function enqueue_scripts($hook)
 	{
-		$is_dpuwoo = strpos($hook, 'dpuwoo_') !== false;
+		$is_prixy = strpos($hook, 'prixy_') !== false;
 		
-		if (!$is_dpuwoo && defined('DOING_AJAX')) {
-			$is_dpuwoo = true;
+		if (!$is_prixy && defined('DOING_AJAX')) {
+			$is_prixy = true;
 		}
 
-		if (!$is_dpuwoo) return;
+		if (!$is_prixy) return;
 		wp_enqueue_script(
 			'tailwind', 
 			'https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4', 
@@ -107,7 +107,7 @@ wp_enqueue_style('select2', 'https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.
 	 // Script de tabs PRIMERO (sin dependencias complejas)
 		wp_enqueue_script(
 			$this->plugin_name . '-tabs',
-			plugin_dir_url(__FILE__) . 'js/dpuwoo-tabs.js',
+			plugin_dir_url(__FILE__) . 'js/prixy-tabs.js',
 			array('jquery'), // Solo jQuery
 			$this->version,
 			false
@@ -116,27 +116,27 @@ wp_enqueue_style('select2', 'https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.
 		// Script principal SEGUNDO (depende de tabs)
 		wp_enqueue_script(
 			$this->plugin_name . '-main',
-			plugin_dir_url(__FILE__) . 'js/dpuwoo-main.js',
+			plugin_dir_url(__FILE__) . 'js/prixy-main.js',
 			array('jquery', 'sweetalert2', $this->plugin_name . '-tabs'),
 			$this->version,
 			false
 		);
 
 		// Localizar las variables AJAX en el script principal
-		$opts      = get_option('dpuwoo_settings', []);
+		$opts      = get_option('prixy_settings', []);
 		$ajax_data = array(
 			'ajax_url'      => admin_url('admin-ajax.php'),
-			'nonce'         => wp_create_nonce('dpuwoo_ajax_nonce'),
+			'nonce'         => wp_create_nonce('prixy_ajax_nonce'),
 			'threshold_min' => floatval($opts['threshold']     ?? 0),
 			'threshold_max' => floatval($opts['threshold_max'] ?? 0),
 		);
 
-		wp_localize_script($this->plugin_name . '-main', 'dpuwoo_ajax', $ajax_data);
+		wp_localize_script($this->plugin_name . '-main', 'prixy_ajax', $ajax_data);
 
 		// Los otros scripts que dependen del principal
 		wp_enqueue_script(
 			$this->plugin_name . '-logs',
-			plugin_dir_url(__FILE__) . 'js/dpuwoo-logs.js',
+			plugin_dir_url(__FILE__) . 'js/prixy-logs.js',
 			array('jquery', 'sweetalert2', $this->plugin_name . '-main'),
 			$this->version,
 			false
@@ -144,7 +144,7 @@ wp_enqueue_style('select2', 'https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.
 
 		wp_enqueue_script(
 			$this->plugin_name . '-simulation',
-			plugin_dir_url(__FILE__) . 'js/dpuwoo-simulation.js',
+			plugin_dir_url(__FILE__) . 'js/prixy-simulation.js',
 			array('jquery', 'sweetalert2', $this->plugin_name . '-main'),
 			$this->version,
 			false
@@ -152,7 +152,7 @@ wp_enqueue_style('select2', 'https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.
 
 		wp_enqueue_script(
 			$this->plugin_name . '-update',
-			plugin_dir_url(__FILE__) . 'js/dpuwoo-update.js',
+			plugin_dir_url(__FILE__) . 'js/prixy-update.js',
 			array('jquery', 'sweetalert2', $this->plugin_name . '-main'),
 			$this->version,
 			false
@@ -169,23 +169,23 @@ wp_enqueue_style('select2', 'https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.
 
 		wp_enqueue_script(
 			$this->plugin_name . '-api-keys',
-			plugin_dir_url(__FILE__) . 'js/dpuwoo-api-keys.js',
+			plugin_dir_url(__FILE__) . 'js/prixy-api-keys.js',
 			array('jquery', 'select2', $this->plugin_name . '-main'),
 			$this->version . '-' . time(), // Cache busting
 			false
 		);
 
-		wp_localize_script($this->plugin_name . '-currencies', 'dpuwoo_ajax', [
+		wp_localize_script($this->plugin_name . '-currencies', 'prixy_ajax', [
 			'ajax_url'      => admin_url('admin-ajax.php'),
-			'nonce'         => wp_create_nonce('dpuwoo_ajax_nonce'),
+			'nonce'         => wp_create_nonce('prixy_ajax_nonce'),
 			'base_currency' => function_exists('get_woocommerce_currency') ? get_woocommerce_currency() : 'USD',
 		]);
 
 		// CSS
-		wp_enqueue_style($this->plugin_name, plugin_dir_url(__FILE__) . 'css/dpuwoo-main.css');
+		wp_enqueue_style($this->plugin_name, plugin_dir_url(__FILE__) . 'css/prixy-main.css');
 
 		// ── Dashboard Overview: Chart.js + dedicated script ────────────────────────
-		if ($hook === 'toplevel_page_dpuwoo_settings') {
+		if ($hook === 'toplevel_page_prixy_settings') {
 			wp_enqueue_script(
 				'chartjs',
 				'https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js',
@@ -195,19 +195,19 @@ wp_enqueue_style('select2', 'https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.
 			);
 			wp_enqueue_script(
 				$this->plugin_name . '-dashboard-overview',
-				plugin_dir_url(__FILE__) . 'js/dpuwoo-dashboard-overview.js',
+				plugin_dir_url(__FILE__) . 'js/prixy-dashboard-overview.js',
 				['jquery', 'chartjs', $this->plugin_name . '-main'],
 				$this->version,
 				true
 			);
-			wp_localize_script($this->plugin_name . '-dashboard-overview', 'dpuwoo_dashboard', [
+			wp_localize_script($this->plugin_name . '-dashboard-overview', 'prixy_dashboard', [
 				'ajax_url'      => admin_url('admin-ajax.php'),
-				'nonce'         => wp_create_nonce('dpuwoo_ajax_nonce'),
+				'nonce'         => wp_create_nonce('prixy_ajax_nonce'),
 				'product_count' => Log_Repository::get_instance()->count_all_products(),
-				'logs_url'      => admin_url('admin.php?page=dpuwoo_logs'),
-				'settings_url'  => admin_url('admin.php?page=dpuwoo_configuration'),
-				'auto_url'      => admin_url('admin.php?page=dpuwoo_automation'),
-				'manual_url'    => admin_url('admin.php?page=dpuwoo_dashboard'),
+				'logs_url'      => admin_url('admin.php?page=prixy_logs'),
+				'settings_url'  => admin_url('admin.php?page=prixy_configuration'),
+				'auto_url'      => admin_url('admin.php?page=prixy_automation'),
+				'manual_url'    => admin_url('admin.php?page=prixy_dashboard'),
 				'setup_complete' => self::is_setup_complete(),
 			]);
 		}
@@ -221,7 +221,7 @@ wp_enqueue_style('select2', 'https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.
 			'Dollar Sync - Dashboard',
 			'Dollar Sync',
 			'manage_options',
-			'dpuwoo_settings',
+			'prixy_settings',
 			[__CLASS__, 'render_overview'],
 			'dashicons-admin-site',
 			60
@@ -229,56 +229,56 @@ wp_enqueue_style('select2', 'https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.
 
 		// Primer submenú (mismo slug que el padre) = Dashboard Overview
 		add_submenu_page(
-			'dpuwoo_settings',
+			'prixy_settings',
 			'Dollar Sync - Dashboard',
 			'Dashboard',
 			'manage_options',
-			'dpuwoo_settings',
+			'prixy_settings',
 			[__CLASS__, 'render_overview']
 		);
 
 		add_submenu_page(
-			'dpuwoo_settings',
+			'prixy_settings',
 			'Dollar Sync - Configuración',
 			'Configuración',
 			'manage_options',
-			'dpuwoo_configuration',
+			'prixy_configuration',
 			[__CLASS__, 'render_settings']
 		);
 
 		add_submenu_page(
-			'dpuwoo_settings',
+			'prixy_settings',
 			'Dollar Sync - Automatización',
 			'Automatización',
 			'manage_options',
-			'dpuwoo_automation',
+			'prixy_automation',
 			[__CLASS__, 'render_automation']
 		);
 
 		add_submenu_page(
-			'dpuwoo_settings',
+			'prixy_settings',
 			'Dollar Sync - Actualización Manual',
 			'Actualización Manual',
 			'manage_options',
-			'dpuwoo_dashboard',
+			'prixy_dashboard',
 			[__CLASS__, 'render_dashboard']
 		);
 
 		add_submenu_page(
-			'dpuwoo_settings',
+			'prixy_settings',
 			'Dollar Sync - Historial',
 			'Historial',
 			'manage_options',
-			'dpuwoo_logs',
+			'prixy_logs',
 			[__CLASS__, 'render_logs']
 		);
 		
 		add_submenu_page(
-			'dpuwoo_settings',
+			'prixy_settings',
 			'Dollar Sync - Reset DB',
 			'Reset DB',
 			'manage_options',
-			'dpuwoo_reset',
+			'prixy_reset',
 			[__CLASS__, 'render_reset_db']
 		);
 	}
@@ -286,32 +286,32 @@ wp_enqueue_style('select2', 'https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.
 
 	public static function render_overview()
 	{
-		include DPUWOO_PLUGIN_DIR . 'admin/partials/dpuwoo-main-dashboard.php';
+		include DPUWOO_PLUGIN_DIR . 'admin/partials/prixy-main-dashboard.php';
 	}
 
 	public static function render_dashboard()
 	{
-		include DPUWOO_PLUGIN_DIR . 'admin/partials/dpuwoo-dashboard.php';
+		include DPUWOO_PLUGIN_DIR . 'admin/partials/prixy-dashboard.php';
 	}
 
 	public static function render_settings()
 	{
-		include DPUWOO_PLUGIN_DIR . 'admin/partials/dpuwoo-settings.php';
+		include DPUWOO_PLUGIN_DIR . 'admin/partials/prixy-settings.php';
 	}
 
 	public static function render_automation()
 	{
-		include DPUWOO_PLUGIN_DIR . 'admin/partials/dpuwoo-automation.php';
+		include DPUWOO_PLUGIN_DIR . 'admin/partials/prixy-automation.php';
 	}
 
 public static function render_logs()
 	{
-		include DPUWOO_PLUGIN_DIR . 'admin/partials/dpuwoo-logs.php';
+		include DPUWOO_PLUGIN_DIR . 'admin/partials/prixy-logs.php';
 	}
 
 	public static function render_reset_db()
 	{
-		include DPUWOO_PLUGIN_DIR . 'admin/partials/dpuwoo-reset-db.php';
+		include DPUWOO_PLUGIN_DIR . 'admin/partials/prixy-reset-db.php';
 	}
 
 	/**
@@ -319,7 +319,7 @@ public static function render_logs()
 	 */
 	public function display_admin_notices(): void
 	{
-		$notice = get_option('dpuwoo_admin_notice');
+		$notice = get_option('prixy_admin_notice');
 		if (empty($notice['message'])) return;
 		printf(
 			'<div class="notice notice-%s%s"><p>%s</p></div>',
@@ -327,7 +327,7 @@ public static function render_logs()
 			!empty($notice['dismissible']) ? ' is-dismissible' : '',
 			esc_html($notice['message'])
 		);
-		delete_option('dpuwoo_admin_notice');
+		delete_option('prixy_admin_notice');
 	}
 
 	/**
@@ -335,10 +335,10 @@ public static function render_logs()
 	 */
 	public function handle_activation_redirect(): void
 	{
-		if (!get_transient('dpuwoo_activation_redirect')) return;
-		delete_transient('dpuwoo_activation_redirect');
+		if (!get_transient('prixy_activation_redirect')) return;
+		delete_transient('prixy_activation_redirect');
 		if (isset($_GET['activate-multi'])) return;
-		wp_safe_redirect(admin_url('admin.php?page=dpuwoo_settings'));
+		wp_safe_redirect(admin_url('admin.php?page=prixy_settings'));
 		exit;
 	}
 
@@ -350,12 +350,12 @@ public static function render_logs()
 	public static function get_setup_progress(): array
 	{
 		global $wpdb;
-		$opts = get_option('dpuwoo_settings', []);
+		$opts = get_option('prixy_settings', []);
 		$rate = floatval($opts['origin_exchange_rate'] ?? 0);
 
 		return [
 			'rate_initialized' => $rate > 0,
-			'first_run_done'   => (int) $wpdb->get_var("SELECT COUNT(id) FROM {$wpdb->prefix}dpuwoo_runs") > 0,
+			'first_run_done'   => (int) $wpdb->get_var("SELECT COUNT(id) FROM {$wpdb->prefix}prixy_runs") > 0,
 			'origin_rate'      => $rate,
 		];
 	}
@@ -367,7 +367,7 @@ public static function render_logs()
 	 */
 	public static function is_setup_complete(): bool
 	{
-		$opts = get_option('dpuwoo_settings', []);
+		$opts = get_option('prixy_settings', []);
 		return !empty($opts['origin_rate_locked']);
 	}
 }

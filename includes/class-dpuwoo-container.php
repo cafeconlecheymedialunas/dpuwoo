@@ -8,7 +8,7 @@ if (!defined('ABSPATH')) exit;
  * Reemplaza el uso de Singletons estáticos acoplados entre clases.
  * Soporta registros 'bind' (nueva instancia por llamada) y 'singleton' (instancia compartida).
  */
-class Dpuwoo_Container
+class Prixy_Container
 {
     /** @var array<string, callable> Fábricas registradas */
     private array $bindings = [];
@@ -48,7 +48,7 @@ class Dpuwoo_Container
     public function get(string $id): mixed
     {
         if (!isset($this->bindings[$id])) {
-            throw new \RuntimeException("Dpuwoo_Container: Servicio no registrado [{$id}]");
+            throw new \RuntimeException("Prixy_Container: Servicio no registrado [{$id}]");
         }
 
         $binding = $this->bindings[$id];
@@ -65,7 +65,7 @@ class Dpuwoo_Container
 
     /**
      * Construye el container con todas las dependencias del plugin registradas.
-     * Único método a llamar desde class-dpuwoo.php en el bootstrap.
+     * Único método a llamar desde class-prixy.php en el bootstrap.
      */
     public static function build(): self
     {
