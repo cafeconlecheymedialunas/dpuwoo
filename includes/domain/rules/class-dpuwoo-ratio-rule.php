@@ -14,7 +14,8 @@ class Ratio_Rule implements Price_Rule_Interface
         $this->applied_ratio = $context->exchange_rate->ratio;
         
         if ($context->usd_baseline > 0) {
-            return $context->usd_baseline * $this->applied_ratio;
+            // usd_baseline = old_ARS / previous_rate → multiply by current_rate to get new_ARS
+            return $context->usd_baseline * $context->exchange_rate->current;
         }
         
         return $price * $this->applied_ratio;

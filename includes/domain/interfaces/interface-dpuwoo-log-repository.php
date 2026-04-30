@@ -97,4 +97,22 @@ interface Log_Repository_Interface
      * @return bool
      */
     public function has_any_log_for_product(int $product_id): bool;
+
+    /**
+     * Inicia una transacción de base de datos.
+     * @return bool
+     */
+    public function begin_transaction(): bool;
+
+    /**
+     * Confirma la transacción de base de datos.
+     * @return bool
+     */
+    public function commit_transaction(): bool;
+
+    /**
+     * Revierte la transacción de base de datos.
+     * @return bool
+     */
+    public function rollback_transaction(): bool;
 }
