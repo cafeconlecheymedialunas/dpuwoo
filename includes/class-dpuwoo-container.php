@@ -86,13 +86,13 @@ class Dpuwoo_Container
 
         /*----------------------------------------------------------
          * Dominio — Reglas de Precio (Strategy Pattern)
-         * El orden importa: Ratio → Margen → Dirección → Exclusión → Redondeo
+         * El orden importa: Ratio → Dirección → Margen → Redondeo
+         * Nota: Category_Exclusion_Rule se maneja vía short-circuit en el engine.
          *---------------------------------------------------------*/
         $c->bind('price_rules', fn() => [
             new Ratio_Rule(),
-            new Margin_Rule(),
             new Direction_Rule(),
-            new Category_Exclusion_Rule(),
+            new Margin_Rule(),
             new Rounding_Rule(),
         ]);
 
@@ -107,7 +107,8 @@ class Dpuwoo_Container
 
         $c->singleton('batch_processor', fn($c) => new Batch_Processor(
             $c->get('product_repo'),
-            $c->get('price_engine')
+            $c->get('price_engine'),
+            $c->get('log_repo')
         ));
 
         /*----------------------------------------------------------
@@ -145,7 +146,8 @@ class Dpuwoo_Container
             $c->get('command_bus'),
             $c->get('logger'),
             $c->get('api'),
-            $c->get('settings')
+            $c->get('settings'),
+            $c->get('log_repo')
         ));
 
         return $c;
