@@ -8,20 +8,20 @@
  * registers the activation and deactivation functions, and defines a function
  * that starts the plugin.
  *
- * @link              https://https://github.com/cafeconlecheymedialunas
+ * @link              https://prixy.io
  * @since             1.0.0
- * @package           Dpuwoo
+ * @package           Prixy
  *
  * @wordpress-plugin
- * Plugin Name:       Dolar Price Updater for WooCommerce
- * Plugin URI:        https://https://github.com/cafeconlecheymedialunas/Dolar-Price-Updater-for-WooCommerce
- * Description:       Automatically adjust your WooCommerce product prices using the latest dollar exchange values. Apply updates globally, by category, or by product, with smart controls to prevent pricing errors.
+ * Plugin Name:       Prixy - Real-Time Exchange Rate Updater for WooCommerce
+ * Plugin URI:       https://prixy.io
+ * Description:       Real-Time Exchange Rate Updater for WooCommerce. Automatically adjust your WooCommerce product prices using the latest dollar exchange values.
  * Version:           1.0.0
- * Author:            Mauro Gaitan
- * Author URI:        https://https://github.com/cafeconlecheymedialunas/
+ * Author:            Prixy Team
+ * Author URI:       https://prixy.io
  * License:           GPL-2.0+
  * License URI:       http://www.gnu.org/licenses/gpl-2.0.txt
- * Text Domain:       dpuwoo
+ * Text Domain:       prixy
  * Domain Path:       /languages
  */
 
