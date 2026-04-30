@@ -15,7 +15,7 @@ function is_woocommerce_active()
  * Wrapper seguro de get_woocommerce_currency().
  * Devuelve 'USD' si WooCommerce aún no está cargado.
  */
-function dpuwoo_get_store_currency(): string
+function prixy_get_store_currency(): string
 {
     return function_exists('get_woocommerce_currency') ? get_woocommerce_currency() : 'USD';
 }

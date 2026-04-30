@@ -120,7 +120,7 @@ class API_Client
         
         // Agregar información común si existe
         if ($result) {
-            $result['store_currency'] = strtoupper(\Dpuwoo\Helpers\dpuwoo_get_store_currency());
+            $result['store_currency'] = strtoupper(\Dpuwoo\Helpers\prixy_get_store_currency());
             $result['store_country'] = $this->get_store_country();
             $result['timestamp'] = current_time('mysql');
         }
@@ -151,7 +151,7 @@ class API_Client
             
             // Agregar información común
             foreach ($currencies as &$currency) {
-                $currency['store_currency'] = strtoupper(\Dpuwoo\Helpers\dpuwoo_get_store_currency());
+                $currency['store_currency'] = strtoupper(\Dpuwoo\Helpers\prixy_get_store_currency());
                 $currency['store_country'] = $this->get_store_country();
                 $currency['timestamp'] = current_time('mysql');
             }
@@ -173,8 +173,8 @@ class API_Client
         } else {
             // Limpiar todos los caches de currencies
             global $wpdb;
-            $wpdb->query("DELETE FROM $wpdb->options WHERE option_name LIKE '_transient_dpuwoo_currencies_%'");
-            $wpdb->query("DELETE FROM $wpdb->options WHERE option_name LIKE '_transient_timeout_dpuwoo_currencies_%'");
+            $wpdb->query("DELETE FROM $wpdb->options WHERE option_name LIKE '_transient_prixy_currencies_%'");
+            $wpdb->query("DELETE FROM $wpdb->options WHERE option_name LIKE '_transient_timeout_prixy_currencies_%'");
         }
     }
     
@@ -298,7 +298,7 @@ return $symbols[$code] ?? '';
         
         // Agregar información común
         if ($result) {
-            $result['store_currency'] = strtoupper(\Dpuwoo\Helpers\dpuwoo_get_store_currency());
+            $result['store_currency'] = strtoupper(\Dpuwoo\Helpers\prixy_get_store_currency());
             $result['store_country'] = $this->get_store_country();
         }
         

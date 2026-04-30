@@ -45,7 +45,7 @@ function dpuwoo_uninstall_cleanup()
 	delete_option('dpuwoo_auto_detection_date');
 	
 	// 2. REMOVE ALL PRODUCT USD PRICE METADATA
-	$wpdb->query("DELETE FROM {$wpdb->postmeta} WHERE meta_key = '_dpuwoo_original_price_usd'");
+	$wpdb->query("DELETE FROM {$wpdb->postmeta} WHERE meta_key = '_prixy_original_price_usd'");
 	
 	// 3. REMOVE BASELINE TABLE
 	$baseline_table = $wpdb->prefix . 'dpuwoo_baselines';

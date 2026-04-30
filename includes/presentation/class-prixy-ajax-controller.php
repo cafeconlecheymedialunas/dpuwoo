@@ -67,7 +67,7 @@ class Ajax_Controller
     ==========================================================*/
 
     /**
-     * POST: dpuwoo_get_runs
+     * POST: prixy_get_runs
      * Retorna el historial de ejecuciones.
      */
     public function handle_get_runs(): void
@@ -77,7 +77,7 @@ class Ajax_Controller
     }
 
     /**
-     * POST: dpuwoo_get_run_items
+     * POST: prixy_get_run_items
      * Retorna los items individuales de una ejecución.
      */
     public function handle_get_run_items(): void
@@ -176,7 +176,7 @@ class Ajax_Controller
     ==========================================================*/
 
     /**
-     * POST: dpuwoo_get_currencies
+     * POST: prixy_get_currencies
      * Retorna las monedas/tipos disponibles del proveedor indicado.
      */
     public function handle_get_currencies(): void
@@ -215,7 +215,7 @@ class Ajax_Controller
     }
 
     /**
-     * POST: dpuwoo_get_current_rate
+     * POST: prixy_get_current_rate
      * Retorna la tasa de cambio actual desde el proveedor configurado.
      * Si no hay provider configurado, usa jsdelivr (gratuito).
      */
@@ -273,7 +273,7 @@ class Ajax_Controller
     }
 
     /**
-     * POST: dpuwoo_get_providers_info
+     * POST: prixy_get_providers_info
      * Retorna la lista de proveedores disponibles.
      */
     public function handle_get_providers_info(): void
@@ -326,7 +326,7 @@ class Ajax_Controller
     }
 
     /**
-     * POST: dpuwoo_get_dashboard_stats
+     * POST: prixy_get_dashboard_stats
      * Retorna todos los datos necesarios para el Dashboard Overview en un solo call.
      */
     public function handle_get_dashboard_stats(): void
@@ -350,7 +350,7 @@ class Ajax_Controller
     }
 
     /**
-     * POST: dpuwoo_get_setup_progress
+     * POST: prixy_get_setup_progress
      * Retorna el estado de los 2 pasos de onboarding.
      */
     public function handle_get_setup_progress(): void
@@ -466,7 +466,7 @@ class Ajax_Controller
     }
 
     /**
-     * POST: dpuwoo_get_rates
+     * POST: prixy_get_rates
      * Obtiene las tasas de cambio disponibles desde la API.
      */
     public function handle_get_rates(): void
@@ -657,7 +657,7 @@ class Ajax_Controller
                 ];
             }
 
-            update_post_meta($product_id, '_dpuwoo_first_setup_done', current_time('mysql'));
+            update_post_meta($product_id, '_prixy_first_setup_done', current_time('mysql'));
         }
 
         // Limpiar option cuando se completó todo

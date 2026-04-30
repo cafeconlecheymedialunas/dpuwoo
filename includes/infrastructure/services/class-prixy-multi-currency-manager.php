@@ -35,7 +35,7 @@ class MultiCurrency_Manager
      */
     public function has_original_price_usd($product_id)
     {
-        $original_price = get_post_meta($product_id, '_dpuwoo_original_price_usd', true);
+        $original_price = get_post_meta($product_id, '_prixy_original_price_usd', true);
         return !empty($original_price) && floatval($original_price) > 0;
     }
     
@@ -46,7 +46,7 @@ class MultiCurrency_Manager
      */
     public function get_original_price_usd($product_id)
     {
-        $original_price = get_post_meta($product_id, '_dpuwoo_original_price_usd', true);
+        $original_price = get_post_meta($product_id, '_prixy_original_price_usd', true);
         return (!empty($original_price) && floatval($original_price) > 0) ? floatval($original_price) : null;
     }
     
@@ -62,8 +62,8 @@ class MultiCurrency_Manager
             return false;
         }
         
-        $result = update_post_meta($product_id, '_dpuwoo_original_price_usd', floatval($usd_price));
-        update_post_meta($product_id, '_dpuwoo_baseline_date', current_time('mysql'));
+        $result = update_post_meta($product_id, '_prixy_original_price_usd', floatval($usd_price));
+        update_post_meta($product_id, '_prixy_baseline_date', current_time('mysql'));
         
         return $result !== false;
     }
@@ -94,7 +94,7 @@ class MultiCurrency_Manager
     public function get_original_price_info($product_id)
     {
         $usd_price = $this->get_original_price_usd($product_id);
-        $established_date = get_post_meta($product_id, '_dpuwoo_baseline_date', true);
+        $established_date = get_post_meta($product_id, '_prixy_baseline_date', true);
         
         if (!$usd_price) {
             return null;
@@ -119,7 +119,7 @@ class MultiCurrency_Manager
         $deleted_meta = $wpdb->query(
             $wpdb->prepare(
                 "DELETE FROM {$wpdb->postmeta} WHERE meta_key = %s",
-                '_dpuwoo_original_price_usd'
+                '_prixy_original_price_usd'
             )
         );
         
@@ -127,7 +127,7 @@ class MultiCurrency_Manager
         $wpdb->query(
             $wpdb->prepare(
                 "DELETE FROM {$wpdb->postmeta} WHERE meta_key = %s",
-                '_dpuwoo_baseline_date'
+                '_prixy_baseline_date'
             )
         );
         

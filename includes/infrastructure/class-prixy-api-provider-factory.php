@@ -2,18 +2,18 @@
 if (!defined('ABSPATH')) exit;
 
 // Load base classes first
-require_once __DIR__ . '/../class-dpuwoo-trait-request.php';
-require_once __DIR__ . '/api/class-dpuwoo-api-response-formatter.php';
+require_once __DIR__ . '/../class-prixy-trait-request.php';
+require_once __DIR__ . '/api/class-prixy-api-response-formatter.php';
 
 // Load provider classes
-require_once __DIR__ . '/api/providers/class-dpuwoo-dolarapi-provider.php';
-require_once __DIR__ . '/api/providers/class-dpuwoo-jsdelivr-provider.php';
-require_once __DIR__ . '/api/providers/class-dpuwoo-cryptoprice-provider.php';
-require_once __DIR__ . '/api/providers/class-dpuwoo-currencyapi-provider.php';
-require_once __DIR__ . '/api/providers/class-dpuwoo-exhangerateapi-provider.php';
-require_once __DIR__ . '/api/providers/class-dpuwoo-moneyconvert-provider.php';
-require_once __DIR__ . '/api/providers/class-dpuwoo-hexarate-provider.php';
-require_once __DIR__ . '/api/providers/class-dpuwoo-foreignrate-provider.php';
+require_once __DIR__ . '/api/providers/class-prixy-dolarapi-provider.php';
+require_once __DIR__ . '/api/providers/class-prixy-jsdelivr-provider.php';
+require_once __DIR__ . '/api/providers/class-prixy-cryptoprice-provider.php';
+require_once __DIR__ . '/api/providers/class-prixy-currencyapi-provider.php';
+require_once __DIR__ . '/api/providers/class-prixy-exhangerateapi-provider.php';
+require_once __DIR__ . '/api/providers/class-prixy-moneyconvert-provider.php';
+require_once __DIR__ . '/api/providers/class-prixy-hexarate-provider.php';
+require_once __DIR__ . '/api/providers/class-prixy-foreignrate-provider.php';
 
 /**
  * Factory Pattern para instanciar proveedores de API de tasa de cambio.
