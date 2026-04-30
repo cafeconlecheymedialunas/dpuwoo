@@ -1,0 +1,101 @@
+.dpuwoo-field__status,
+.dpuwoo-api-test-result,
+.dpuwoo-reference-set,
+.dpuwoo-get-from-api,
+.dpuwoo-rates-list,
+.dpuwoo-rate-option,
+.dpuwoo-notice--success,
+.dpuwoo-notice--error {
+    margin: 0 0 24px;
+}
+
+.dpuwoo-notice--success,
+.dpuwoo-notice--error {
+    padding: 16px;
+    border-radius: 8px;
+}
+
+.dpuwoo-notice--success {
+    background-color: #e6f4ea;
+    border: 1px solid #d1e7dd;
+    color: #205f35;
+}
+
+.dpuwoo-notice--error {
+    background-color: #fff4f4;
+    border: 1px solid #f5c2c7;
+    color: #842029;
+}
+
+.dpuwoo-origin-rate-status {
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.dpuwoo-origin-rate-status--success {
+    color: #0f5132;
+}
+
+.dpuwoo-origin-rate-status--error {
+    color: #842029;
+}
+
+.dpuwoo-origin-rate-status--warning {
+    color: #664d03;
+}
+
+.dpuwoo-origin-rate-status--info {
+    color: #0c5460;
+}
+
+.dpuwoo-origin-rate-results {
+    margin-top: 24px;
+    padding: 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    background-color: #ffffff;
+}
+
+.dpuwoo-origin-rate-results__header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.dpuwoo-origin-rate-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.dpuwoo-origin-rate-table th,
+.dpuwoo-origin-rate-table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.dpuwoo-origin-rate-table__usd {
+    color: #1d4ed8;
+    font-weight: 700;
+}
+
+.dpuwoo-origin-rate-setup-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 12px 0;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.dpuwoo-origin-rate-setup-row:last-child {
+    border-bottom: none;
+}
+
+.dpuwoo-btn--success {
+    background-color: #22c55e;
+    border-color: #16a34a;
+    color: #ffffff;
+}
