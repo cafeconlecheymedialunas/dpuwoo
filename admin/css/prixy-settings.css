@@ -1,56 +1,56 @@
-.dpuwoo-field__status,
-.dpuwoo-api-test-result,
-.dpuwoo-reference-set,
-.dpuwoo-get-from-api,
-.dpuwoo-rates-list,
-.dpuwoo-rate-option,
-.dpuwoo-notice--success,
-.dpuwoo-notice--error {
+.prixy-field__status,
+.prixy-api-test-result,
+.prixy-reference-set,
+.prixy-get-from-api,
+.prixy-rates-list,
+.prixy-rate-option,
+.prixy-notice--success,
+.prixy-notice--error {
     margin: 0 0 24px;
 }
 
-.dpuwoo-notice--success,
-.dpuwoo-notice--error {
+.prixy-notice--success,
+.prixy-notice--error {
     padding: 16px;
     border-radius: 8px;
 }
 
-.dpuwoo-notice--success {
+.prixy-notice--success {
     background-color: #e6f4ea;
     border: 1px solid #d1e7dd;
     color: #205f35;
 }
 
-.dpuwoo-notice--error {
+.prixy-notice--error {
     background-color: #fff4f4;
     border: 1px solid #f5c2c7;
     color: #842029;
 }
 
-.dpuwoo-origin-rate-status {
+.prixy-origin-rate-status {
     font-weight: 600;
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
 }
 
-.dpuwoo-origin-rate-status--success {
+.prixy-origin-rate-status--success {
     color: #0f5132;
 }
 
-.dpuwoo-origin-rate-status--error {
+.prixy-origin-rate-status--error {
     color: #842029;
 }
 
-.dpuwoo-origin-rate-status--warning {
+.prixy-origin-rate-status--warning {
     color: #664d03;
 }
 
-.dpuwoo-origin-rate-status--info {
+.prixy-origin-rate-status--info {
     color: #0c5460;
 }
 
-.dpuwoo-origin-rate-results {
+.prixy-origin-rate-results {
     margin-top: 24px;
     padding: 16px;
     border: 1px solid #d1d5db;
@@ -58,7 +58,7 @@
     background-color: #ffffff;
 }
 
-.dpuwoo-origin-rate-results__header {
+.prixy-origin-rate-results__header {
     display: flex;
     align-items: center;
     gap: 0.75rem;
@@ -66,23 +66,23 @@
     font-weight: 600;
 }
 
-.dpuwoo-origin-rate-table {
+.prixy-origin-rate-table {
     width: 100%;
     border-collapse: collapse;
 }
 
-.dpuwoo-origin-rate-table th,
-.dpuwoo-origin-rate-table td {
+.prixy-origin-rate-table th,
+.prixy-origin-rate-table td {
     padding: 0.75rem;
     border-bottom: 1px solid #e5e7eb;
 }
 
-.dpuwoo-origin-rate-table__usd {
+.prixy-origin-rate-table__usd {
     color: #1d4ed8;
     font-weight: 700;
 }
 
-.dpuwoo-origin-rate-setup-row {
+.prixy-origin-rate-setup-row {
     display: flex;
     justify-content: space-between;
     gap: 1rem;
@@ -90,11 +90,11 @@
     border-bottom: 1px solid #e5e7eb;
 }
 
-.dpuwoo-origin-rate-setup-row:last-child {
+.prixy-origin-rate-setup-row:last-child {
     border-bottom: none;
 }
 
-.dpuwoo-btn--success {
+.prixy-btn--success {
     background-color: #22c55e;
     border-color: #16a34a;
     color: #ffffff;

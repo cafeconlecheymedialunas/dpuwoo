@@ -1,5 +1,5 @@
 {
-    "name": "dpuwoo/dpuwoo",
+    "name": "prixy/prixy",
     "description": "Dolar Price Updater for WooCommerce",
     "type": "wordpress-plugin",
     "require-dev": {

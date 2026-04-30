@@ -9,18 +9,18 @@
         },
 
         bindEvents: function() {
-            $(document).on('click', '.dpuwoo-view-run',    this.viewRunDetails.bind(this));
-            $(document).on('click', '.dpuwoo-revert-run',  this.revertRun.bind(this));
-            $(document).on('click', '#dpuwoo-close-details-modal, #dpuwoo-close-details-modal-2',
+            $(document).on('click', '.prixy-view-run',    this.viewRunDetails.bind(this));
+            $(document).on('click', '.prixy-revert-run',  this.revertRun.bind(this));
+            $(document).on('click', '#prixy-close-details-modal, #prixy-close-details-modal-2',
                 this.closeDetailsModal.bind(this));
         },
 
         loadLogs: function() {
             this.showLogsLoading();
             $.ajax({
-                url:      dpuwoo_ajax.ajax_url,
+                url:      prixy_ajax.ajax_url,
                 type:     'POST',
-                data:     { action: 'dpuwoo_get_runs', nonce: dpuwoo_ajax.nonce },
+                data:     { action: 'prixy_get_runs', nonce: prixy_ajax.nonce },
                 dataType: 'json',
                 success:  function (res) {
                     res.success ? this.displayLogs(res.data)
@@ -33,7 +33,7 @@
         },
 
         showLogsLoading: function() {
-            $('#dpuwoo-log-table').html(`
+            $('#prixy-log-table').html(`
                 <div class="dpu-log-state">
                     <div class="dpu-log-spinner"></div>
                     <p class="dpu-log-state__msg">Cargando historial…</p>
@@ -42,7 +42,7 @@
         },
 
         showLogsError: function(message) {
-            $('#dpuwoo-log-table').html(`
+            $('#prixy-log-table').html(`
                 <div class="dpu-log-state">
                     <div class="dpu-log-state__icon dpu-log-state__icon--err">
                         <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
@@ -57,7 +57,7 @@
 
         displayLogs: function(logs) {
             if (!logs || logs.length === 0) {
-                $('#dpuwoo-log-table').html(`
+                $('#prixy-log-table').html(`
                     <div class="dpu-log-state">
                         <div class="dpu-log-state__icon">
                             <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
@@ -116,14 +116,14 @@
                             <span class="dpu-log-badge dpu-log-badge--${typeKey}">${typeLabel}</span>
                         </td>
                         <td class="dpu-log-cell dpu-log-cell--actions">
-                            <button class="dpu-btn dpu-btn--ghost dpu-btn--xs dpuwoo-view-run" data-run="${log.id}">
+                            <button class="dpu-btn dpu-btn--ghost dpu-btn--xs prixy-view-run" data-run="${log.id}">
                                 <svg width="11" height="11" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                                 </svg>
                                 Ver
                             </button>
-                            <button class="dpu-btn dpu-btn--danger dpu-btn--xs dpuwoo-revert-run" data-run="${log.id}">
+                            <button class="dpu-btn dpu-btn--danger dpu-btn--xs prixy-revert-run" data-run="${log.id}">
                                 <svg width="11" height="11" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
                                 </svg>
@@ -134,7 +134,7 @@
             });
 
             html += `</tbody></table>`;
-            $('#dpuwoo-log-table').html(html);
+            $('#prixy-log-table').html(html);
         },
 
         viewRunDetails: function(e) {
@@ -143,8 +143,8 @@
             const runId = $btn.data('run');
 
             DPUWOO_Utils.btnLoading($btn, 'Cargando…');
-            $('#dpuwoo-run-details-modal').removeClass('hidden');
-            $('#dpuwoo-run-details-content').html(`
+            $('#prixy-run-details-modal').removeClass('hidden');
+            $('#prixy-run-details-content').html(`
                 <div class="dpu-log-state dpu-log-state--modal">
                     <div class="dpu-log-spinner"></div>
                     <p class="dpu-log-state__msg">Cargando detalles…</p>
@@ -152,14 +152,14 @@
             `);
 
             $.ajax({
-                url:      dpuwoo_ajax.ajax_url,
+                url:      prixy_ajax.ajax_url,
                 type:     'POST',
-                data:     { action: 'dpuwoo_get_run_items', run_id: runId, nonce: dpuwoo_ajax.nonce },
+                data:     { action: 'prixy_get_run_items', run_id: runId, nonce: prixy_ajax.nonce },
                 dataType: 'json',
                 success: function (res) {
                     DPUWOO_Utils.btnReset($btn);
                     if (!res.success) {
-                        $('#dpuwoo-run-details-content').html(`
+                        $('#prixy-run-details-content').html(`
                             <div class="dpu-log-state dpu-log-state--modal">
                                 <div class="dpu-log-state__icon dpu-log-state__icon--err">
                                     <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
@@ -175,7 +175,7 @@
                 }.bind(this),
                 error: function (xhr, status, error) {
                     DPUWOO_Utils.btnReset($btn);
-                    $('#dpuwoo-run-details-content').html(`
+                    $('#prixy-run-details-content').html(`
                         <div class="dpu-log-state dpu-log-state--modal">
                             <p class="dpu-log-state__msg">Error de conexión: ${error}</p>
                         </div>
@@ -186,7 +186,7 @@
 
         displayRunDetails: function(items, runId) {
             if (!items || items.length === 0) {
-                $('#dpuwoo-run-details-content').html(`
+                $('#prixy-run-details-content').html(`
                     <div class="dpu-log-state dpu-log-state--modal">
                         <p class="dpu-log-state__msg">Sin detalles para esta ejecución</p>
                     </div>
@@ -260,7 +260,7 @@
             });
 
             html += `</tbody></table></div>`;
-            $('#dpuwoo-run-details-content').html(html);
+            $('#prixy-run-details-content').html(html);
         },
 
         revertRun: function(e) {
@@ -279,9 +279,9 @@
             `);
 
             $.ajax({
-                url:      dpuwoo_ajax.ajax_url,
+                url:      prixy_ajax.ajax_url,
                 type:     'POST',
-                data:     { action: 'dpuwoo_revert_run', run_id: runId, nonce: dpuwoo_ajax.nonce },
+                data:     { action: 'prixy_revert_run', run_id: runId, nonce: prixy_ajax.nonce },
                 dataType: 'json',
                 success: function (res) {
                     if (res.success) {
@@ -307,7 +307,7 @@
 
         closeDetailsModal: function(e) {
             e.preventDefault();
-            $('#dpuwoo-run-details-modal').addClass('hidden');
+            $('#prixy-run-details-modal').addClass('hidden');
         },
 
         refresh: function() {

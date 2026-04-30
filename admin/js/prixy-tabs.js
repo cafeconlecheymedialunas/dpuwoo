@@ -8,7 +8,7 @@
         },
 
         setupTabs: function() {
-            $('.dpuwoo-tab').on('click', function(e) {
+            $('.prixy-tab').on('click', function(e) {
                 e.preventDefault();
                 const tab = $(this).data('tab');
                 DPUWOO_Tabs.switchTab(tab);
@@ -16,21 +16,21 @@
         },
 
         switchTab: function(tab) {
-            $('.dpuwoo-tab').removeClass('dpu-tab--active');
-            $('.dpuwoo-tab[data-tab="' + tab + '"]').addClass('dpu-tab--active');
+            $('.prixy-tab').removeClass('dpu-tab--active');
+            $('.prixy-tab[data-tab="' + tab + '"]').addClass('dpu-tab--active');
 
-            $('.dpuwoo-tab-content').addClass('hidden');
-            $('#dpuwoo-tab-' + tab).removeClass('hidden');
-            localStorage.setItem('dpuwoo_active_tab', tab);
+            $('.prixy-tab-content').addClass('hidden');
+            $('#prixy-tab-' + tab).removeClass('hidden');
+            localStorage.setItem('prixy_active_tab', tab);
         },
 
         restoreActiveTab: function() {
-            const savedTab = localStorage.getItem('dpuwoo_active_tab');
-            if (savedTab && $('.dpuwoo-tab[data-tab="' + savedTab + '"]').length) {
+            const savedTab = localStorage.getItem('prixy_active_tab');
+            if (savedTab && $('.prixy-tab[data-tab="' + savedTab + '"]').length) {
                 DPUWOO_Tabs.switchTab(savedTab);
             } else {
                 // Por defecto, activar la primera tab
-                const firstTab = $('.dpuwoo-tab').first().data('tab');
+                const firstTab = $('.prixy-tab').first().data('tab');
                 if (firstTab) {
                     DPUWOO_Tabs.switchTab(firstTab);
                 }
@@ -38,12 +38,12 @@
         },
 
         getActiveTab: function() {
-            return localStorage.getItem('dpuwoo_active_tab') || '';
+            return localStorage.getItem('prixy_active_tab') || '';
         },
 
         resetTabs: function() {
-            localStorage.removeItem('dpuwoo_active_tab');
-            const firstTab = $('.dpuwoo-tab').first().data('tab');
+            localStorage.removeItem('prixy_active_tab');
+            const firstTab = $('.prixy-tab').first().data('tab');
             if (firstTab) {
                 DPUWOO_Tabs.switchTab(firstTab);
             }

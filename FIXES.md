@@ -17,7 +17,7 @@ Se implementaron **7 arreglos críticos** en la lógica de actualización de pre
 ## 🔴 Problemas Críticos Resueltos
 
 ### P0-1: Validación de Tasa de Cambio > 0 ✅
-**Archivo**: [Update_Prices_Handler](includes/application/handlers/class-dpuwoo-update-prices-handler.php)
+**Archivo**: [Update_Prices_Handler](includes/application/handlers/class-prixy-update-prices-handler.php)
 **Problema**: La tasa de cambio nunca era validada, permitiendo:
 - Tasa = 0 → Todos los precios = 0
 - Tasa < 0 → Precios negativos
@@ -37,7 +37,7 @@ if ($current_rate <= 0 || is_nan($current_rate) || is_infinite($current_rate)) {
 ---
 
 ### P0-2: Transacciones Reales en Logger ✅
-**Archivo**: [Log_Repository](includes/infrastructure/repositories/class-dpuwoo-log-repository.php) + [Logger](includes/class-dpuwoo-logger.php)
+**Archivo**: [Log_Repository](includes/infrastructure/repositories/class-prixy-log-repository.php) + [Logger](includes/class-prixy-logger.php)
 **Problema**: Las transacciones de BD no existían, causando:
 - Si cron/manual se interrupe entre batch 0 y batch 1 → BD inconsistente
 - Si batch 1+ falla → Sin rollback de batch 0
@@ -87,7 +87,7 @@ public function begin_run_transaction($run_data)
 ---
 
 ### P1-1: Validación de Rango de Precios ✅
-**Archivos**: [Product_Repository](includes/infrastructure/repositories/class-dpuwoo-product-repository.php)
+**Archivos**: [Product_Repository](includes/infrastructure/repositories/class-prixy-product-repository.php)
 **Problema**: Precios guardados sin validar rango:
 - `save_regular_price()`: Aceptaba 0.0, 0.001, INF, NaN
 - `save_sale_price()`: Mismo problema
@@ -126,7 +126,7 @@ public function save_regular_price(\WC_Product $product, float $new_price): bool
 ---
 
 ### P1-2: USD Baseline Consistente ✅
-**Archivo**: [Price_Context](includes/domain/value-objects/class-dpuwoo-price-context.php)
+**Archivo**: [Price_Context](includes/domain/value-objects/class-prixy-price-context.php)
 **Problema**: USD baseline se calculaba inconsistentemente:
 - Con log: `baseline = new_regular / dollar_value` (del log anterior)
 - Sin log: `baseline = old_regular / exchange_rate->ratio` (tasa actual)
@@ -160,8 +160,8 @@ public static function from_product(...): self
 
 ### Logging Mejorado
 **Archivos**:  
-- [Product_Repository::save_regular_price()](includes/infrastructure/repositories/class-dpuwoo-product-repository.php)
-- [Product_Repository::save_sale_price()](includes/infrastructure/repositories/class-dpuwoo-product-repository.php)
+- [Product_Repository::save_regular_price()](includes/infrastructure/repositories/class-prixy-product-repository.php)
+- [Product_Repository::save_sale_price()](includes/infrastructure/repositories/class-prixy-product-repository.php)
 
 **Cambio**: Todos los fallos ahora se loguean:
 ```php
@@ -175,7 +175,7 @@ error_log('DPUWoo: Excepción: ' . $e->getMessage());
 **Impacto**: Permite diagnosticar problemas rápidamente en logs de WordPress.
 
 ### Filtrado de Simulaciones
-**Archivo**: [Logger::add_items_to_transaction()](includes/class-dpuwoo-logger.php)
+**Archivo**: [Logger::add_items_to_transaction()](includes/class-prixy-logger.php)
 **Validación**: Ya estaba implementada, se mejoró documentación.
 - Items con estado `'simulated'` se filtran automáticamente
 - Solo se guardan en BD: `'updated'` o `'error'`
@@ -275,11 +275,11 @@ Después (Seguro):
 
 ## 🔗 Archivos Modificados
 
-- ✅ [Update_Prices_Handler](includes/application/handlers/class-dpuwoo-update-prices-handler.php) - Validación de tasa
-- ✅ [Log_Repository](includes/infrastructure/repositories/class-dpuwoo-log-repository.php) - Transacciones
-- ✅ [Logger](includes/class-dpuwoo-logger.php) - Usar transacciones reales
-- ✅ [Product_Repository](includes/infrastructure/repositories/class-dpuwoo-product-repository.php) - Validación de precios + logging
-- ✅ [Price_Context](includes/domain/value-objects/class-dpuwoo-price-context.php) - USD baseline consistente
+- ✅ [Update_Prices_Handler](includes/application/handlers/class-prixy-update-prices-handler.php) - Validación de tasa
+- ✅ [Log_Repository](includes/infrastructure/repositories/class-prixy-log-repository.php) - Transacciones
+- ✅ [Logger](includes/class-prixy-logger.php) - Usar transacciones reales
+- ✅ [Product_Repository](includes/infrastructure/repositories/class-prixy-product-repository.php) - Validación de precios + logging
+- ✅ [Price_Context](includes/domain/value-objects/class-prixy-price-context.php) - USD baseline consistente
 - ✅ [Security_Fixes_Test](tests/Security_Fixes_Test.php) - **NUEVO** - Tests de seguridad
 
 ---

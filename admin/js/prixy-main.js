@@ -6,15 +6,15 @@
     let cumulativeResults = { updated: 0, skipped: 0, errors: 0, changes: [] };
 
     $(document).ready(function () {
-        $('#dpuwoo-simulation-process').addClass('hidden');
-        $('#dpuwoo-simulation-results').addClass('hidden');
-        $('#dpuwoo-update-process').addClass('hidden');
-        $('#dpuwoo-final-results').addClass('hidden');
-        $('#dpuwoo-simulate').show();
+        $('#prixy-simulation-process').addClass('hidden');
+        $('#prixy-simulation-results').addClass('hidden');
+        $('#prixy-update-process').addClass('hidden');
+        $('#prixy-final-results').addClass('hidden');
+        $('#prixy-simulate').show();
 
         // Toggle config section
-        $('#dpuwoo-toggle-config').on('click', function() {
-            const $details = $('#dpuwoo-config-details');
+        $('#prixy-toggle-config').on('click', function() {
+            const $details = $('#prixy-config-details');
             const $btn = $(this);
             if ($details.hasClass('hidden')) {
                 $details.removeClass('hidden');
@@ -26,12 +26,12 @@
         });
 
         // Collapsible sections
-        $('.dpuwoo-collapsible').on('click', function() {
+        $('.prixy-collapsible').on('click', function() {
             const $btn = $(this);
             const section = $btn.data('section');
             const $content = $('#section-' + section);
             
-            $btn.toggleClass('dpuwoo-collapsible--expanded');
+            $btn.toggleClass('prixy-collapsible--expanded');
             $content.slideToggle(200);
         });
 
@@ -45,44 +45,44 @@
             },
 
             resetAllSections: function () {
-                this.hideSection('dpuwoo-simulation-process');
-                this.hideSection('dpuwoo-simulation-results');
-                this.hideSection('dpuwoo-update-process');
-                this.hideSection('dpuwoo-final-results');
-                $('#dpuwoo-sim-summary').empty();
-                $('#dpuwoo-sim-results-table').empty();
-                $('#dpuwoo-final-results').empty();
+                this.hideSection('prixy-simulation-process');
+                this.hideSection('prixy-simulation-results');
+                this.hideSection('prixy-update-process');
+                this.hideSection('prixy-final-results');
+                $('#prixy-sim-summary').empty();
+                $('#prixy-sim-results-table').empty();
+                $('#prixy-final-results').empty();
                 cumulativeResults = { updated: 0, skipped: 0, errors: 0, changes: [] };
                 // Show simulate button when resetting
-                $('#dpuwoo-simulate').show();
+                $('#prixy-simulate').show();
             },
 
             enableButtons: function () {
-                $('#dpuwoo-simulate, #dpuwoo-update-now, #dpuwoo-initialize-baseline')
+                $('#prixy-simulate, #prixy-update-now, #prixy-initialize-baseline')
                     .prop('disabled', false)
-                    .removeClass('dpuwoo-btn--loading');
+                    .removeClass('prixy-btn--loading');
                 isProcessing = false;
             },
 
             disableButtons: function () {
-                $('#dpuwoo-simulate, #dpuwoo-update-now, #dpuwoo-initialize-baseline')
+                $('#prixy-simulate, #prixy-update-now, #prixy-initialize-baseline')
                     .prop('disabled', true)
-                    .addClass('dpuwoo-btn--loading');
+                    .addClass('prixy-btn--loading');
                 isProcessing = true;
             },
 
             updateProgressBar: function (type, current, total, text) {
                 const percent = total > 0 ? Math.round((current / total) * 100) : 100;
-                const progressBarId = type === 'simulation' ? 'dpuwoo-sim-progress' : 'dpuwoo-update-progress';
-                const percentId = type === 'simulation' ? 'dpuwoo-sim-percent' : 'dpuwoo-update-percent';
-                const textId = type === 'simulation' ? 'dpuwoo-sim-text' : 'dpuwoo-update-text';
+                const progressBarId = type === 'simulation' ? 'prixy-sim-progress' : 'prixy-update-progress';
+                const percentId = type === 'simulation' ? 'prixy-sim-percent' : 'prixy-update-percent';
+                const textId = type === 'simulation' ? 'prixy-sim-text' : 'prixy-update-text';
 
                 $('#' + progressBarId).css('width', percent + '%');
                 $('#' + percentId).text(percent + '%');
                 $('#' + textId).text(text);
 
                 const processed = cumulativeResults.updated + cumulativeResults.skipped + cumulativeResults.errors;
-                const processedId = type === 'simulation' ? 'dpuwoo-sim-processed-products' : 'dpuwoo-update-processed-products';
+                const processedId = type === 'simulation' ? 'prixy-sim-processed-products' : 'prixy-update-processed-products';
                 $('#' + processedId).text(processed);
             },
 
@@ -93,10 +93,10 @@
                 cumulativeResults.changes = cumulativeResults.changes.concat(batchResults.changes || []);
 
                 if (type === 'update') {
-                    $('#dpuwoo-live-updated').text(cumulativeResults.updated);
-                    $('#dpuwoo-live-skipped').text(cumulativeResults.skipped);
-                    $('#dpuwoo-live-errors').text(cumulativeResults.errors);
-                    $('#dpuwoo-update-live-results').removeClass('hidden');
+                    $('#prixy-live-updated').text(cumulativeResults.updated);
+                    $('#prixy-live-skipped').text(cumulativeResults.skipped);
+                    $('#prixy-live-errors').text(cumulativeResults.errors);
+                    $('#prixy-update-live-results').removeClass('hidden');
                 }
             },
 
@@ -131,8 +131,8 @@
                 const summary = data.summary || { updated: 0, skipped: 0, errors: 0 };
                 const changes = data.changes || [];
 
-                const thresholdMin = data.threshold_min !== undefined ? parseFloat(data.threshold_min) : parseFloat(dpuwoo_ajax.threshold_min ?? 0);
-                const thresholdMax = data.threshold_max !== undefined ? parseFloat(data.threshold_max) : parseFloat(dpuwoo_ajax.threshold_max ?? 0);
+                const thresholdMin = data.threshold_min !== undefined ? parseFloat(data.threshold_min) : parseFloat(prixy_ajax.threshold_min ?? 0);
+                const thresholdMax = data.threshold_max !== undefined ? parseFloat(data.threshold_max) : parseFloat(prixy_ajax.threshold_max ?? 0);
                 const thresholdMet = data.threshold_met !== undefined ? data.threshold_met : true;
                 const blockMessage = data.message || '';
                 const percentageChange = Math.abs(data.percentage_change || 0);
@@ -150,35 +150,35 @@
                 const mainLabel = isSimulation ? 'A modificar' : 'Actualizados';
                 const shouldShowTable = hasRealChanges && thresholdMet;
 
-                let html = `<div class="dpuwoo-results-container">`;
+                let html = `<div class="prixy-results-container">`;
 
                 // Header
                 html += `
-    <div class="dpuwoo-result-card">
-        <div class="dpuwoo-result-header ${isSimulation ? 'dpuwoo-result-header--sim' : 'dpuwoo-result-header--upd'}">
-            <div class="dpuwoo-result-header__left">
-                <div class="dpuwoo-result-header__icon">${hasRealChanges ? '<svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>' : '<svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>'}</div>
+    <div class="prixy-result-card">
+        <div class="prixy-result-header ${isSimulation ? 'prixy-result-header--sim' : 'prixy-result-header--upd'}">
+            <div class="prixy-result-header__left">
+                <div class="prixy-result-header__icon">${hasRealChanges ? '<svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>' : '<svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>'}</div>
                 <div>
-                    <p class="dpuwoo-result-header__title">${isSimulation ? 'Simulación completada' : 'Actualización completada'}</p>
-                    <p class="dpuwoo-result-header__sub">${changes.length} productos analizados</p>
+                    <p class="prixy-result-header__title">${isSimulation ? 'Simulación completada' : 'Actualización completada'}</p>
+                    <p class="prixy-result-header__sub">${changes.length} productos analizados</p>
                 </div>
             </div>
-            <span class="dpuwoo-result-badge ${isSimulation ? 'dpuwoo-result-badge--sim' : 'dpuwoo-result-badge--upd'}">${isSimulation ? 'Vista previa' : 'Guardado'}</span>
+            <span class="prixy-result-badge ${isSimulation ? 'prixy-result-badge--sim' : 'prixy-result-badge--upd'}">${isSimulation ? 'Vista previa' : 'Guardado'}</span>
         </div>`;
 
                 // Rate info
                 html += `
-        <div class="dpuwoo-result-rates">
-            <div class="dpuwoo-rate-box">
-                <span class="dpuwoo-rate-box__label">Tasa anterior</span>
-                <span class="dpuwoo-rate-box__value">$${parseFloat(oldRate).toFixed(2)}</span>
+        <div class="prixy-result-rates">
+            <div class="prixy-rate-box">
+                <span class="prixy-rate-box__label">Tasa anterior</span>
+                <span class="prixy-rate-box__value">$${parseFloat(oldRate).toFixed(2)}</span>
             </div>
-            <div class="dpuwoo-rate-arrow">→</div>
-            <div class="dpuwoo-rate-box ${isSimulation ? 'dpuwoo-rate-box--sim' : 'dpuwoo-rate-box--upd'}">
-                <span class="dpuwoo-rate-box__label">${isSimulation ? 'Tasa a aplicar' : 'Tasa aplicada'}</span>
-                <span class="dpuwoo-rate-box__value">$${parseFloat(newRate).toFixed(2)}</span>
+            <div class="prixy-rate-arrow">→</div>
+            <div class="prixy-rate-box ${isSimulation ? 'prixy-rate-box--sim' : 'prixy-rate-box--upd'}">
+                <span class="prixy-rate-box__label">${isSimulation ? 'Tasa a aplicar' : 'Tasa aplicada'}</span>
+                <span class="prixy-rate-box__value">$${parseFloat(newRate).toFixed(2)}</span>
             </div>
-            <div class="dpuwoo-rate-change ${(data.percentage_change || 0) >= 0 ? 'up' : 'down'}">
+            <div class="prixy-rate-change ${(data.percentage_change || 0) >= 0 ? 'up' : 'down'}">
                 ${(data.percentage_change || 0) >= 0 ? '+' : ''}${(data.percentage_change || 0).toFixed(2)}%
             </div>
         </div>`;
@@ -186,26 +186,26 @@
 
 
                 // Threshold status
-                const thresholdClass = thresholdMet ? 'dpuwoo-threshold--ok' : 'dpuwoo-threshold--fail';
+                const thresholdClass = thresholdMet ? 'prixy-threshold--ok' : 'prixy-threshold--fail';
                 const thresholdText = thresholdMet
                     ? (thresholdMin === 0 && thresholdMax === 0 ? 'Sin umbral · Se actualiza siempre' : `Umbral mín. ${thresholdMin}% · Alcanzado`)
                     : (thresholdMax > 0 && percentageChange > thresholdMax ? `Umbral máx. ${thresholdMax}% · Superado` : `Umbral mín. ${thresholdMin}% · No alcanzado`);
-                html += `<div class="dpuwoo-threshold ${thresholdClass}"><span class="dpuwoo-threshold__dot"></span>${thresholdText}</div>`;
+                html += `<div class="prixy-threshold ${thresholdClass}"><span class="prixy-threshold__dot"></span>${thresholdText}</div>`;
 
                 // Counters
                 html += `
-        <div class="dpuwoo-result-counters">
-            <div class="dpuwoo-result-counter ${mainCount > 0 ? (isSimulation ? 'dpuwoo-result-counter--sim' : 'dpuwoo-result-counter--upd') : ''}">
-                <span class="dpuwoo-result-counter__num">${mainCount}</span>
-                <span class="dpuwoo-result-counter__label">${mainLabel}</span>
+        <div class="prixy-result-counters">
+            <div class="prixy-result-counter ${mainCount > 0 ? (isSimulation ? 'prixy-result-counter--sim' : 'prixy-result-counter--upd') : ''}">
+                <span class="prixy-result-counter__num">${mainCount}</span>
+                <span class="prixy-result-counter__label">${mainLabel}</span>
             </div>
-            <div class="dpuwoo-result-counter">
-                <span class="dpuwoo-result-counter__num dpuwoo-result-counter__num--skip">${summary.skipped || 0}</span>
-                <span class="dpuwoo-result-counter__label">Sin cambios</span>
+            <div class="prixy-result-counter">
+                <span class="prixy-result-counter__num prixy-result-counter__num--skip">${summary.skipped || 0}</span>
+                <span class="prixy-result-counter__label">Sin cambios</span>
             </div>
-            <div class="dpuwoo-result-counter ${(summary.errors || 0) > 0 ? 'dpuwoo-result-counter--err' : ''}">
-                <span class="dpuwoo-result-counter__num ${(summary.errors || 0) > 0 ? 'dpuwoo-result-counter__num--err' : ''}">${summary.errors || 0}</span>
-                <span class="dpuwoo-result-counter__label">Errores</span>
+            <div class="prixy-result-counter ${(summary.errors || 0) > 0 ? 'prixy-result-counter--err' : ''}">
+                <span class="prixy-result-counter__num ${(summary.errors || 0) > 0 ? 'prixy-result-counter__num--err' : ''}">${summary.errors || 0}</span>
+                <span class="prixy-result-counter__label">Errores</span>
             </div>
         </div>`;
 
@@ -216,32 +216,32 @@
                         ? `La variación del ${percentageChange.toFixed(2)}% supera el umbral máximo del ${thresholdMax}%. No se realizaron cambios por seguridad.`
                         : `La variación del ${percentageChange.toFixed(2)}% no alcanza el umbral mínimo del ${thresholdMin}%.`);
                     html += `
-        <div class="dpuwoo-result-block dpuwoo-result-block--warn">
-            <div class="dpuwoo-result-block__icon"><svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg></div>
+        <div class="prixy-result-block prixy-result-block--warn">
+            <div class="prixy-result-block__icon"><svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg></div>
             <h4>${blockTitle}</h4>
             <p>${blockBody}</p>
-            <button onclick="location.reload()" class="dpuwoo-btn dpuwoo-btn--ghost">Volver al inicio</button>
+            <button onclick="location.reload()" class="prixy-btn prixy-btn--ghost">Volver al inicio</button>
         </div>`;
                 } else if (shouldShowTable) {
                     html += `
-        <div class="dpuwoo-result-table">
-            <div class="dpuwoo-result-table__header">
+        <div class="prixy-result-table">
+            <div class="prixy-result-table__header">
                 <span>Detalle de productos</span>
                 <span>${changes.filter(c => c.status === 'simulated' || c.status === 'updated').length} a modificar</span>
             </div>
             ${this.generateResultsTableWithFormulas(changes, isSimulation, rateRatio, oldRate, newRate)}
         </div>
-        <div class="dpuwoo-result-actions">
-            <button onclick="location.reload()" class="dpuwoo-btn dpuwoo-btn--ghost">← Cancelar</button>
-            ${isSimulation ? `<button id="dpuwoo-proceed-update" class="dpuwoo-btn dpuwoo-btn--primary"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>Confirmar y aplicar</button>` : ''}
+        <div class="prixy-result-actions">
+            <button onclick="location.reload()" class="prixy-btn prixy-btn--ghost">← Cancelar</button>
+            ${isSimulation ? `<button id="prixy-proceed-update" class="prixy-btn prixy-btn--primary"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>Confirmar y aplicar</button>` : ''}
         </div>`;
                 } else {
                     html += `
-        <div class="dpuwoo-result-block dpuwoo-result-block--info">
-            <div class="dpuwoo-result-block__icon"><svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+        <div class="prixy-result-block prixy-result-block--info">
+            <div class="prixy-result-block__icon"><svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
             <h4>Sin cambios detectados</h4>
             <p>${summary.skipped > 0 ? `${summary.skipped} productos procesados, ninguno requirió ajuste a la tasa $${parseFloat(newRate).toFixed(2)}.` : `Ningún producto requirió ajuste a la tasa $${parseFloat(newRate).toFixed(2)}.`}</p>
-            <button onclick="location.reload()" class="dpuwoo-btn dpuwoo-btn--ghost">Volver al inicio</button>
+            <button onclick="location.reload()" class="prixy-btn prixy-btn--ghost">Volver al inicio</button>
         </div>`;
                 }
 
@@ -253,9 +253,9 @@
              * GENERAR TABLA SIMPLE DE RESULTADOS
              */
             generateResultsTableWithFormulas: function (changes, isSimulation, rateRatio, oldRate, newRate) {
-                if (!changes || changes.length === 0) return '<p class="dpuwoo-table-empty">No hay cambios para mostrar.</p>';
+                if (!changes || changes.length === 0) return '<p class="prixy-table-empty">No hay cambios para mostrar.</p>';
 
-                let html = `<div class="dpuwoo-table-wrap"><table class="dpuwoo-table">
+                let html = `<div class="prixy-table-wrap"><table class="prixy-table">
             <thead>
                 <tr>
                     <th>Producto</th>
@@ -272,20 +272,20 @@
                     const newPrice = parseFloat(item.new_regular_price) || 0;
                     const pct = parseFloat(item.percentage_change) || 0;
                     const pctClass = pct >= 0 ? 'up' : 'down';
-                    const statusClass = item.status === 'simulated' ? 'dpuwoo-status--sim' : 'dpuwoo-status--upd';
+                    const statusClass = item.status === 'simulated' ? 'prixy-status--sim' : 'prixy-status--upd';
                     const statusText = isSimulation ? 'Simulado' : 'Actualizado';
 
                     if (oldPrice > 0 && newPrice > 0) {
                         html += `
-                <tr class="dpuwoo-table__row">
-                    <td class="dpuwoo-table__product">
-                        <span class="dpuwoo-table__name">${item.product_name}</span>
-                        <span class="dpuwoo-table__meta">ID ${item.product_id}</span>
+                <tr class="prixy-table__row">
+                    <td class="prixy-table__product">
+                        <span class="prixy-table__name">${item.product_name}</span>
+                        <span class="prixy-table__meta">ID ${item.product_id}</span>
                     </td>
-                    <td class="dpuwoo-table__price">$${oldPrice.toFixed(2)}</td>
-                    <td class="dpuwoo-table__price dpuwoo-table__price--new ${pctClass}">$${newPrice.toFixed(2)}</td>
-                    <td class="dpuwoo-table__pct ${pctClass}">${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%</td>
-                    <td><span class="dpuwoo-status ${statusClass}">${statusText}</span></td>
+                    <td class="prixy-table__price">$${oldPrice.toFixed(2)}</td>
+                    <td class="prixy-table__price prixy-table__price--new ${pctClass}">$${newPrice.toFixed(2)}</td>
+                    <td class="prixy-table__pct ${pctClass}">${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%</td>
+                    <td><span class="prixy-status ${statusClass}">${statusText}</span></td>
                 </tr>`;
                     }
                 });
@@ -376,9 +376,9 @@
                     const pctClass = pct >= 0 ? 'dpu-tbl-pct--up' : 'dpu-tbl-pct--down';
                     const pctSign  = pct > 0 ? '+' : '';
                     html += `
-                    <tr class="dpu-tbl-row dpuwoo-variable-product" data-product-id="${p.product_id}">
+                    <tr class="dpu-tbl-row prixy-variable-product" data-product-id="${p.product_id}">
                         <td class="dpu-tbl-cell-product">
-                            ${hasVars ? '<span class="dpuwoo-toggle-icon dpu-tbl-toggle">⊕</span>' : '<span class="dpu-tbl-bullet">·</span>'}
+                            ${hasVars ? '<span class="prixy-toggle-icon dpu-tbl-toggle">⊕</span>' : '<span class="dpu-tbl-bullet">·</span>'}
                             <div>
                                 <div class="dpu-tbl-product-name">${p.product_name}</div>
                                 <div class="dpu-tbl-product-meta">ID ${p.product_id} · ${p.product_type.toUpperCase()}</div>
@@ -400,7 +400,7 @@
                             const vPctClass = vPct >= 0 ? 'dpu-tbl-pct--up' : 'dpu-tbl-pct--down';
                             const vPctSign  = vPct > 0 ? '+' : '';
                             html += `
-                            <tr class="dpuwoo-variation-rows dpu-tbl-row dpu-tbl-row--variation hidden" data-parent-id="${p.product_id}">
+                            <tr class="prixy-variation-rows dpu-tbl-row dpu-tbl-row--variation hidden" data-parent-id="${p.product_id}">
                                 <td class="dpu-tbl-cell-product dpu-tbl-cell-product--variation">
                                     <span class="dpu-tbl-var-indent">└</span>
                                     <span class="dpu-tbl-var-name">${v.variation_name || 'Variación'}</span>
@@ -424,17 +424,17 @@
             showCompleteResults: function (data, isSimulation) {
                 // If showing update results, hide simulation results and hide simulate button
                 if (!isSimulation) {
-                    this.hideSection('dpuwoo-simulation-results');
-                    $('#dpuwoo-simulate').hide();
+                    this.hideSection('prixy-simulation-results');
+                    $('#prixy-simulate').hide();
                 } else {
                     // If showing simulation results, hide simulate button until update completes
-                    $('#dpuwoo-simulate').hide();
+                    $('#prixy-simulate').hide();
                 }
                 
                 const resultsHtml = this.generateCompleteResults(data, isSimulation);
-                const target = isSimulation ? '#dpuwoo-simulation-results' : '#dpuwoo-final-results';
+                const target = isSimulation ? '#prixy-simulation-results' : '#prixy-final-results';
                 // Ocultar la barra de progreso antes de mostrar resultados
-                this.hideSection(isSimulation ? 'dpuwoo-simulation-process' : 'dpuwoo-update-process');
+                this.hideSection(isSimulation ? 'prixy-simulation-process' : 'prixy-update-process');
                 $(target).html(resultsHtml);
                 this.showSection(target.replace('#', ''));
                 this.setupVariationAccordion();
@@ -442,15 +442,15 @@
                 
                 // Show simulate button again after update completes
                 if (!isSimulation) {
-                    $('#dpuwoo-simulate').show();
+                    $('#prixy-simulate').show();
                 }
             },
 
             setupVariationAccordion: function () {
-                $(document).off('click', '.dpuwoo-variable-product').on('click', '.dpuwoo-variable-product', function () {
+                $(document).off('click', '.prixy-variable-product').on('click', '.prixy-variable-product', function () {
                     const id = $(this).data('product-id');
-                    const $icon = $(this).find('.dpuwoo-toggle-icon');
-                    const $rows = $(`.dpuwoo-variation-rows[data-parent-id="${id}"]`);
+                    const $icon = $(this).find('.prixy-toggle-icon');
+                    const $rows = $(`.prixy-variation-rows[data-parent-id="${id}"]`);
 
                     $rows.toggleClass('hidden');
                     $icon.text($rows.hasClass('hidden') ? '⊕' : '⊖');
@@ -466,7 +466,7 @@
 
             btnLoading: function (el, text) {
                 const $el = $(el);
-                $el.data('dpuwoo-orig-html', $el.html());
+                $el.data('prixy-orig-html', $el.html());
                 $el.prop('disabled', true).html(
                     '<svg class="dpu-btn-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>' +
                     (text || 'Procesando…')
@@ -475,9 +475,9 @@
 
             btnReset: function (el) {
                 const $el = $(el);
-                const orig = $el.data('dpuwoo-orig-html');
+                const orig = $el.data('prixy-orig-html');
                 if (orig) $el.html(orig);
-                $el.prop('disabled', false).removeData('dpuwoo-orig-html');
+                $el.prop('disabled', false).removeData('prixy-orig-html');
             },
 
             formatPriceChange: function (oldPrice, newPrice) {
@@ -517,8 +517,8 @@
 
                 // Insertar error en la sección correspondiente
                 const targetSection = processType === 'simulation'
-                    ? '#dpuwoo-simulation-process'
-                    : '#dpuwoo-update-process';
+                    ? '#prixy-simulation-process'
+                    : '#prixy-update-process';
 
                 $(targetSection).prepend(errorHtml);
 

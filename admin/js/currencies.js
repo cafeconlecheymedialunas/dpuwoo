@@ -1,8 +1,8 @@
 jQuery(document).ready(function ($) {
-    const $provider = $('#dpuwoo_api_provider');
-    const $currency = $('#dpuwoo_reference_currency');
-    const $spinner = $('#dpuwoo_currency_loading');
-    const $desc = $('#dpuwoo_currency_description');
+    const $provider = $('#prixy_api_provider');
+    const $currency = $('#prixy_reference_currency');
+    const $spinner = $('#prixy_currency_loading');
+    const $desc = $('#prixy_currency_description');
     
     // Estado
     let currentProvider = '';
@@ -18,12 +18,12 @@ jQuery(document).ready(function ($) {
         
         // Hacer la petición AJAX
         $.ajax({
-            url: dpuwoo_ajax.ajax_url,
+            url: prixy_ajax.ajax_url,
             method: 'POST',
             data: {
-                action: 'dpuwoo_get_currencies',
+                action: 'prixy_get_currencies',
                 provider: provider,
-                nonce: dpuwoo_ajax.nonce
+                nonce: prixy_ajax.nonce
             },
             success: function(response) {
                 $spinner.hide();
@@ -31,7 +31,7 @@ jQuery(document).ready(function ($) {
                 if (response.success && response.data && response.data.currencies) {
                     // Guardar en cache local
                     currencyCache[provider] = response.data;
-                    localStorage.setItem('dpuwoo_currencies_' + provider, JSON.stringify(response.data));
+                    localStorage.setItem('prixy_currencies_' + provider, JSON.stringify(response.data));
                     
                     // Llenar el select con las monedas
                     fillCurrencySelect(response.data.currencies, provider);
@@ -83,7 +83,7 @@ jQuery(document).ready(function ($) {
             restoredValue = dbValue;
             console.log('Cargando moneda desde DB:', dbValue);
         } else {
-            const lastCurrency = localStorage.getItem('dpuwoo_last_currency_' + provider);
+            const lastCurrency = localStorage.getItem('prixy_last_currency_' + provider);
             if (lastCurrency && $currency.find(`option[value="${lastCurrency}"]`).length > 0) {
                 restoredValue = lastCurrency;
                 console.log('Cargando moneda desde localStorage:', lastCurrency);
@@ -122,11 +122,11 @@ jQuery(document).ready(function ($) {
         
         // Guardar moneda actual del proveedor anterior
         if (currentProvider && $currency.val()) {
-            localStorage.setItem('dpuwoo_last_currency_' + currentProvider, $currency.val());
+            localStorage.setItem('prixy_last_currency_' + currentProvider, $currency.val());
         }
         
         // Verificar cache primero
-        const cached = localStorage.getItem('dpuwoo_currencies_' + provider);
+        const cached = localStorage.getItem('prixy_currencies_' + provider);
         if (cached) {
             try {
                 const data = JSON.parse(cached);
@@ -145,12 +145,12 @@ jQuery(document).ready(function ($) {
     // Guardar selección de moneda
     $currency.on('change', function() {
         if (currentProvider && $(this).val()) {
-            localStorage.setItem('dpuwoo_last_currency_' + currentProvider, $(this).val());
+            localStorage.setItem('prixy_last_currency_' + currentProvider, $(this).val());
             
             const selectedOption = $(this).find('option:selected');
             const rateValue = selectedOption.data('rate') || selectedOption.attr('data-rate');
-            const originRateField = $('#dpuwoo_origin_exchange_rate');
-            const isManual = $('input[name="dpuwoo_settings[rate_generation_method]"]:checked').val() === 'manual';
+            const originRateField = $('#prixy_origin_exchange_rate');
+            const isManual = $('input[name="prixy_settings[rate_generation_method]"]:checked').val() === 'manual';
             
             if (rateValue && !isNaN(parseFloat(rateValue)) && originRateField.length > 0) {
                 // Si el modo es manual, NO actualizar automáticamente
@@ -169,7 +169,7 @@ jQuery(document).ready(function ($) {
                         .html('✅ Tasa actualizada a <strong>' + numericRate.toFixed(4) + '</strong>');
                     
                     $('#rate-update-notice').remove();
-                    originRateField.closest('.dpuwoo-rate-field-group').after(notification);
+                    originRateField.closest('.prixy-rate-field-group').after(notification);
                     
                     setTimeout(function() {
                         notification.fadeOut(300, function() { $(this).remove(); });
@@ -181,10 +181,10 @@ jQuery(document).ready(function ($) {
     
     // Manejar la edición manual del campo de tasa con lápiz
     function handleManualRateEditingWithPencil() {
-        const originRateField = $('#dpuwoo_origin_exchange_rate');
-        const editToggle = $('#dpuwoo_edit_rate_toggle');
-        const syncIndicator = $('#dpuwoo_rate_sync_indicator');
-        const rateMethodRadios = $('input[name="dpuwoo_settings[rate_generation_method]"]');
+        const originRateField = $('#prixy_origin_exchange_rate');
+        const editToggle = $('#prixy_edit_rate_toggle');
+        const syncIndicator = $('#prixy_rate_sync_indicator');
+        const rateMethodRadios = $('input[name="prixy_settings[rate_generation_method]"]');
         
         // Función central para cambiar entre modos
         function setRateMode(mode) {
@@ -205,7 +205,7 @@ jQuery(document).ready(function ($) {
                 rateMethodRadios.filter('[value="manual"]').prop('checked', true);
                 
                 // Agregar aviso
-                originRateField.closest('.dpuwoo-rate-field-group').after('<div id="manual-mode-notice" class="notice notice-warning inline" style="margin: 5px 0; padding: 5px 10px; font-size: 11px; display: block; width: fit-content; border-radius: 4px;">⚠️ Modo manual: Ingresa el valor que tenían tus productos originalmente.</div>');
+                originRateField.closest('.prixy-rate-field-group').after('<div id="manual-mode-notice" class="notice notice-warning inline" style="margin: 5px 0; padding: 5px 10px; font-size: 11px; display: block; width: fit-content; border-radius: 4px;">⚠️ Modo manual: Ingresa el valor que tenían tus productos originalmente.</div>');
             } else {
                 // MODO API (Sincronizado)
                 originRateField.prop('readonly', true).css({
@@ -257,7 +257,7 @@ jQuery(document).ready(function ($) {
         
         // Pequeño delay para asegurar que el DOM esté listo
         setTimeout(() => {
-            const cached = localStorage.getItem('dpuwoo_currencies_' + initialProvider);
+            const cached = localStorage.getItem('prixy_currencies_' + initialProvider);
             if (cached) {
                 try {
                     const data = JSON.parse(cached);

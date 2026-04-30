@@ -8,8 +8,8 @@
         },
 
         bindEvents: function() {
-            $('#dpuwoo-simulate').on('click', this.startSimulation.bind(this));
-            $('#dpuwoo-cancel-simulation').on('click', this.cancelSimulation.bind(this));
+            $('#prixy-simulate').on('click', this.startSimulation.bind(this));
+            $('#prixy-cancel-simulation').on('click', this.cancelSimulation.bind(this));
         },
 
         startSimulation: function(e) {
@@ -18,17 +18,17 @@
             
             DPUWOO_Utils.disableButtons();
             DPUWOO_Utils.resetAllSections();
-            DPUWOO_Utils.showSection('dpuwoo-simulation-process');
+            DPUWOO_Utils.showSection('prixy-simulation-process');
             
             DPUWOO_Globals.cumulativeResults = { updated: 0, skipped: 0, errors: 0, changes: [] };
 
             $.ajax({
-                url: dpuwoo_ajax.ajax_url,
+                url: prixy_ajax.ajax_url,
                 type: 'POST',
                 data: {
-                    action: 'dpuwoo_simulate_batch',
+                    action: 'prixy_simulate_batch',
                     batch: 0,
-                    nonce: dpuwoo_ajax.nonce
+                    nonce: prixy_ajax.nonce
                 },
                 dataType: 'json',
                 success: function (res) {
@@ -43,19 +43,19 @@
                     DPUWOO_Utils.updateProgressBar('simulation', 1, totalBatches, 'Simulando...');
                     
                     if (data.batch_info) {
-                        $('#dpuwoo-sim-total-products').text(data.batch_info.total_products);
+                        $('#prixy-sim-total-products').text(data.batch_info.total_products);
                     }
                     
                     DPUWOO_Utils.updateCumulativeResults(data, 'simulation');
 
                     if (totalBatches > 1) {
-                        this.processBatch('dpuwoo_simulate_batch', 1, totalBatches, 'simulation', function(finalData) {
+                        this.processBatch('prixy_simulate_batch', 1, totalBatches, 'simulation', function(finalData) {
                             DPUWOO_Utils.showCompleteResults(finalData, true);
-                            localStorage.setItem('dpuwoo_simulation_timestamp', Date.now());
+                            localStorage.setItem('prixy_simulation_timestamp', Date.now());
                         }.bind(this));
                     } else {
                         DPUWOO_Utils.showCompleteResults(data, true);
-                        localStorage.setItem('dpuwoo_simulation_timestamp', Date.now());
+                        localStorage.setItem('prixy_simulation_timestamp', Date.now());
                     }
                 }.bind(this),
                 error: function (xhr, status, error) {
@@ -66,12 +66,12 @@
 
         processBatch: function(action, batch, totalBatches, type, onComplete) {
             $.ajax({
-                url: dpuwoo_ajax.ajax_url,
+                url: prixy_ajax.ajax_url,
                 type: 'POST',
                 data: {
                     action: action,
                     batch: batch,
-                    nonce: dpuwoo_ajax.nonce
+                    nonce: prixy_ajax.nonce
                 },
                 dataType: 'json',
                 success: function (res) {
@@ -86,7 +86,7 @@
                     DPUWOO_Utils.updateProgressBar(type, batch + 1, totalBatches, actionText);
                     
                     if (data.batch_info) {
-                        const totalProductsId = type === 'simulation' ? 'dpuwoo-sim-total-products' : 'dpuwoo-update-total-products';
+                        const totalProductsId = type === 'simulation' ? 'prixy-sim-total-products' : 'prixy-update-total-products';
                         $('#' + totalProductsId).text(data.batch_info.total_products);
                     }
 
@@ -98,7 +98,7 @@
                         onComplete(data);
                         // Guardar timestamp cuando la simulación termina
                         if (type === 'simulation') {
-                            localStorage.setItem('dpuwoo_simulation_timestamp', Date.now());
+                            localStorage.setItem('prixy_simulation_timestamp', Date.now());
                         }
                     }
                 }.bind(this),

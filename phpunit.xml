@@ -15,10 +15,10 @@
             <directory>includes</directory>
         </include>
         <exclude>
-            <directory>includes/class-dpuwoo-ajax-manager.php</directory>
-            <directory>includes/class-dpuwoo-price-updater.php</directory>
-            <directory>includes/class-dpuwoo-price-calculator.php</directory>
-            <directory>includes/class-dpuwoo-fallback.php</directory>
+            <directory>includes/class-prixy-ajax-manager.php</directory>
+            <directory>includes/class-prixy-price-updater.php</directory>
+            <directory>includes/class-prixy-price-calculator.php</directory>
+            <directory>includes/class-prixy-fallback.php</directory>
         </exclude>
     </source>
     <php>

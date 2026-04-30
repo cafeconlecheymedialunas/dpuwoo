@@ -2,44 +2,44 @@ jQuery(document).ready(function($) {
     'use strict';
     
     // Load currencies on page load
-    var currentProvider = $('#dpuwoo-api-provider-input').val() || 'dolarapi';
+    var currentProvider = $('#prixy-api-provider-input').val() || 'dolarapi';
     loadCurrenciesForProvider(currentProvider);
     
     // Elementos del DOM
-    const $apiProviderSelect = $('#dpuwoo_api_provider');
-    const $currencyApiContainer = $('#dpuwoo_currencyapi_key_container');
-    const $exchangeRateContainer = $('#dpuwoo_exchangerate_key_container');
-    const $settingsForm = $('#dpuwoo-settings-form');
-    const $saveButton = $('#dpuwoo-save-settings');
-    const $saveStatus = $('#dpuwoo-save-status');
+    const $apiProviderSelect = $('#prixy_api_provider');
+    const $currencyApiContainer = $('#prixy_currencyapi_key_container');
+    const $exchangeRateContainer = $('#prixy_exchangerate_key_container');
+    const $settingsForm = $('#prixy-settings-form');
+    const $saveButton = $('#prixy-save-settings');
+    const $saveStatus = $('#prixy-save-status');
     
     // Función para mostrar/ocultar filas de API key según el proveedor seleccionado
     function toggleApiKeyRows() {
         const selectedProvider = $apiProviderSelect.val();
         
         // Ocultar todas las filas de API keys y sus campos internos
-        $('.dpuwoo-api-key-field').each(function() {
+        $('.prixy-api-key-field').each(function() {
             const $fieldContainer = $(this);
             const $fieldRow = $fieldContainer.closest('tr');
             
             // Ocultar fila
-            $fieldRow.addClass('dpuwoo-api-row-hidden').removeClass('dpuwoo-api-row-visible');
+            $fieldRow.addClass('prixy-api-row-hidden').removeClass('prixy-api-row-visible');
             // Ocultar campo interno
-            $fieldContainer.removeClass('dpuwoo-api-key-visible').addClass('dpuwoo-api-key-hidden');
+            $fieldContainer.removeClass('prixy-api-key-visible').addClass('prixy-api-key-hidden');
         });
         
         // Mostrar solo la fila y campo correspondientes al proveedor seleccionado
         switch(selectedProvider) {
             case 'currencyapi':
                 const $currencyRow = $currencyApiContainer.closest('tr');
-                $currencyRow.removeClass('dpuwoo-api-row-hidden').addClass('dpuwoo-api-row-visible');
-                $currencyApiContainer.removeClass('dpuwoo-api-key-hidden').addClass('dpuwoo-api-key-visible');
+                $currencyRow.removeClass('prixy-api-row-hidden').addClass('prixy-api-row-visible');
+                $currencyApiContainer.removeClass('prixy-api-key-hidden').addClass('prixy-api-key-visible');
                 break;
                 
             case 'exchangerate-api':
                 const $exchangeRow = $exchangeRateContainer.closest('tr');
-                $exchangeRow.removeClass('dpuwoo-api-row-hidden').addClass('dpuwoo-api-row-visible');
-                $exchangeRateContainer.removeClass('dpuwoo-api-key-hidden').addClass('dpuwoo-api-key-visible');
+                $exchangeRow.removeClass('prixy-api-row-hidden').addClass('prixy-api-row-visible');
+                $exchangeRateContainer.removeClass('prixy-api-key-hidden').addClass('prixy-api-key-visible');
                 break;
                 
             case 'dolarapi':
@@ -56,12 +56,12 @@ jQuery(document).ready(function($) {
     // El campo debe permanecer habilitado para que se envíe con el formulario
     /*
     function handleGenerationMethodDependency() {
-        const generationMethodRadios = $('input[name="dpuwoo_settings[rate_generation_method]"]');
-        const originRateField = $('#dpuwoo_origin_exchange_rate');
-        const originRateContainer = $('#dpuwoo_origin_rate_container');
+        const generationMethodRadios = $('input[name="prixy_settings[rate_generation_method]"]');
+        const originRateField = $('#prixy_origin_exchange_rate');
+        const originRateContainer = $('#prixy_origin_rate_container');
         
         function updateOriginRateState() {
-            const selectedMethod = $('input[name="dpuwoo_settings[rate_generation_method]"]:checked').val();
+            const selectedMethod = $('input[name="prixy_settings[rate_generation_method]"]:checked').val();
             
             if (selectedMethod === 'api') {
                 // API seleccionado: deshabilitar campo de tasa
@@ -93,12 +93,12 @@ jQuery(document).ready(function($) {
         const formData = {};
         
         // Try multiple approaches to find the form
-        let $form = $('#dpuwoo-settings-form');
+        let $form = $('#prixy-settings-form');
         
-        // Fallback: find form containing dpuwoo_settings fields
+        // Fallback: find form containing prixy_settings fields
         if (!$form.length) {
             $form = $('form').filter(function() {
-                return $(this).find('input[name^="dpuwoo_settings"]').length > 0;
+                return $(this).find('input[name^="prixy_settings"]').length > 0;
             }).first();
         }
         
@@ -111,27 +111,27 @@ jQuery(document).ready(function($) {
             return formData;
         }
    
-        // Count dpuwoo_settings fields specifically
-        const dpuwooFields = $form.find('input[name^="dpuwoo_settings"], select[name^="dpuwoo_settings"], textarea[name^="dpuwoo_settings"]');
+        // Count prixy_settings fields specifically
+        const prixyFields = $form.find('input[name^="prixy_settings"], select[name^="prixy_settings"], textarea[name^="prixy_settings"]');
         
         // Collect all form elements with detailed logging
-        dpuwooFields.each(function(index) {
+        prixyFields.each(function(index) {
             const $element = $(this);
             const name = $element.attr('name');
             const type = $element.attr('type') || $element.prop('tagName').toLowerCase();
             let value;
             
             // Special handling for disabled reference currency select
-            if ($element.attr('id') === 'dpuwoo_reference_currency') {
+            if ($element.attr('id') === 'prixy_reference_currency') {
                 // Get value directly from Select2 regardless of disabled state
-                value = $('#dpuwoo_reference_currency').val();
+                value = $('#prixy_reference_currency').val();
             } else {
                 value = type === 'checkbox' ? ($element.is(':checked') ? 1 : 0) : $element.val();
             }
             
             // Extract field name
-            if (name && name.startsWith('dpuwoo_settings[')) {
-                const fieldName = name.replace('dpuwoo_settings[', '').replace(']', '');
+            if (name && name.startsWith('prixy_settings[')) {
+                const fieldName = name.replace('prixy_settings[', '').replace(']', '');
                 formData[fieldName] = value;
             }
         });
@@ -151,7 +151,7 @@ jQuery(document).ready(function($) {
     // Form will submit normally and page will reload
     
     // Handle button click to trigger form submission
-    $('#dpuwoo-save-settings').on('click', function(e) {
+    $('#prixy-save-settings').on('click', function(e) {
         DPUWOO_Utils.btnLoading(this, 'Guardando…');
         // Form submits naturally — page will reload, no need to reset
     });
@@ -163,7 +163,7 @@ jQuery(document).ready(function($) {
     toggleApiKeyRows();
     
     // También manejar posibles cambios dinámicos
-    $(document).on('dpuwoo:providerChanged', function(event, newProvider) {
+    $(document).on('prixy:providerChanged', function(event, newProvider) {
         if (newProvider) {
             $apiProviderSelect.val(newProvider).trigger('change');
         }
@@ -176,20 +176,20 @@ var noKeyProviders = ['dolarapi', 'jsdelivr', 'cryptoprice'];
 // Global functions for provider selection
 function selectProvider(provider) {
     // Update hidden input
-    document.getElementById('dpuwoo-api-provider-input').value = provider;
+    document.getElementById('prixy-api-provider-input').value = provider;
     
     // Update card styles
-    document.querySelectorAll('.dpuwoo-provider-card').forEach(function(card) {
-        card.classList.remove('dpuwoo-provider-card--selected');
-        card.querySelector('.dpuwoo-provider-card__radio-inner').classList.remove('dpuwoo-provider-card__radio-inner--checked');
+    document.querySelectorAll('.prixy-provider-card').forEach(function(card) {
+        card.classList.remove('prixy-provider-card--selected');
+        card.querySelector('.prixy-provider-card__radio-inner').classList.remove('prixy-provider-card__radio-inner--checked');
         if (card.dataset.provider === provider) {
-            card.classList.add('dpuwoo-provider-card--selected');
-            card.querySelector('.dpuwoo-provider-card__radio-inner').classList.add('dpuwoo-provider-card__radio-inner--checked');
+            card.classList.add('prixy-provider-card--selected');
+            card.querySelector('.prixy-provider-card__radio-inner').classList.add('prixy-provider-card__radio-inner--checked');
         }
     });
     
     // Hide all API key panels first
-    document.querySelectorAll('.dpuwoo-api-key-panel').forEach(function(panel) {
+    document.querySelectorAll('.prixy-api-key-panel').forEach(function(panel) {
         panel.style.display = 'none';
     });
     
@@ -237,7 +237,7 @@ function getCurrencySymbol(code) {
 }
 
 function initSelect2() {
-    var currencySelect = document.getElementById('dpuwoo-ref-currency');
+    var currencySelect = document.getElementById('prixy-ref-currency');
     if (currencySelect && typeof jQuery.fn.select2 !== 'undefined') {
         jQuery(currencySelect).select2({
             theme: 'default',
@@ -253,7 +253,7 @@ function initSelect2() {
 }
 
 function loadCurrenciesForProvider(provider) {
-    var currencySelect = document.getElementById('dpuwoo-ref-currency');
+    var currencySelect = document.getElementById('prixy-ref-currency');
     if (!currencySelect) return;
     
     currencySelect.innerHTML = '<option value="">Cargando...</option>';
@@ -263,10 +263,10 @@ function loadCurrenciesForProvider(provider) {
         try { jQuery(currencySelect).select2('destroy'); } catch(e) {}
     }
     
-    jQuery.post(dpuwoo_ajax.ajax_url, {
-        action: 'dpuwoo_get_currencies',
+    jQuery.post(prixy_ajax.ajax_url, {
+        action: 'prixy_get_currencies',
         provider: provider,
-        nonce: dpuwoo_ajax.nonce
+        nonce: prixy_ajax.nonce
     }, function(response) {
         if (response.success && response.data && response.data.currencies) {
             var currencies = response.data.currencies;
@@ -311,7 +311,7 @@ function togglePassword(inputId) {
 }
 
 function testApiConnection(api) {
-    var resultDiv = document.getElementById('dpuwoo-api-test-result');
+    var resultDiv = document.getElementById('prixy-api-test-result');
     var apiKeyInput;
     
     if (api === 'currencyapi') {
@@ -323,12 +323,12 @@ function testApiConnection(api) {
     var apiKey = apiKeyInput ? apiKeyInput.value : '';
     
     if (!apiKey) {
-        resultDiv.className = 'dpuwoo-api-test-result show dpuwoo-api-test-result--error';
+        resultDiv.className = 'prixy-api-test-result show prixy-api-test-result--error';
         resultDiv.innerHTML = '<strong>Error:</strong> Por favor ingresá tu API Key primero.';
         return;
     }
     
-    resultDiv.className = 'dpuwoo-api-test-result show';
+    resultDiv.className = 'prixy-api-test-result show';
     resultDiv.innerHTML = '<span style="color: #6b7280;">Probando conexión...</span>';
     
     // Map API names to provider names
@@ -340,28 +340,28 @@ function testApiConnection(api) {
     
     // Make AJAX request
     var data = {
-        action: 'dpuwoo_test_api',
+        action: 'prixy_test_api',
         api: provider,
         api_key: apiKey,
-        nonce: dpuwoo_ajax.nonce
+        nonce: prixy_ajax.nonce
     };
     
-    jQuery.post(dpuwoo_ajax.ajax_url, data, function(response) {
+    jQuery.post(prixy_ajax.ajax_url, data, function(response) {
         if (response.success) {
-            resultDiv.className = 'dpuwoo-api-test-result show dpuwoo-api-test-result--success';
+            resultDiv.className = 'prixy-api-test-result show prixy-api-test-result--success';
             resultDiv.innerHTML = '<strong>✓ Conexión exitosa!</strong> ' + (response.data.message || 'API Key válida.');
         } else {
-            resultDiv.className = 'dpuwoo-api-test-result show dpuwoo-api-test-result--error';
+            resultDiv.className = 'prixy-api-test-result show prixy-api-test-result--error';
             resultDiv.innerHTML = '<strong>✗ Error de conexión:</strong> ' + (response.data.message || 'Verificá tu API Key.');
         }
     }).fail(function() {
-        resultDiv.className = 'dpuwoo-api-test-result show dpuwoo-api-test-result--error';
+        resultDiv.className = 'prixy-api-test-result show prixy-api-test-result--error';
         resultDiv.innerHTML = '<strong>✗ Error:</strong> No se pudo conectar al servidor.';
     });
 }
 
 function toggleApiKey(prefix) {
-    var input = document.querySelector('input[name="dpuwoo_settings[' + prefix + '_api_key]"]');
+    var input = document.querySelector('input[name="prixy_settings[' + prefix + '_api_key]"]');
     if (input) {
         if (input.type === 'password') {
             input.type = 'text';

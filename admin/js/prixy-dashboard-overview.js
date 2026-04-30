@@ -1,4 +1,4 @@
-/* global jQuery, Chart, dpuwoo_dashboard, dpuwoo_ajax */
+/* global jQuery, Chart, prixy_dashboard, prixy_ajax */
 (function ($) {
     'use strict';
 
@@ -61,13 +61,13 @@
         var last = (data.last_runs && data.last_runs.length) ? data.last_runs[0] : null;
         if (last) {
             var rate = parseFloat(last.dollar_value);
-            $('#dpuwoo-kpi-rate').text(isNaN(rate) ? '—' : '$' + rate.toLocaleString('es-AR', { minimumFractionDigits: 2 }));
-            $('#dpuwoo-kpi-rate-type').text(last.dollar_type || '—');
+            $('#prixy-kpi-rate').text(isNaN(rate) ? '—' : '$' + rate.toLocaleString('es-AR', { minimumFractionDigits: 2 }));
+            $('#prixy-kpi-rate-type').text(last.dollar_type || '—');
         }
         var nextCron = data.next_cron;
         if (nextCron && data.cron_enabled) {
-            $('#dpuwoo-kpi-next-cron').text(humanizeTimestamp(nextCron));
-            $('#dpuwoo-kpi-next-cron-sub').text(
+            $('#prixy-kpi-next-cron').text(humanizeTimestamp(nextCron));
+            $('#prixy-kpi-next-cron-sub').text(
                 new Date(nextCron * 1000).toLocaleString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
             );
         }
@@ -77,26 +77,26 @@
 
     function populateStats(stats) {
         if (!stats) return;
-        $('#dpuwoo-stat-runs').text(parseInt(stats.total_runs || 0).toLocaleString('es-AR'));
-        $('#dpuwoo-stat-products').text(parseInt(stats.total_products || 0).toLocaleString('es-AR'));
+        $('#prixy-stat-runs').text(parseInt(stats.total_runs || 0).toLocaleString('es-AR'));
+        $('#prixy-stat-products').text(parseInt(stats.total_products || 0).toLocaleString('es-AR'));
         var avg = parseFloat(stats.avg_pct || 0);
-        $('#dpuwoo-stat-avg').text((avg >= 0 ? '+' : '') + avg.toFixed(2) + '%')
+        $('#prixy-stat-avg').text((avg >= 0 ? '+' : '') + avg.toFixed(2) + '%')
             .css('color', avg > 0 ? '#22c55e' : (avg < 0 ? '#ef4444' : '#111827'));
         var updated  = parseInt(stats.updated_count || 0);
         var errors   = parseInt(stats.error_count   || 0);
         var total    = updated + errors;
         var rate     = total > 0 ? Math.round((updated / total) * 100) : (parseInt(stats.total_runs) > 0 ? 100 : 0);
-        $('#dpuwoo-stat-success').text(rate + '%')
+        $('#prixy-stat-success').text(rate + '%')
             .css('color', rate >= 95 ? '#22c55e' : (rate >= 80 ? '#f97316' : '#ef4444'));
     }
 
     // ── Charts ────────────────────────────────────────────────────────────────
 
     function renderRateChart(chartRuns) {
-        var canvas = document.getElementById('dpuwoo-chart-rate');
+        var canvas = document.getElementById('prixy-chart-rate');
         if (!canvas) return;
         if (!chartRuns || !chartRuns.length) {
-            $(canvas).hide(); $('#dpuwoo-chart-rate-empty').show(); return;
+            $(canvas).hide(); $('#prixy-chart-rate-empty').show(); return;
         }
         var labels = chartRuns.map(function (r) { var d = new Date(r.date.replace(' ', 'T')); return d.toLocaleDateString('es-AR', { day: '2-digit', month: 'short' }); });
         var values = chartRuns.map(function (r) { return parseFloat(r.dollar_value); });
@@ -113,10 +113,10 @@
     }
 
     function renderProductsChart(chartRuns) {
-        var canvas = document.getElementById('dpuwoo-chart-products');
+        var canvas = document.getElementById('prixy-chart-products');
         if (!canvas) return;
         var last10 = (chartRuns || []).slice(-10);
-        if (!last10.length) { $(canvas).hide(); $('#dpuwoo-chart-products-empty').show(); return; }
+        if (!last10.length) { $(canvas).hide(); $('#prixy-chart-products-empty').show(); return; }
         var labels = last10.map(function (r) { var d = new Date(r.date.replace(' ', 'T')); return d.toLocaleDateString('es-AR', { day: '2-digit', month: 'short' }); });
         var values = last10.map(function (r) { return parseInt(r.total_products, 10) || 0; });
         var colors = last10.map(function (r) { return r.context === 'cron' ? 'rgba(249,115,22,.8)' : 'rgba(99,102,241,.8)'; });
@@ -135,9 +135,9 @@
     // ── Recent Activity Table ─────────────────────────────────────────────────
 
     function renderActivityTable(lastRuns) {
-        $('#dpuwoo-activity-loading').hide();
-        if (!lastRuns || !lastRuns.length) { $('#dpuwoo-activity-empty').show(); return; }
-        var tbody = $('#dpuwoo-activity-tbody').empty();
+        $('#prixy-activity-loading').hide();
+        if (!lastRuns || !lastRuns.length) { $('#prixy-activity-empty').show(); return; }
+        var tbody = $('#prixy-activity-tbody').empty();
         $.each(lastRuns, function (i, run) {
             var row = $('<tr>').css('border-bottom', '1px solid #f9fafb');
             row.append($('<td>').css('padding', '9px 10px').html('<span style="font-weight:500;color:#111827;">' + humanizeDate(run.date) + '</span><br><span style="font-size:11px;color:#9ca3af;">' + timeAgo(run.date) + '</span>'));
@@ -146,12 +146,12 @@
             row.append($('<td>').css({ padding: '9px 10px', textAlign: 'right', color: '#374151' }).text(run.total_products ? parseInt(run.total_products).toLocaleString('es-AR') : '0'));
             row.append($('<td>').css({ padding: '9px 10px', textAlign: 'right' }).html(formatPct(run.percentage_change)));
             var actions = $('<td>').css({ padding: '9px 10px', textAlign: 'right', whiteSpace: 'nowrap' });
-            actions.append($('<a>').attr('href', dpuwoo_dashboard.logs_url).css({ fontSize: '12px', color: '#6366f1', textDecoration: 'none', marginRight: '8px', fontWeight: '500' }).text('Ver'));
-            actions.append($('<button>').css({ fontSize: '12px', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: '500' }).text('Revertir').attr('data-run-id', run.id).addClass('dpuwoo-revert-run-btn'));
+            actions.append($('<a>').attr('href', prixy_dashboard.logs_url).css({ fontSize: '12px', color: '#6366f1', textDecoration: 'none', marginRight: '8px', fontWeight: '500' }).text('Ver'));
+            actions.append($('<button>').css({ fontSize: '12px', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: '500' }).text('Revertir').attr('data-run-id', run.id).addClass('prixy-revert-run-btn'));
             row.append(actions);
             tbody.append(row);
         });
-        $('#dpuwoo-activity-table').show();
+        $('#prixy-activity-table').show();
     }
 
     // ── Simulation ────────────────────────────────────────────────────────────
@@ -167,17 +167,17 @@
     var simTotBatch = 1;
 
     function simIcon(animate) {
-        var el = document.getElementById('dpuwoo-sim-icon');
+        var el = document.getElementById('prixy-sim-icon');
         if (!el) return;
         el.style.animation = animate ? 'spin 1s linear infinite' : '';
     }
 
     function simSetUI(label, progress) {
-        $('#dpuwoo-sim-label').text(label);
+        $('#prixy-sim-label').text(label);
         if (progress !== undefined) {
-            $('#dpuwoo-sim-progress-wrap').show();
-            $('#dpuwoo-sim-progress-bar').css('width', Math.min(progress, 100) + '%');
-            $('#dpuwoo-sim-progress-label').text(label);
+            $('#prixy-sim-progress-wrap').show();
+            $('#prixy-sim-progress-bar').css('width', Math.min(progress, 100) + '%');
+            $('#prixy-sim-progress-label').text(label);
         }
     }
 
@@ -188,10 +188,10 @@
         simSkipped  = 0;
         simTotBatch = 1;
         simIcon(false);
-        $('#dpuwoo-btn-simulate').prop('disabled', false);
-        $('#dpuwoo-sim-label').text('Simular ahora');
-        $('#dpuwoo-sim-progress-wrap').hide();
-        $('#dpuwoo-sim-progress-bar').css('width', '0%');
+        $('#prixy-btn-simulate').prop('disabled', false);
+        $('#prixy-sim-label').text('Simular ahora');
+        $('#prixy-sim-progress-wrap').hide();
+        $('#prixy-sim-progress-bar').css('width', '0%');
     }
 
     function simShowResult() {
@@ -203,28 +203,28 @@
             msg = 'Ningún producto cambiaría con la configuración actual';
             if (simSkipped > 0) msg += ' (' + simSkipped + ' omitidos)';
         }
-        $('#dpuwoo-sim-result-title').text('Resultado de simulación');
-        $('#dpuwoo-sim-summary').text(msg);
-        $('#dpuwoo-sim-actions').show();
-        $('#dpuwoo-apply-progress-wrap').hide();
-        $('#dpuwoo-sim-result').show();
+        $('#prixy-sim-result-title').text('Resultado de simulación');
+        $('#prixy-sim-summary').text(msg);
+        $('#prixy-sim-actions').show();
+        $('#prixy-apply-progress-wrap').hide();
+        $('#prixy-sim-result').show();
         // Disable apply button if nothing to update
-        $('#dpuwoo-btn-apply').prop('disabled', simUpdated === 0).css('opacity', simUpdated === 0 ? '.5' : '1');
+        $('#prixy-btn-apply').prop('disabled', simUpdated === 0).css('opacity', simUpdated === 0 ? '.5' : '1');
         simReset();
     }
 
     function simProcessBatch() {
         $.ajax({
-            url:      dpuwoo_ajax.ajax_url,
+            url:      prixy_ajax.ajax_url,
             type:     'POST',
             dataType: 'json',
-            data: { action: 'dpuwoo_simulate_batch', nonce: dpuwoo_ajax.nonce, batch: simBatch }
+            data: { action: 'prixy_simulate_batch', nonce: prixy_ajax.nonce, batch: simBatch }
         })
         .done(function (res) {
             if (!res.success) {
                 simSetUI(res.data && res.data.message ? res.data.message : 'Error en la simulación');
                 simIcon(false);
-                $('#dpuwoo-btn-simulate').prop('disabled', false);
+                $('#prixy-btn-simulate').prop('disabled', false);
                 simRunning = false;
                 return;
             }
@@ -235,10 +235,10 @@
             // Threshold blocked?
             if (data.threshold_met === false) {
                 var reason = data.message || 'Variación no alcanza el umbral mínimo';
-                $('#dpuwoo-sim-result-title').text('Simulación bloqueada');
-                $('#dpuwoo-sim-summary').text(reason);
-                $('#dpuwoo-sim-actions').hide();
-                $('#dpuwoo-sim-result').show();
+                $('#prixy-sim-result-title').text('Simulación bloqueada');
+                $('#prixy-sim-summary').text(reason);
+                $('#prixy-sim-actions').hide();
+                $('#prixy-sim-result').show();
                 simReset();
                 return;
             }
@@ -261,7 +261,7 @@
         .fail(function () {
             simSetUI('Error de conexión — reintentar');
             simIcon(false);
-            $('#dpuwoo-btn-simulate').prop('disabled', false);
+            $('#prixy-btn-simulate').prop('disabled', false);
             simRunning = false;
         });
     }
@@ -273,8 +273,8 @@
         simUpdated  = 0;
         simSkipped  = 0;
         simTotBatch = 1;
-        $('#dpuwoo-sim-result').hide();
-        $('#dpuwoo-btn-simulate').prop('disabled', true);
+        $('#prixy-sim-result').hide();
+        $('#prixy-btn-simulate').prop('disabled', true);
         simIcon(true);
         simSetUI('Iniciando simulación...', 0);
         simProcessBatch();
@@ -289,47 +289,47 @@
     var applyUpdated = 0;
 
     function applyIcon(animate) {
-        var el = document.getElementById('dpuwoo-apply-icon');
+        var el = document.getElementById('prixy-apply-icon');
         if (!el) return;
         el.style.animation = animate ? 'spin 1s linear infinite' : '';
     }
 
     function applySetUI(label, progress) {
-        $('#dpuwoo-apply-label').text(label);
+        $('#prixy-apply-label').text(label);
         if (progress !== undefined) {
-            $('#dpuwoo-apply-progress-wrap').show();
-            $('#dpuwoo-apply-progress-bar').css('width', Math.min(progress, 100) + '%');
-            $('#dpuwoo-apply-progress-label').text(label);
+            $('#prixy-apply-progress-wrap').show();
+            $('#prixy-apply-progress-bar').css('width', Math.min(progress, 100) + '%');
+            $('#prixy-apply-progress-label').text(label);
         }
     }
 
     function applyShowResult(success) {
         applyRunning = false;
         applyIcon(false);
-        $('#dpuwoo-btn-apply').prop('disabled', false);
+        $('#prixy-btn-apply').prop('disabled', false);
         if (success) {
-            $('#dpuwoo-sim-result-title').text('✓ Precios actualizados');
-            $('#dpuwoo-sim-summary').text(applyUpdated.toLocaleString('es-AR') + ' producto' + (applyUpdated > 1 ? 's' : '') + ' actualizados correctamente');
-            $('#dpuwoo-sim-actions').hide();
+            $('#prixy-sim-result-title').text('✓ Precios actualizados');
+            $('#prixy-sim-summary').text(applyUpdated.toLocaleString('es-AR') + ' producto' + (applyUpdated > 1 ? 's' : '') + ' actualizados correctamente');
+            $('#prixy-sim-actions').hide();
             applySetUI('Completado', 100);
             // Refresh activity table after a moment
             setTimeout(function () { loadDashboardData(true); }, 800);
         } else {
-            $('#dpuwoo-sim-result-title').text('Error al aplicar');
+            $('#prixy-sim-result-title').text('Error al aplicar');
             applySetUI('Error');
         }
     }
 
     function applyProcessBatch() {
-        var postData = { action: 'dpuwoo_update_batch', nonce: dpuwoo_ajax.nonce, batch: applyBatch };
+        var postData = { action: 'prixy_update_batch', nonce: prixy_ajax.nonce, batch: applyBatch };
         if (applyRunId) postData.run_id = applyRunId;
 
-        $.ajax({ url: dpuwoo_ajax.ajax_url, type: 'POST', dataType: 'json', data: postData })
+        $.ajax({ url: prixy_ajax.ajax_url, type: 'POST', dataType: 'json', data: postData })
         .done(function (res) {
             if (!res.success) {
                 applySetUI(res.data && res.data.message ? res.data.message : 'Error al actualizar');
                 applyIcon(false);
-                $('#dpuwoo-btn-apply').prop('disabled', false);
+                $('#prixy-btn-apply').prop('disabled', false);
                 applyRunning = false;
                 return;
             }
@@ -357,7 +357,7 @@
         .fail(function () {
             applySetUI('Error de conexión');
             applyIcon(false);
-            $('#dpuwoo-btn-apply').prop('disabled', false);
+            $('#prixy-btn-apply').prop('disabled', false);
             applyRunning = false;
         });
     }
@@ -370,7 +370,7 @@
         applyRunId   = 0;
         applyUpdated = 0;
         applyTotBat  = 1;
-        $('#dpuwoo-btn-apply').prop('disabled', true);
+        $('#prixy-btn-apply').prop('disabled', true);
         applyIcon(true);
         applySetUI('Aplicando cambios...', 0);
         applyProcessBatch();
@@ -378,11 +378,11 @@
 
     // ── Revert Run ────────────────────────────────────────────────────────────
 
-    $(document).on('click', '.dpuwoo-revert-run-btn', function () {
+    $(document).on('click', '.prixy-revert-run-btn', function () {
         var btn = $(this), runId = btn.data('run-id');
         if (!runId || !confirm('¿Revertir todos los precios de esta ejecución?')) return;
         btn.text('...').prop('disabled', true);
-        $.post(dpuwoo_ajax.ajax_url, { action: 'dpuwoo_revert_run', nonce: dpuwoo_ajax.nonce, run_id: runId })
+        $.post(prixy_ajax.ajax_url, { action: 'prixy_revert_run', nonce: prixy_ajax.nonce, run_id: runId })
         .done(function (res) {
             if (res.success) { btn.closest('tr').css({ opacity: '.4', transition: 'opacity .4s' }); btn.text('Revertido'); }
             else { alert('Error: ' + (res.data && res.data.message ? res.data.message : 'Error')); btn.text('Revertir').prop('disabled', false); }
@@ -394,15 +394,15 @@
 
     function loadDashboardData(refreshOnly) {
         if (!refreshOnly) {
-            $('#dpuwoo-activity-loading').show();
-            $('#dpuwoo-activity-table').hide();
-            $('#dpuwoo-activity-empty').hide();
+            $('#prixy-activity-loading').show();
+            $('#prixy-activity-table').hide();
+            $('#prixy-activity-empty').hide();
         }
         $.ajax({
-            url:      dpuwoo_dashboard.ajax_url,
+            url:      prixy_dashboard.ajax_url,
             type:     'POST',
             dataType: 'json',
-            data:     { action: 'dpuwoo_get_dashboard_stats', nonce: dpuwoo_dashboard.nonce }
+            data:     { action: 'prixy_get_dashboard_stats', nonce: prixy_dashboard.nonce }
         })
         .done(function (res) {
             if (!res.success) return;
@@ -415,14 +415,14 @@
             }
             renderActivityTable(d.last_runs);
         })
-        .fail(function () { $('#dpuwoo-activity-loading').text('Error al cargar datos.'); });
+        .fail(function () { $('#prixy-activity-loading').text('Error al cargar datos.'); });
     }
 
     // ── Onboarding ────────────────────────────────────────────────────────────
 
     function reloadIfComplete() {
-        $.post(dpuwoo_dashboard.ajax_url,
-            { action: 'dpuwoo_get_setup_progress', nonce: dpuwoo_dashboard.nonce },
+        $.post(prixy_dashboard.ajax_url,
+            { action: 'prixy_get_setup_progress', nonce: prixy_dashboard.nonce },
             function (res) {
                 if (res.success && res.data.rate_initialized && res.data.first_run_done) {
                     location.reload();
@@ -435,36 +435,36 @@
 
     $(function () {
         // Normal dashboard events (only run if dashboard elements exist)
-        if (document.getElementById('dpuwoo-btn-simulate')) {
-            $('#dpuwoo-btn-simulate').on('click', startSimulation);
-            $('#dpuwoo-btn-apply').on('click', startApply);
-            $('#dpuwoo-sim-close').on('click', function () { $('#dpuwoo-sim-result').hide(); });
+        if (document.getElementById('prixy-btn-simulate')) {
+            $('#prixy-btn-simulate').on('click', startSimulation);
+            $('#prixy-btn-apply').on('click', startApply);
+            $('#prixy-sim-close').on('click', function () { $('#prixy-sim-result').hide(); });
             loadDashboardData(false);
         }
 
         // ── Onboarding: guardar tasa de referencia ────────────────────────────
 
-        $(document).on('click', '#dpuwoo-rate-save-btn', function () {
+        $(document).on('click', '#prixy-rate-save-btn', function () {
             var $btn  = $(this);
-            var value = parseFloat($('#dpuwoo-rate-input').val());
-            var $msg  = $('#dpuwoo-rate-save-msg');
+            var value = parseFloat($('#prixy-rate-input').val());
+            var $msg  = $('#prixy-rate-save-msg');
 
             if (!value || value <= 0) {
                 $msg.css('color', '#ef4444').text('Ingresá un valor válido mayor a 0.');
-                $('#dpuwoo-rate-input').css('border-color', '#ef4444').focus();
+                $('#prixy-rate-input').css('border-color', '#ef4444').focus();
                 return;
             }
 
             DPUWOO_Utils.btnLoading($btn, 'Guardando...');
             $msg.text('');
 
-            $.post(dpuwoo_ajax.ajax_url,
-                { action: 'dpuwoo_save_origin_rate', nonce: dpuwoo_ajax.nonce, value: value },
+            $.post(prixy_ajax.ajax_url,
+                { action: 'prixy_save_origin_rate', nonce: prixy_ajax.nonce, value: value },
                 function (res) {
                     DPUWOO_Utils.btnReset($btn);
                     if (res.success) {
                         $msg.css('color', '#16a34a').text('¡Guardado! Redirigiendo a Configuración...');
-                        setTimeout(function () { window.location.href = dpuwoo_dashboard.settings_url; }, 700);
+                        setTimeout(function () { window.location.href = prixy_dashboard.settings_url; }, 700);
                     } else {
                         $msg.css('color', '#ef4444').text((res.data && res.data.message) || 'Error al guardar.');
                     }
