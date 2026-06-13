@@ -75,19 +75,23 @@ trait HTTP_Request_Trait {
     }
     
     /**
-     * Obtener API key de configuración
+     * Obtener API key de configuración.
+     * Prioriza la clave inyectada directamente (para test_connection con key externa).
      */
     protected function get_api_key() {
+        // Clave inyectada tiene precedencia (e.g. test de conexión con key externa)
+        if (!empty($this->injected_api_key)) {
+            return $this->injected_api_key;
+        }
+
         $opts = get_option('prixy_settings', []);
-        
-        // Obtener la API key específica del proveedor actual
+
         if (get_class($this) === 'CurrencyAPI_Provider') {
             return $opts['currencyapi_api_key'] ?? '';
         } elseif (get_class($this) === 'ExchangeRateAPI_Provider') {
             return $opts['exchangerate_api_key'] ?? '';
         }
-        
-        // API key general para otros proveedores
+
         return $opts['api_key'] ?? '';
     }
     
@@ -127,7 +131,15 @@ trait HTTP_Request_Trait {
 abstract class Base_API_Provider implements API_Provider_Interface {
     use HTTP_Request_Trait;
 
-    protected $auth_header = 'Authorization'; // Header por defecto para auth
+    protected $auth_header = 'Authorization';
+
+    /** API key inyectada externamente (override de settings). */
+    protected ?string $injected_api_key = null;
+
+    public function set_api_key(string $key): void
+    {
+        $this->injected_api_key = $key;
+    }
 
     abstract public function get_rate($type);
     abstract public function get_currencies();

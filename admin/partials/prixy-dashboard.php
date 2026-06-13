@@ -6,16 +6,7 @@ $opts           = get_option('prixy_settings', []);
 $product_count  = wp_count_posts('product');
 $total_products = $product_count->publish ?? 0;
 
-// Si no hay tasa configurada, intentar obtenerla de la API
-$display_rate = $opts['origin_exchange_rate'] ?? 0;
-if (empty($display_rate)) {
-    $currency_type = $opts['currency'] ?? 'oficial';
-    $api = new API_Client();
-    $rate = $api->get_rate($currency_type);
-    if ($rate && isset($rate['value'])) {
-        $display_rate = floatval($rate['value']);
-    }
-}
+$display_rate = floatval($opts['origin_exchange_rate'] ?? 0);
 
 $provider_key = $opts['api_provider'] ?? 'dolarapi';
 $api_providers_list = [
@@ -219,7 +210,7 @@ $provider_name = $api_providers_list[$provider_key] ?? 'No configurado';
 
 <script>
 jQuery(document).ready(function($) {
-    console.log('DPUWOO Dashboard JS loaded');
+    console.log('Prixy Dashboard JS loaded');
 });
 </script>
 

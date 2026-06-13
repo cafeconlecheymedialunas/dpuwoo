@@ -211,6 +211,7 @@ class Prixy {
 		$this->loader->add_action('admin_enqueue_scripts', $plugin_admin, 'enqueue_scripts');
 		$this->loader->add_action('admin_menu',     $plugin_admin, 'register_menu');
 		$this->loader->add_action('admin_init',     $plugin_admin, 'handle_activation_redirect');
+		$this->loader->add_action('admin_init',     $plugin_admin, 'handle_setup_redirect');
 		$this->loader->add_action('admin_notices',  $plugin_admin, 'display_admin_notices');
 
 		$plugin_setting = new Admin_Settings();

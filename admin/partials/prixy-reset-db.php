@@ -34,7 +34,7 @@ if (isset($_POST['reset_prixy']) && wp_verify_nonce($_POST['_wpnonce'], 'prixy_r
 }
 ?>
 <div class="wrap">
-    <h1>Reset Base de Datos - DPUWoo</h1>
+    <h1>Reset Base de Datos - Prixy</h1>
     
     <?php echo $message; ?>
     

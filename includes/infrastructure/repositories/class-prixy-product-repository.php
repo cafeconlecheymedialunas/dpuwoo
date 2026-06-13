@@ -94,7 +94,7 @@ class Product_Repository implements Product_Repository_Interface
     {
         // P1: Validar rango de precio válido (ALTA PRIORIDAD)
         if ($new_price < 0.01 || $new_price > 999999.99 || is_nan($new_price) || is_infinite($new_price)) {
-            error_log('DPUWoo: Precio regular inválido (P:' . $product->get_id() . '): ' . var_export($new_price, true));
+            error_log('Prixy: Precio regular inválido (P:' . $product->get_id() . '): ' . var_export($new_price, true));
             return false;
         }
 
@@ -107,12 +107,12 @@ class Product_Repository implements Product_Repository_Interface
             $success = ((string)$stored === (string)$new_price);
             
             if (!$success) {
-                error_log('DPUWoo: Fallo al guardar precio regular (P:' . $product->get_id() . '). Esperado: ' . $new_price . ', Guardado: ' . $stored);
+                error_log('Prixy: Fallo al guardar precio regular (P:' . $product->get_id() . '). Esperado: ' . $new_price . ', Guardado: ' . $stored);
             }
             
             return $success;
         } catch (\Exception $e) {
-            error_log('DPUWoo: Excepción al guardar precio regular (P:' . $product->get_id() . '): ' . $e->getMessage());
+            error_log('Prixy: Excepción al guardar precio regular (P:' . $product->get_id() . '): ' . $e->getMessage());
             return false;
         }
     }
@@ -133,7 +133,7 @@ class Product_Repository implements Product_Repository_Interface
             } else {
                 // P1: Validar rango de precio válido para sale price (ALTA)
                 if ($new_price < 0.01 || $new_price > 999999.99 || is_nan($new_price) || is_infinite($new_price)) {
-                    error_log('DPUWoo: Precio de oferta inválido (P:' . $product->get_id() . '): ' . var_export($new_price, true));
+                    error_log('Prixy: Precio de oferta inválido (P:' . $product->get_id() . '): ' . var_export($new_price, true));
                     return false;
                 }
                 $product->set_sale_price($new_price);
@@ -143,7 +143,7 @@ class Product_Repository implements Product_Repository_Interface
             return true;
             
         } catch (\Exception $e) {
-            error_log('DPUWoo: Excepción al guardar precio de oferta (P:' . $product->get_id() . '): ' . $e->getMessage());
+            error_log('Prixy: Excepción al guardar precio de oferta (P:' . $product->get_id() . '): ' . $e->getMessage());
             return false;
         }
     }
@@ -154,7 +154,7 @@ class Product_Repository implements Product_Repository_Interface
 
     public function product_exists($product_id)
     {
-        return $this->get_product($product_id) !== false;
+        return $this->get_product($product_id) !== null;
     }
 
     public function get_current_regular_price($product)

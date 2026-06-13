@@ -1,12 +1,6 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
-// Si el setup no está completo, redirigir a Configuración
-if (!Admin::is_setup_complete()) {
-    wp_redirect(admin_url('admin.php?page=prixy_configuration'));
-    exit;
-}
-
 $opts          = get_option('prixy_settings', []);
 $cron_enabled  = !empty($opts['cron_enabled']);
 $api_provider  = $opts['api_provider'] ?? 'dolarapi';
@@ -25,6 +19,10 @@ $provider_labels = [
 ];
 $provider_label = $provider_labels[$api_provider] ?? $api_provider;
 $product_count  = Log_Repository::get_instance()->count_all_products();
+
+$_setup = [
+    'first_run_done' => Log_Repository::get_instance()->get_aggregate_stats()['total_runs'] > 0,
+];
 ?>
 
 <div class="wrap prixy-admin">

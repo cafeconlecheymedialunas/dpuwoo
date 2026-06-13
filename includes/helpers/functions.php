@@ -1,6 +1,6 @@
 <?php
 
-namespace Dpuwoo\Helpers;
+namespace Prixy\Helpers;
 
 
 if (!defined('ABSPATH')) exit;

@@ -6,26 +6,6 @@ $opts = get_option('prixy_settings', []);
 $origin_rate = floatval($opts['origin_exchange_rate'] ?? 0);
 $rate_locked = $origin_rate > 0 || !empty($opts['origin_rate_locked']);
 
-// Obtener tasa automáticamente si no hay una guardada
-if (!$rate_locked && $origin_rate <= 0) {
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, 'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/ars.json');
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    $response = curl_exec($ch);
-    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    
-    if ($http_code === 200 && $response) {
-        $data = json_decode($response, true);
-        $usd_value = floatval($data['ars']['usd'] ?? 0);
-        if ($usd_value > 0) {
-            $origin_rate = 1 / $usd_value;
-        }
-    }
-}
-
 // Get products stats
 $product_count = wp_count_posts('product');
 $total_products = $product_count->publish ?? 0;

@@ -387,7 +387,7 @@ class Ajax_Controller
             $count = $result['count'];
             $details = $result['details'];
         } catch (\Throwable $e) {
-            error_log('DPUWoo: Error en process_first_setup_products: ' . $e->getMessage());
+            error_log('Prixy: Error en process_first_setup_products: ' . $e->getMessage());
         }
 
         // Devolver URL de redirección a configuración
@@ -426,7 +426,11 @@ class Ajax_Controller
             'note' => 'Setup inicial - Registro de precios base'
         ];
         $run_id = $this->log_repo->insert_run($run_data);
-        
+
+        if (!$run_id) {
+            return ['count' => 0, 'details' => []];
+        }
+
         foreach ($product_ids as $product_id) {
             $product = wc_get_product($product_id);
             if (!$product) continue;

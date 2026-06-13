@@ -229,7 +229,7 @@ class DolarAPI_Provider extends Base_API_Provider {
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'Accept: application/json',
-            'User-Agent: DPUWoo-DolarAPI-Test/1.0'
+            'User-Agent: Prixy-DolarAPI-Test/1.0'
         ]);
         
         $response = curl_exec($ch);

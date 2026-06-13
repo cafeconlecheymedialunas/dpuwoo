@@ -44,7 +44,7 @@ class Logger
     public function begin_run_transaction($run_data)
     {
         if (!$this->repo->begin_transaction()) {
-            error_log('DPUWoo: Fallo al iniciar transacción de BD');
+            error_log('Prixy: Fallo al iniciar transacción de BD');
             return false;
         }
         
@@ -52,7 +52,7 @@ class Logger
 
         if (!$run_id) {
             $this->repo->rollback_transaction();
-            error_log('DPUWoo: Fallo al insertar run');
+            error_log('Prixy: Fallo al insertar run');
             return false;
         }
 
@@ -90,7 +90,7 @@ class Logger
     public function commit_run_transaction($run_id)
     {
         if (!$this->repo->commit_transaction()) {
-            error_log('DPUWoo: Fallo al confirmar transacción (Run: ' . $run_id . ')');
+            error_log('Prixy: Fallo al confirmar transacción (Run: ' . $run_id . ')');
             return false;
         }
         return $run_id;
@@ -103,7 +103,7 @@ class Logger
     public function rollback_run_transaction()
     {
         if (!$this->repo->rollback_transaction()) {
-            error_log('DPUWoo: Fallo al revertir transacción');
+            error_log('Prixy: Fallo al revertir transacción');
             return false;
         }
         return true;

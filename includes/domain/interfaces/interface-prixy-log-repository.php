@@ -24,11 +24,12 @@ interface Log_Repository_Interface
     public function update_run(int $run_id, array $data): bool;
 
     /**
-     * Obtiene todos los runs ordenados por fecha descendente.
+     * Obtiene los runs ordenados por fecha descendente.
      *
+     * @param int $limit Máximo de resultados.
      * @return array
      */
-    public function get_runs(): array;
+    public function get_runs(int $limit = 100): array;
 
     /**
      * Obtiene los items de un run específico.

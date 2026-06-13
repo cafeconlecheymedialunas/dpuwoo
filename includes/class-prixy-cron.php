@@ -9,19 +9,11 @@ class Cron
     public static function register_schedule(array $schedules): array
     {
         $opts    = get_option('prixy_settings', []);
-        $interval_key = $opts['update_interval'] ?? 'twicedaily';
-        $interval_seconds = [
-            'hourly' => 3600,
-            'twicedaily' => 43200,
-            'daily' => 86400,
-            'weekly' => 604800,
-        ];
-        $interval = $interval_seconds[$interval_key] ?? 43200;
-        $interval = max(300, $interval);
+        $interval = self::get_interval_seconds($opts);
 
         $schedules['prixy_custom'] = [
             'interval' => $interval,
-            'display'  => 'DPU WOO (' . $interval . 's)',
+            'display'  => 'Prixy (' . $interval . 's)',
         ];
 
         return $schedules;
@@ -38,14 +30,7 @@ class Cron
             return;
         }
 
-        $interval = $opts['update_interval'] ?? 'twicedaily';
-        $interval_seconds = [
-            'hourly' => 3600,
-            'twicedaily' => 43200,
-            'daily' => 86400,
-            'weekly' => 604800,
-        ];
-        $interval = $interval_seconds[$interval] ?? 43200;
+        $interval = self::get_interval_seconds($opts);
 
         if (self::is_action_scheduler_available()) {
             self::schedule_with_action_scheduler($interval);
@@ -81,6 +66,30 @@ class Cron
                 wp_unschedule_event($timestamp, self::HOOK);
             }
         }
+    }
+
+    /**
+     * Resuelve el intervalo en segundos desde los settings.
+     * Prioriza la clave 'interval' (segundos directos del campo numérico del admin).
+     * Fallback al mapeo de 'update_interval' (string key legacy).
+     */
+    private static function get_interval_seconds(array $opts): int
+    {
+        if (!empty($opts['interval']) && intval($opts['interval']) >= 300) {
+            return intval($opts['interval']);
+        }
+
+        $key_map = [
+            'hourly'     => 3600,
+            'twicedaily' => 43200,
+            'daily'      => 86400,
+            'weekly'     => 604800,
+        ];
+
+        $key      = $opts['update_interval'] ?? 'twicedaily';
+        $interval = $key_map[$key] ?? 43200;
+
+        return max(300, $interval);
     }
 
     public static function is_action_scheduler_available(): bool
@@ -119,7 +128,7 @@ class Cron
         $result = $bus->dispatch(new Update_Prices_Command(0, simulate: $simulate, context: 'cron'));
 
         if (isset($result['error'])) {
-            error_log('DPUWoo Cron: error en ejecución — ' . ($result['message'] ?? $result['error']));
+            error_log('Prixy Cron: error en ejecución — ' . ($result['message'] ?? $result['error']));
             if ($notify_mode !== 'disabled') {
                 self::send_error_notification($result['error']);
             }
@@ -127,7 +136,7 @@ class Cron
         }
 
         if (isset($result['threshold_met']) && $result['threshold_met'] === false) {
-            error_log('DPUWoo Cron: threshold no alcanzado — ' . ($result['message'] ?? ''));
+            error_log('Prixy Cron: threshold no alcanzado — ' . ($result['message'] ?? ''));
             return;
         }
 
@@ -141,7 +150,7 @@ class Cron
             $batch_result = $bus->dispatch(new Update_Prices_Command($batch, simulate: $simulate, context: 'cron', run_id: $run_id));
 
             if (isset($batch_result['error'])) {
-                error_log('DPUWoo Cron: error en batch ' . $batch . ': ' . $batch_result['error']);
+                error_log('Prixy Cron: error en batch ' . $batch . ': ' . $batch_result['error']);
                 break;
             }
 
@@ -162,7 +171,7 @@ class Cron
     private static function send_notification(array $result, bool $simulate): void
     {
         if (!class_exists('Email_Notifier')) {
-            require_once PRIXY_PLUGIN_DIR . 'includes/class-prixy-email-notifier.php';
+            require_once PRIXY_PLUGIN_DIR . 'includes/infrastructure/services/class-prixy-email-notifier.php';
         }
 
         $notifier = new Email_Notifier();
@@ -177,7 +186,7 @@ class Cron
     private static function send_error_notification(string $error): void
     {
         if (!class_exists('Email_Notifier')) {
-            require_once PRIXY_PLUGIN_DIR . 'includes/class-prixy-email-notifier.php';
+            require_once PRIXY_PLUGIN_DIR . 'includes/infrastructure/services/class-prixy-email-notifier.php';
         }
 
         $opts = get_option('prixy_settings', []);

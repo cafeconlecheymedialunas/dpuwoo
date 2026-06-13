@@ -11,58 +11,25 @@ class Activator
         self::create_tables();
         self::migrate_run_items_columns();
 
-        $initial_rate = self::fetch_initial_dollar_value();
         $auto_provider = self::get_auto_provider();
-        
+
         $settings = get_option('prixy_settings', []);
-        $settings['interval']             = $settings['interval']             ?? 3600;
+        $settings['interval']            = $settings['interval']            ?? 3600;
         $settings['threshold']           = $settings['threshold']           ?? 1.0;
         $settings['threshold_max']       = $settings['threshold_max']       ?? 0;
-        $settings['reference_currency']  = $settings['reference_currency'] ?? 'USD';
+        $settings['reference_currency']  = $settings['reference_currency']  ?? 'USD';
         $settings['api_provider']        = $settings['api_provider']        ?? $auto_provider;
-        if (empty($settings['origin_exchange_rate'])) {
-            $settings['origin_exchange_rate'] = $initial_rate > 0 ? $initial_rate : 0;
-        }
 
         update_option('prixy_settings', $settings);
 
-        self::create_usd_price_fields_for_products();
         Cron::schedule();
         update_option('prixy_initial_setup_done', true);
 
         set_transient('prixy_activation_redirect', true, 60);
-        self::add_activation_notice($initial_rate > 0);
+        // Rate is fetched asynchronously on first admin load via the onboarding wizard.
+        self::add_activation_notice(false);
     }
 
-    private static function create_usd_price_fields_for_products()
-    {
-        if (!function_exists('get_posts') || !function_exists('update_post_meta')) {
-            return;
-        }
-        
-        $products = get_posts([
-            'post_type' => ['product', 'product_variation'],
-            'posts_per_page' => -1,
-            'post_status' => 'publish',
-            'fields' => 'ids'
-        ]);
-        
-        $fields_created = 0;
-        
-        foreach ($products as $product_id) {
-            update_post_meta($product_id, '_prixy_regular_price_usd', '');
-            update_post_meta($product_id, '_prixy_sale_price_usd', '');
-            $fields_created++;
-        }
-    }
-    
-    private static function auto_configure_dollar_reference()
-    {
-        // No es necesario configurar aquí ya que se maneja en admin-settings
-        // La configuración se inicializa correctamente en activate()
-        return;
-    }
-    
     private static function fetch_initial_dollar_value(): float
     {
         if (!function_exists('wp_remote_get')) {

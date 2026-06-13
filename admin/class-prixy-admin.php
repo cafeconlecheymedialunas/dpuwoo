@@ -286,32 +286,32 @@ wp_enqueue_style('select2', 'https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.
 
 	public static function render_overview()
 	{
-		include DPUWOO_PLUGIN_DIR . 'admin/partials/prixy-main-dashboard.php';
+		include PRIXY_PLUGIN_DIR . 'admin/partials/prixy-main-dashboard.php';
 	}
 
 	public static function render_dashboard()
 	{
-		include DPUWOO_PLUGIN_DIR . 'admin/partials/prixy-dashboard.php';
+		include PRIXY_PLUGIN_DIR . 'admin/partials/prixy-dashboard.php';
 	}
 
 	public static function render_settings()
 	{
-		include DPUWOO_PLUGIN_DIR . 'admin/partials/prixy-settings.php';
+		include PRIXY_PLUGIN_DIR . 'admin/partials/prixy-settings.php';
 	}
 
 	public static function render_automation()
 	{
-		include DPUWOO_PLUGIN_DIR . 'admin/partials/prixy-automation.php';
+		include PRIXY_PLUGIN_DIR . 'admin/partials/prixy-automation.php';
 	}
 
 public static function render_logs()
 	{
-		include DPUWOO_PLUGIN_DIR . 'admin/partials/prixy-logs.php';
+		include PRIXY_PLUGIN_DIR . 'admin/partials/prixy-logs.php';
 	}
 
 	public static function render_reset_db()
 	{
-		include DPUWOO_PLUGIN_DIR . 'admin/partials/prixy-reset-db.php';
+		include PRIXY_PLUGIN_DIR . 'admin/partials/prixy-reset-db.php';
 	}
 
 	/**
@@ -339,6 +339,19 @@ public static function render_logs()
 		delete_transient('prixy_activation_redirect');
 		if (isset($_GET['activate-multi'])) return;
 		wp_safe_redirect(admin_url('admin.php?page=prixy_settings'));
+		exit;
+	}
+
+	/**
+	 * Redirige a Configuración si el setup no está completo y el usuario está en el Dashboard.
+	 * Corre en admin_init (antes de cualquier output) para que wp_safe_redirect funcione.
+	 */
+	public function handle_setup_redirect(): void
+	{
+		$page = $_GET['page'] ?? '';
+		if ($page !== 'prixy_settings') return;
+		if (self::is_setup_complete()) return;
+		wp_safe_redirect(admin_url('admin.php?page=prixy_configuration'));
 		exit;
 	}
 

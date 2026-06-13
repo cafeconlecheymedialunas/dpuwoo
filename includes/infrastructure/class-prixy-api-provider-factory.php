@@ -42,10 +42,11 @@ class API_Provider_Factory
      * Crea e instancia un provider por su clave.
      *
      * @param string $provider_name Clave del provider (ej: 'dolarapi').
+     * @param string $api_key       API key a inyectar (opcional; si se omite usa settings).
      * @return API_Provider_Interface
      * @throws \InvalidArgumentException Si la clave no está registrada.
      */
-    public static function create(string $provider_name): API_Provider_Interface
+    public static function create(string $provider_name, string $api_key = ''): API_Provider_Interface
     {
         if (!isset(self::$registry[$provider_name])) {
             throw new \InvalidArgumentException(
@@ -54,8 +55,14 @@ class API_Provider_Factory
             );
         }
 
-        $class = self::$registry[$provider_name];
-        return new $class();
+        $class    = self::$registry[$provider_name];
+        $provider = new $class();
+
+        if ($api_key !== '') {
+            $provider->set_api_key($api_key);
+        }
+
+        return $provider;
     }
 
     /**

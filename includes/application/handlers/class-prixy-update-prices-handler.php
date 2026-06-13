@@ -42,7 +42,7 @@ class Update_Prices_Handler
 
         // P0: Validar tasa de cambio > 0 (CRÍTICO)
         if ($current_rate <= 0 || is_nan($current_rate) || is_infinite($current_rate)) {
-            error_log('DPUWoo: Tasa de cambio inválida: ' . var_export($current_rate, true));
+            error_log('Prixy: Tasa de cambio inválida: ' . var_export($current_rate, true));
             return [
                 'error'   => 'invalid_rate',
                 'message' => 'La tasa de cambio es inválida (negativa, cero, NaN o infinita)',
@@ -288,7 +288,7 @@ class Update_Prices_Handler
     private function add_items_to_run(int $run_id, Batch_Result $result): int|false
     {
         if ($run_id <= 0) {
-            error_log('DPUWoo: run_id inválido para batch subsiguiente');
+            error_log('Prixy: run_id inválido para batch subsiguiente');
             return false;
         }
 
@@ -299,7 +299,7 @@ class Update_Prices_Handler
         }
 
         if (!$this->log_repo->begin_transaction()) {
-            error_log('DPUWoo: Fallo al iniciar transacción para items de batch subsiguiente');
+            error_log('Prixy: Fallo al iniciar transacción para items de batch subsiguiente');
             return false;
         }
 

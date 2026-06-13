@@ -107,8 +107,12 @@ class Admin_Settings
         $out['exclude_categories'] = array_map('intval', $input['exclude_categories'] ?? []);
 
         // — Automatización / Cron ————————————————————————————————————————
-        $out['cron_enabled'] = isset($input['cron_enabled']) ? 1 : 0;
+        $out['cron_enabled']    = isset($input['cron_enabled']) ? 1 : 0;
         $out['update_interval'] = sanitize_text_field($input['update_interval'] ?? ($existing['update_interval'] ?? 'twicedaily'));
+        $raw_interval           = $input['interval'] ?? null;
+        $out['interval']        = ($raw_interval !== null && is_numeric($raw_interval))
+            ? max(300, intval($raw_interval))
+            : max(300, intval($existing['interval'] ?? 43200));
 
         // — API Cron (propia) ——————————————————————————————————————————
         $out['cron_api_provider']         = sanitize_text_field($input['cron_api_provider']         ?? '');

@@ -66,7 +66,7 @@ function prixy_uninstall_cleanup()
 	}
 	*/
 	
-	error_log('DPUWoo: Complete uninstall cleanup performed');
+	error_log('Prixy: Complete uninstall cleanup performed');
 }
 
 prixy_uninstall_cleanup();

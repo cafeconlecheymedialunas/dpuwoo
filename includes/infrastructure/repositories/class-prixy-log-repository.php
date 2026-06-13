@@ -55,7 +55,7 @@ class Log_Repository implements Log_Repository_Interface
         $this->wpdb->insert($this->table_runs, $insert_data);
 
         if ($this->wpdb->last_error) {
-            error_log('DPUWoo insert_run error: ' . $this->wpdb->last_error);
+            error_log('Prixy insert_run error: ' . $this->wpdb->last_error);
             return false;
         }
 
@@ -347,7 +347,7 @@ class Log_Repository implements Log_Repository_Interface
     {
         $this->wpdb->query('START TRANSACTION');
         if ($this->wpdb->last_error) {
-            error_log('DPUWoo: Error al iniciar transacción: ' . $this->wpdb->last_error);
+            error_log('Prixy: Error al iniciar transacción: ' . $this->wpdb->last_error);
             return false;
         }
         return true;
@@ -362,7 +362,7 @@ class Log_Repository implements Log_Repository_Interface
     {
         $this->wpdb->query('COMMIT');
         if ($this->wpdb->last_error) {
-            error_log('DPUWoo: Error al confirmar transacción: ' . $this->wpdb->last_error);
+            error_log('Prixy: Error al confirmar transacción: ' . $this->wpdb->last_error);
             return false;
         }
         return true;
@@ -377,7 +377,7 @@ class Log_Repository implements Log_Repository_Interface
     {
         $this->wpdb->query('ROLLBACK');
         if ($this->wpdb->last_error) {
-            error_log('DPUWoo: Error al revertir transacción: ' . $this->wpdb->last_error);
+            error_log('Prixy: Error al revertir transacción: ' . $this->wpdb->last_error);
             return false;
         }
         return true;

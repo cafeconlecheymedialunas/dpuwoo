@@ -28,4 +28,11 @@ interface API_Provider_Interface
      * @return array|bool Array con 'success' y detalles, o false en error.
      */
     public function test_connection();
+
+    /**
+     * Inyecta una API key externamente (override de settings).
+     *
+     * @param string $key API key a usar.
+     */
+    public function set_api_key(string $key): void;
 }
