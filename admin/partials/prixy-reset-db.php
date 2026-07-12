@@ -26,9 +26,16 @@ if (isset($_POST['reset_prixy']) && wp_verify_nonce($_POST['_wpnonce'], 'prixy_r
     
     // Delete transients
     $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '%prixy_%'");
+
+    // Delete plugin log data while keeping the table structure.
+    $wpdb->query("DELETE FROM {$wpdb->prefix}prixy_run_items");
+    $wpdb->query("DELETE FROM {$wpdb->prefix}prixy_runs");
     
     // Clear cron
     wp_clear_scheduled_hook('prixy_do_update');
+    if (function_exists('as_unschedule_all_actions')) {
+        as_unschedule_all_actions('prixy_do_update', [], 'prixy-cron');
+    }
     
     $message = '<div class="notice notice-success"><p>✅ Base de datos reseteada correctamente.</p></div>';
 }
@@ -42,6 +49,7 @@ if (isset($_POST['reset_prixy']) && wp_verify_nonce($_POST['_wpnonce'], 'prixy_r
         <h2>¿Qué hace este reset?</h2>
         <ul>
             <li>Elimina todas las opciones del plugin</li>
+            <li>Elimina el historial de ejecuciones y productos actualizados</li>
             <li>Elimina los transients de cache</li>
             <li>Limpia los eventos cron programados</li>
             <li>Las tablas de la base de datos se mantienen</li>

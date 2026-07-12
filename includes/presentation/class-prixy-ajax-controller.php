@@ -232,7 +232,7 @@ class Ajax_Controller
         if (empty($configured_provider)) {
             // Primera vez - usar jsdelivr que es gratuito
             $provider = 'jsdelivr';
-            $currency = 'ars'; // ARS para Argentina por defecto
+            $currency = 'usd'; // USD como moneda destino por defecto
         } elseif (empty($provider)) {
             $provider = $configured_provider;
         }
@@ -372,101 +372,20 @@ class Ajax_Controller
             wp_send_json_error(['message' => 'La tasa debe ser mayor a 0']);
         }
 
-        // Guardar tasa y bloquear ANTES de procesar (bypass cache)
+        // Guardar tasa y bloquear (bypass cache). El procesamiento real de productos
+        // lo hace el batch AJAX (prixy_first_setup_batch) en el paso 2, en lotes chicos,
+        // para no bloquear este request ni duplicar logs.
         $all_settings = (array) get_option('prixy_settings', []);
         $all_settings['origin_exchange_rate'] = $value;
         $all_settings['origin_rate_locked'] = '1';
         update_option('prixy_settings', $all_settings);
         wp_cache_delete('prixy_settings', 'options');
 
-        // Procesar todos los productos (si falla, igual la tasa queda guardada)
-        $count = 0;
-        $details = [];
-        try {
-            $result = $this->process_first_setup_products($value);
-            $count = $result['count'];
-            $details = $result['details'];
-        } catch (\Throwable $e) {
-            error_log('Prixy: Error en process_first_setup_products: ' . $e->getMessage());
-        }
-
-        // Devolver URL de redirección a configuración
         wp_send_json_success([
             'value' => $value,
-            'processed' => $count,
-            'products' => $details,
+            'processed' => 0,
             'redirect' => admin_url('admin.php?page=prixy_configuration'),
         ]);
-    }
-    
-    /**
-     * Procesa todos los productos para el setup inicial (crea logs, no calcula USD).
-     */
-    private function process_first_setup_products($rate): array
-    {
-        global $wpdb;
-        
-        $args = [
-            'post_type' => 'product',
-            'post_status' => 'publish',
-            'posts_per_page' => -1,
-            'fields' => 'ids'
-        ];
-        
-        $product_ids = get_posts($args);
-        $processed = [];
-        $count = 0;
-
-        $run_data = [
-            'currency' => 'USD',
-            'dollar_value' => $rate,
-            'total_products' => 0,
-            'percentage_change' => null,
-            'context' => 'setup',
-            'note' => 'Setup inicial - Registro de precios base'
-        ];
-        $run_id = $this->log_repo->insert_run($run_data);
-
-        if (!$run_id) {
-            return ['count' => 0, 'details' => []];
-        }
-
-        foreach ($product_ids as $product_id) {
-            $product = wc_get_product($product_id);
-            if (!$product) continue;
-            
-            $regular_price = $product->get_regular_price();
-            $sale_price = $product->get_sale_price();
-            
-            if ($regular_price > 0) {
-                $usd = round($regular_price / $rate, 2);
-                $item = [
-                    'product_id' => $product_id,
-                    'status' => 'updated',
-                    'old_regular_price' => 0,
-                    'new_regular_price' => $regular_price,
-                    'old_sale_price' => 0,
-                    'new_sale_price' => $sale_price ?: null,
-                    'percentage_change' => null,
-                    'reason' => 'Setup inicial'
-                ];
-                $item_id = $this->log_repo->insert_run_item($run_id, $item);
-                
-                if ($item_id) {
-                    $processed[] = [
-                        'id' => $product_id,
-                        'name' => $product->get_name(),
-                        'ars' => number_format($regular_price, 2),
-                        'usd' => number_format($usd, 2),
-                    ];
-                    $count++;
-                }
-            }
-        }
-
-        $this->log_repo->update_run($run_id, ['total_products' => $count]);
-        
-        return ['count' => $count, 'details' => $processed];
     }
 
     /**
@@ -634,6 +553,10 @@ class Ajax_Controller
             $regular_price = floatval($product->get_regular_price());
             $sale_price = floatval($product->get_sale_price());
 
+            // Marcar como visto aunque no tenga precio propio (variable/grouped/external),
+            // para que no quede reprocesándose en loop infinito en cada reload.
+            update_post_meta($product_id, '_prixy_first_setup_done', current_time('mysql'));
+
             if ($regular_price <= 0) {
                 continue;
             }
@@ -660,8 +583,6 @@ class Ajax_Controller
                     'usd' => number_format($usd, 2),
                 ];
             }
-
-            update_post_meta($product_id, '_prixy_first_setup_done', current_time('mysql'));
         }
 
         // Limpiar option cuando se completó todo
@@ -671,6 +592,7 @@ class Ajax_Controller
 
         wp_send_json_success([
             'products' => $processed,
+            'scanned' => count($products),
             'offset' => $offset,
             'limit' => $limit,
             'rate' => $rate,

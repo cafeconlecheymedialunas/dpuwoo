@@ -23,16 +23,21 @@ class Jsdelivr_Provider extends Base_API_Provider {
         }
         
         $data = $response['data'][$type_lower];
-        
-        // Buscar el valor relativo a USD (la clave es "usd" en minúsculas)
-        $usd_value = floatval($data['usd'] ?? 0);
-        
-        if ($usd_value <= 0) {
-            return false;
+
+        if (isset($data[$currency_lower])) {
+            // jsdelivr returns target-per-base: usd.ars means 1 USD costs N ARS.
+            $value = floatval($data[$currency_lower] ?? 0);
+            if ($value <= 0) {
+                return false;
+            }
+        } else {
+            // Fallback for unusual responses that only include USD as target.
+            $usd_value = floatval($data['usd'] ?? 0);
+            if ($usd_value <= 0) {
+                return false;
+            }
+            $value = 1 / $usd_value;
         }
-        
-        // Invertir: si 1 ARS = 0.000736 USD, entonces 1 USD = 1/0.000736 ARS
-        $value = 1 / $usd_value;
         
         $formatted_data = [
             'value' => $value,
@@ -42,8 +47,8 @@ class Jsdelivr_Provider extends Base_API_Provider {
             'raw' => $response,
             'provider' => 'jsdelivr',
             'base_currency' => $store_currency,
-            'target_currency' => 'USD',
-            'pair' => $store_currency . '_USD',
+            'target_currency' => strtoupper($type),
+            'pair' => $store_currency . '_' . strtoupper($type),
             'type' => $type,
             'api_code' => $type,
             'currency' => strtoupper($type)

@@ -20,14 +20,22 @@ class Activator
         $settings['reference_currency']  = $settings['reference_currency']  ?? 'USD';
         $settings['api_provider']        = $settings['api_provider']        ?? $auto_provider;
 
+        if (empty($settings['origin_exchange_rate'])) {
+            $initial_rate = self::fetch_initial_dollar_value();
+            if ($initial_rate > 0) {
+                $settings['origin_exchange_rate'] = $initial_rate;
+            }
+        }
+
         update_option('prixy_settings', $settings);
+        update_option('prixy_db_version', self::DB_VERSION);
 
         Cron::schedule();
         update_option('prixy_initial_setup_done', true);
 
         set_transient('prixy_activation_redirect', true, 60);
-        // Rate is fetched asynchronously on first admin load via the onboarding wizard.
-        self::add_activation_notice(false);
+        $rate_ok = !empty($settings['origin_exchange_rate']);
+        self::add_activation_notice($rate_ok);
     }
 
     private static function fetch_initial_dollar_value(): float
@@ -140,6 +148,8 @@ $rate = floatval($body['usd'][$currency_lower]);
             new_regular_price decimal(10,2),
             old_sale_price decimal(10,2),
             new_sale_price decimal(10,2),
+            old_regular_price_raw varchar(50) DEFAULT NULL,
+            old_sale_price_raw varchar(50) DEFAULT NULL,
             percentage_change decimal(5,2),
             status varchar(50) NOT NULL,
             reason text,
@@ -169,6 +179,8 @@ $rate = floatval($body['usd'][$currency_lower]);
         $migrations = [
             'percentage_change' => 'decimal(5,2) AFTER new_sale_price',
             'reason'           => 'text AFTER status',
+            'old_regular_price_raw' => 'varchar(50) DEFAULT NULL AFTER new_sale_price',
+            'old_sale_price_raw'    => 'varchar(50) DEFAULT NULL AFTER old_regular_price_raw',
         ];
 
         foreach ($migrations as $column => $definition) {

@@ -84,6 +84,8 @@ class Batch_Processor
             $calc->applied_rules,
             $theoretical_pct
         );
+        $change['old_regular_price_raw'] = (string) $product->get_regular_price();
+        $change['old_sale_price_raw']    = (string) $product->get_sale_price();
 
         $has_log = $this->log_repo->has_any_log_for_product($product->get_id());
         
@@ -144,6 +146,8 @@ class Batch_Processor
                 $calc->applied_rules,
                 $theoretical_pct
             );
+            $change['old_regular_price_raw'] = (string) $variation->get_regular_price();
+            $change['old_sale_price_raw']    = (string) $variation->get_sale_price();
             $change['parent_id']      = $variable->get_id();
             $change['variation_name'] = $variation_display;
 

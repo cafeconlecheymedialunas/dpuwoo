@@ -36,6 +36,14 @@ class Price_Context
         $old_regular = floatval($product->get_regular_price());
         $old_sale = floatval($product->get_sale_price());
         $usd_baseline = 0.0;
+        $category_ids = $product->get_category_ids();
+
+        if (empty($category_ids) && $product instanceof \WC_Product_Variation) {
+            $parent = wc_get_product($product->get_parent_id());
+            if ($parent instanceof \WC_Product) {
+                $category_ids = $parent->get_category_ids();
+            }
+        }
 
         $currency = $settings['currency'] ?? '';
         $ref_currency = $settings['reference_currency'] ?? 'USD';
@@ -63,7 +71,7 @@ class Price_Context
             usd_baseline:  $usd_baseline,
             exchange_rate: $exchange_rate,
             settings:      $settings,
-            category_ids:  $product->get_category_ids()
+            category_ids:  $category_ids
         );
     }
 

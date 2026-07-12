@@ -111,6 +111,14 @@ class Log_Repository implements Log_Repository_Interface
             'reason'            => $item['reason'] ?? null,
         ];
 
+        $columns = $this->wpdb->get_col("DESCRIBE {$this->table_items}", 0);
+        if (in_array('old_regular_price_raw', $columns, true)) {
+            $insert['old_regular_price_raw'] = isset($item['old_regular_price_raw']) ? (string) $item['old_regular_price_raw'] : null;
+        }
+        if (in_array('old_sale_price_raw', $columns, true)) {
+            $insert['old_sale_price_raw'] = isset($item['old_sale_price_raw']) ? (string) $item['old_sale_price_raw'] : null;
+        }
+
         $this->wpdb->insert($this->table_items, $insert);
         if ($this->wpdb->last_error) {
             return false;
@@ -193,11 +201,16 @@ class Log_Repository implements Log_Repository_Interface
             return ['success' => false, 'message' => 'Producto no encontrado'];
         }
 
-        if (!is_null($row->old_regular_price)) {
+        if (property_exists($row, 'old_regular_price_raw') && $row->old_regular_price_raw !== null) {
+            $product->set_regular_price($row->old_regular_price_raw);
+        } elseif (!is_null($row->old_regular_price)) {
             $product->set_regular_price($row->old_regular_price);
         }
-        if (!is_null($row->old_sale_price)) {
-            $product->set_sale_price($row->old_sale_price);
+        if (property_exists($row, 'old_sale_price_raw') && $row->old_sale_price_raw !== null) {
+            $product->set_sale_price($row->old_sale_price_raw);
+        } elseif (!is_null($row->old_sale_price)) {
+            $old_sale = floatval($row->old_sale_price);
+            $product->set_sale_price($old_sale > 0 ? $row->old_sale_price : '');
         }
         $product->save();
 

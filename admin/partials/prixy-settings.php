@@ -4,12 +4,12 @@ global $wpdb;
 
 $opts = get_option('prixy_settings', []);
 $origin_rate = floatval($opts['origin_exchange_rate'] ?? 0);
-$rate_locked = $origin_rate > 0 || !empty($opts['origin_rate_locked']);
+$rate_locked = !empty($opts['origin_rate_locked']);
 
 // Get products stats
 $product_count = wp_count_posts('product');
 $total_products = $product_count->publish ?? 0;
-$products_done = $wpdb->get_var("SELECT COUNT(DISTINCT product_id) FROM {$wpdb->prefix}prixy_run_items WHERE status = 'updated' AND product_id > 0");
+$products_done = $wpdb->get_var($wpdb->prepare("SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key = %s", '_prixy_first_setup_done'));
 $needs_setup = $total_products - $products_done;
 
 // Reference rate
@@ -35,10 +35,98 @@ $api_providers_list = [
     'exchangerate'  => 'ExchangeRate-API',
 ];
 
-$provider = $opts['api_provider'] ?? 'dolarapi';
-
 $all_cats = get_terms(['taxonomy' => 'product_cat', 'hide_empty' => false]);
 $excluded_cats = $opts['exclude_categories'] ?? [];
+
+// Provider info (usado en el paso 3 / formulario de configuración, siempre calculado
+// para poder renderizar los 3 pasos del wizard en el DOM sin recargar la página).
+$current_provider = $opts['api_provider'] ?? 'dolarapi';
+$providers = [
+    'dolarapi' => [
+        'label'    => 'DolarAPI.com',
+        'desc'   => 'Fiat Latam (AR, CL, VE, UY, MX, BO, BR, CO)',
+        'tag'    => '✓ Listo',
+        'tag_ok' => true,
+        'key_field' => null,
+        'icon_bg' => '#e0f2fe',
+        'icon_color' => '#0284c7',
+        'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 2a2 2 0 00-2 2v1H4a1 1 0 00-1 1v3a1 1 0 001 1h1v7a2 2 0 002 2h6a2 2 0 002-2v-7h1a1 1 0 001-1V4a1 1 0 00-1-1h-1V4a2 2 0 00-2-2h-2z"/>',
+    ],
+    'jsdelivr' => [
+        'label'  => 'Jsdelivr Currency',
+        'desc'  => 'Fiat mundial (170+ monedas)',
+        'tag'   => '✓ Listo',
+        'tag_ok' => true,
+        'key_field' => null,
+        'icon_bg' => '#e0e7ff',
+        'icon_color' => '#4f46e5',
+        'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 2a2 2 0 00-2 2v1H4a1 1 0 00-1 1v3a1 1 0 001 1h1v7a2 2 0 002 2h6a2 2 0 002-2v-7h1a1 1 0 001-1V4a1 1 0 00-1-1h-1V4a2 2 0 00-2-2h-2z"/>',
+    ],
+    'cryptoprice' => [
+        'label'  => 'CoinGecko',
+        'desc'  => 'Criptomonedas (100+ coins)',
+        'tag'   => '✓ Listo',
+        'tag_ok' => true,
+        'key_field' => null,
+        'icon_bg' => '#fef3c7',
+        'icon_color' => '#f59e0b',
+        'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+    ],
+    'moneyconvert' => [
+        'label'   => 'MoneyConvert',
+        'desc'    => 'Fiat mundial (182+ monedas)',
+        'tag'     => '✓ Listo',
+        'tag_ok'  => true,
+        'key_field' => null,
+        'icon_bg'  => '#e0f2fe',
+        'icon_color' => '#0891b2',
+        'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+    ],
+    'hexarate' => [
+        'label'   => 'HexaRate',
+        'desc'    => 'Fiat mundial (170+ monedas)',
+        'tag'     => '✓ Listo',
+        'tag_ok'  => true,
+        'key_field' => null,
+        'icon_bg'  => '#f0f9ff',
+        'icon_color' => '#0284c7',
+        'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+    ],
+    'foreignrate' => [
+        'label'   => 'ForeignRate',
+        'desc'    => 'Fiat mundial (150+ monedas)',
+        'tag'     => '✓ Listo',
+        'tag_ok'  => true,
+        'key_field' => null,
+        'icon_bg'  => '#f5f3ff',
+        'icon_color' => '#7c3aed',
+        'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+    ],
+    'currencyapi' => [
+        'label'     => 'CurrencyAPI',
+        'desc'      => '170+ monedas · Internacional',
+        'tag'       => $is_currencyapi_connected ? '✓ Conectada' : 'Requiere API Key',
+        'tag_ok'    => $is_currencyapi_connected,
+        'key_field' => 'currencyapi_api_key',
+        'key_label' => 'API Key',
+        'key_link'  => 'https://currencyapi.com',
+        'icon_bg'   => '#fef3c7',
+        'icon_color' => '#d97706',
+        'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+    ],
+    'exchangerate' => [
+        'label'     => 'ExchangeRate-API',
+        'desc'      => '160+ monedas · Internacional',
+        'tag'       => $is_exchangerate_connected ? '✓ Conectada' : 'Requiere API Key',
+        'tag_ok'   => $is_exchangerate_connected,
+        'key_field' => 'exchangerate_api_key',
+        'key_label' => 'API Key',
+        'key_link'  => 'https://www.exchangerate-api.com',
+        'icon_bg'   => '#f0fdf4',
+        'icon_color' => '#16a34a',
+        'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>',
+    ],
+];
 ?>
 
 <!-- prixy-settings.php starting here -->
@@ -73,10 +161,10 @@ $excluded_cats = $opts['exclude_categories'] ?? [];
     </div>
 
     <?php
-    // STEP 1: Si no hay tasa guardada o no está lockeada, mostrar onboarding
-    if (!$rate_locked):
-
-        $all_products = new WP_Query([
+    // Los 3 pasos del wizard se renderizan siempre en el DOM; JS alterna cuál se ve
+    // según el progreso, sin recargar la página. El estado inicial (qué paso mostrar
+    // al cargar) sigue viniendo del server ($rate_locked / $needs_setup).
+    $all_products = new WP_Query([
             'post_type' => 'product',
             'post_status' => 'publish',
             'posts_per_page' => 10,
@@ -100,7 +188,7 @@ $excluded_cats = $opts['exclude_categories'] ?? [];
     ?>
 
     <!-- ONBOARDING -->
-    <div style="max-width: 900px; margin: 0 auto; padding-top: 20px;">
+    <div id="prixy-step-onboarding" style="max-width: 900px; margin: 0 auto; padding-top: 20px; <?php echo $rate_locked ? 'display:none;' : ''; ?>">
 
         <div style="text-align: center; margin-bottom: 24px;">
             <h1 style="font-size: 24px; font-weight: 700; color: #111827; margin: 0 0 8px;">Setup Inicial - Dollar Sync</h1>
@@ -159,13 +247,10 @@ $excluded_cats = $opts['exclude_categories'] ?? [];
 
     </div>
 
-    <?php
-    // STEP 2: Si la tasa está lockeada pero hay productos por procesar
-    elseif ($needs_setup > 0):
-    ?>
+    <?php $show_processing = $rate_locked && $needs_setup > 0; ?>
 
     <!-- PROCESSING: Tasa guardada, procesando automáticamente -->
-    <div style="max-width: 700px; margin: 0 auto; padding-top: 20px;">
+    <div id="prixy-step-processing" style="max-width: 700px; margin: 0 auto; padding-top: 20px; <?php echo $show_processing ? '' : 'display:none;'; ?>">
 
         <div id="prixy-settings-metadata" style="display:none;" data-products-done="<?php echo intval($products_done); ?>" data-total-products="<?php echo intval($total_products); ?>" data-origin-rate="<?php echo floatval($origin_rate); ?>"></div>
 
@@ -193,15 +278,14 @@ $excluded_cats = $opts['exclude_categories'] ?? [];
         <div id="setup-complete-msg" style="display: none; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; text-align: center;">
             <svg width="48" height="48" fill="none" stroke="#22c55e" viewBox="0 0 24 24" stroke-width="2" style="margin: 0 auto 12px;"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             <h3 style="margin: 0 0 8px; color: #166534; font-size: 18px;">¡Completado!</h3>
-            <p style="margin: 0; color: #166534; font-size: 14px;">Redirigiendo a la configuración...</p>
+            <p style="margin: 0; color: #166534; font-size: 14px;">Abriendo la configuración...</p>
         </div>
 
     </div>
 
-    <?php
-    // STEP 3: Todo completo, mostrar settings normal
-    else:
-    ?>
+    <?php $show_settings = !$show_processing && $rate_locked; ?>
+
+    <div id="prixy-step-settings" style="<?php echo $show_settings ? '' : 'display:none;'; ?>">
 
     <!-- Info Notice -->
     <div class="prixy-notice prixy-notice--info">
@@ -643,7 +727,7 @@ $excluded_cats = $opts['exclude_categories'] ?? [];
 
 </div>
 
-<?php endif; // rate_locked / needs_setup / else ?>
+</div><!-- #prixy-step-settings -->
 
 <script>
 (function() {
@@ -678,6 +762,7 @@ $excluded_cats = $opts['exclude_categories'] ?? [];
     if (input && btn && msg && typeof prixy_ajax !== 'undefined') {
         var currentVal = input.value;
         if (!currentVal || currentVal == '' || currentVal == '0') {
+            var originalBtnHtml = btn.innerHTML;
             btn.disabled = true;
             btn.innerHTML = 'Cargando tasa...';
             msg.innerHTML = '<span style="color: #6b7280;">Obteniendo tasa del dólar...</span>';
@@ -699,6 +784,7 @@ $excluded_cats = $opts['exclude_categories'] ?? [];
                         msg.innerHTML = '<span style="color: #d97706;">Ingresá la tasa manualmente.</span>';
                     }
                     btn.disabled = false;
+                    btn.innerHTML = originalBtnHtml;
                     updateUsdPreview();
                 }
             };
@@ -795,10 +881,14 @@ jQuery(document).ready(function($) {
             success: function(res) {
                 if (res.success && res.data) {
                     var count = res.data.processed || 0;
-                    $msg.html('<div style="margin-top: 16px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 16px 20px; display: flex; align-items: center; gap: 10px;"><svg width="20" height="20" fill="none" stroke="#16a34a" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><span style="color: #166534; font-weight: 600;">✓ Tasa guardada (' + count + ' productos). Redirigiendo a configuración...</span></div>');
+                    $msg.html('<div style="margin-top: 16px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 16px 20px; display: flex; align-items: center; gap: 10px;"><svg width="20" height="20" fill="none" stroke="#16a34a" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><span style="color: #166534; font-weight: 600;">✓ Tasa guardada (' + count + ' productos). Continuando...</span></div>');
                     $btn.html('✓ Completado');
-                    var redirectUrl = res.data.redirect || '/wp-admin/admin.php?page=prixy_configuration';
-                    setTimeout(function() { window.location.replace(redirectUrl); }, 1200);
+                    setupProcessed = count;
+                    setupRate = rate;
+                    $('#prixy-step-onboarding').hide();
+                    $('#prixy-step-processing').show();
+                    updateSetupProgress();
+                    setTimeout(processSetupBatch, 400);
                 } else {
                     $btn.prop('disabled', false).html('Confirmar y continuar');
                     $msg.html('<span style="color: #dc2626;">Error: respuesta inesperada del servidor.</span>');
@@ -817,7 +907,7 @@ jQuery(document).ready(function($) {
     var setupRate = <?php echo floatval($origin_rate); ?>;
     var setupBatchSize = 10;
 
-    if (setupTotal > 0 && setupProcessed < setupTotal && setupRate > 0) {
+    if (setupTotal > 0 && setupProcessed < setupTotal && setupRate > 0 && <?php echo $show_processing ? 'true' : 'false'; ?>) {
         setTimeout(processSetupBatch, 500);
     }
 
@@ -833,10 +923,14 @@ jQuery(document).ready(function($) {
             limit: setupBatchSize,
             rate: setupRate
         }, function(response) {
-            if (response.success && response.data.products) {
-                setupProcessed += response.data.products.length;
+            if (response.success) {
+                // Avanzar por la cantidad de productos ESCANEADOS (no solo los que
+                // tenían precio propio), si no el offset queda pegado cuando un lote
+                // cae en una racha de productos variable/grouped/external sin precio.
+                var scanned = response.data.scanned || (response.data.products ? response.data.products.length : setupBatchSize);
+                setupProcessed += scanned;
                 updateSetupProgress();
-                response.data.products.forEach(function(p) {
+                (response.data.products || []).forEach(function(p) {
                     var usd = p.usd || (parseFloat(p.ars) / setupRate).toFixed(2);
                     $('#setup-products-list').append(
                         '<div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f3f4f6;">' +
@@ -851,11 +945,11 @@ jQuery(document).ready(function($) {
                 } else {
                     setTimeout(processSetupBatch, 100);
                 }
+            } else {
+                setTimeout(processSetupBatch, 500);
             }
         }).fail(function() {
-            setupProcessed += setupBatchSize;
-            updateSetupProgress();
-            setTimeout(processSetupBatch, 100);
+            setTimeout(processSetupBatch, 500);
         });
     }
 
@@ -865,11 +959,17 @@ jQuery(document).ready(function($) {
         $('#setup-count').text(setupProcessed + ' / ' + setupTotal);
     }
 
+    var setupCompleted = false;
     function completeSetup() {
+        if (setupCompleted) return;
+        setupCompleted = true;
         $('#setup-progress-fill').css('width', '100%');
         $('#setup-count').text(setupTotal + ' / ' + setupTotal);
         $('#setup-complete-msg').show();
-        setTimeout(function() { window.location.reload(); }, 2000);
+        setTimeout(function() {
+            $('#prixy-step-processing').hide();
+            $('#prixy-step-settings').show();
+        }, 1500);
     }
 });
 </script>

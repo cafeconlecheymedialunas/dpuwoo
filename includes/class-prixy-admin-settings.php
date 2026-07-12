@@ -78,7 +78,7 @@ class Admin_Settings
         $out['api_provider']           = sanitize_text_field($input['api_provider']           ?? 'dolarapi');
         $out['currencyapi_api_key']    = sanitize_text_field($input['currencyapi_api_key']    ?? '');
         $out['exchangerate_api_key']   = sanitize_text_field($input['exchangerate_api_key']   ?? '');
-        $out['country']                = sanitize_text_field($input['country']                ?? 'AR');
+        $out['country']                = substr(preg_replace('/[^A-Za-z]/', '', strip_tags($input['country'] ?? 'AR')), 0, 2);
         $out['base_currency']          = sanitize_text_field($input['base_currency']          ?? (function_exists('get_woocommerce_currency') ? get_woocommerce_currency() : 'ARS'));
         $out['reference_currency']     = sanitize_text_field($input['reference_currency']     ?? 'USD');
         // Preservar si el campo no vino en el POST (campo oculto cuando ya está configurado)

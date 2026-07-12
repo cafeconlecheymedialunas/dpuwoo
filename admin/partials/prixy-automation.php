@@ -137,7 +137,12 @@ $total_products = wp_count_posts('product')->publish;
             </thead>
             <tbody>
                 <?php 
-                $scheduled_events = wp_get_scheduled_hook_times('prixy_do_update');
+                $scheduled_events = [];
+                foreach (_get_cron_array() ?: [] as $timestamp => $cron_hooks) {
+                    if (isset($cron_hooks['prixy_do_update'])) {
+                        $scheduled_events[] = (int) $timestamp;
+                    }
+                }
                 if (!empty($scheduled_events)): 
                     foreach ($scheduled_events as $timestamp):
                 ?>
